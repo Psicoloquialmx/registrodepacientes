@@ -312,6 +312,25 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .bittab.active{color:var(--terra);border-bottom-color:var(--terra);font-weight:500}
 .bitpanel{display:none}.bitpanel.active{display:block}
 
+/* ── FILTROS DE PERIODO Y ESTIMADOR ── */
+.period-switch{display:inline-flex;gap:4px;background:#f5f2f0;border:1px solid #ede9e6;border-radius:999px;padding:3px}
+.period-btn{background:transparent;border:none;color:var(--ink-light);font-size:12px;font-family:'DM Sans',sans-serif;padding:5px 10px;border-radius:999px;cursor:pointer;transition:all .15s}
+.period-btn:hover{color:var(--ink)}
+.period-btn.active{background:white;color:var(--ink);box-shadow:0 1px 3px rgba(30,42,50,.08)}
+.est-card{background:#f8fbfa;border:1px solid #dceae6;border-radius:10px;padding:.875rem 1rem;margin-top:.75rem}
+.est-head{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-light);margin-bottom:6px}
+.est-main{font-family:'Lora',serif;font-size:28px;line-height:1.1;color:var(--ink)}
+.est-sub{font-size:12px;color:var(--ink-light);line-height:1.5;margin-top:4px}
+.est-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:8px}
+.est-row .form-group{min-width:180px;flex:1}
+.freq-list{display:flex;flex-direction:column;gap:6px;margin-top:.5rem}
+.freq-item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border:1px solid #ede9e6;border-radius:8px;font-size:13px}
+.freq-meta{color:var(--ink-light);font-size:12px}
+.freq-stack{display:flex;flex-direction:column;gap:10px}
+.toolbar-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:1rem}
+.timeline-wrap{display:flex;flex-direction:column;gap:6px}
+.timeline-empty{font-size:12px;color:var(--ink-light)}
+
 </style>
 </head>
 <body>
@@ -326,6 +345,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
     <div class="nav-section">
       <div class="nav-label">Clínica</div>
       <button class="nav-item active" onclick="showView('pacientes')" id="nav-pacientes"><span class="nav-ico">◉</span> Pacientes</button>
+      <button class="nav-item" onclick="showView('inactivos')" id="nav-inactivos"><span class="nav-ico">◎</span> Pacientes inactivos</button>
       <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">▦</span> Semana</button>
     </div>
     <div class="nav-section">
@@ -344,9 +364,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
       </div>
       <div class="content"><div id="stats-grid" class="stats-grid"></div><div id="patient-list" class="patient-list"></div></div>
     </div>
+    <div id="view-inactivos" class="view">
+      <div class="topbar">
+        <div class="topbar-left"><div class="page-title">Pacientes inactivos</div><div class="page-sub">Tratamientos suspendidos o cerrados</div></div>
+      </div>
+      <div class="content"><div id="inactive-toolbar"></div><div id="inactive-list" class="patient-list"></div></div>
+    </div>
     <div id="view-detalle" class="view">
       <div class="topbar">
-        <button class="back-btn" onclick="showView('pacientes')">← Regresar</button>
+        <button class="back-btn" onclick="showView(lastPatientListView)">← Regresar</button>
         <div class="topbar-left" style="text-align:right">
           <div class="page-title" id="det-nombre"></div>
           <div class="page-sub" id="det-sub"></div>
@@ -428,12 +454,20 @@ function horaDia(p,dow){
 }
 function sesionesEnMes(p,year,month){
   const daysInMonth=new Date(year,month+1,0).getDate();
-  let count=0;
+  let scheduled=0;
   for(let d=1;d<=daysInMonth;d++){
     const dow=(new Date(year,month,d).getDay()+6)%7;
-    if(p.dias.includes(dow)) count++;
+    if(p.dias.includes(dow)) scheduled++;
   }
-  return count;
+  const monthDates=n=>{
+    const d=new Date(n.fecha+'T12:00');
+    return d.getFullYear()===year && d.getMonth()===month;
+  };
+  const reprogramadas=p.sesiones.filter(s=>s.tipo==='reprogramada' && monthDates(s)).length;
+  const canceladas=p.sesiones.filter(s=>s.tipo==='cancelada' && monthDates(s)).length;
+  const reposiciones=p.sesiones.filter(s=>s.tipo==='reposicion' && monthDates(s)).length;
+  // Agrega reposiciones y quita reprogramaciones/cancelaciones de la programación original
+  return Math.max(0, scheduled - reprogramadas - canceladas + reposiciones);
 }
 function ingresoProspMes(p,year,month){
   const hoy=new Date();
@@ -464,8 +498,126 @@ function addNota(p,titulo,cuerpo,tag){
   saveState();
 }
 
+function normalizarFrecuencias(p){
+  const defaultFreq=Math.max(1,(p.dias||[]).length||1);
+  let frecuencias=Array.isArray(p.frecuencias)&&p.frecuencias.length?p.frecuencias:[{desde:p.inicio,vecesSemana:defaultFreq}];
+  const porFecha=new Map();
+  frecuencias.forEach(f=>{
+    if(!f||!f.desde) return;
+    porFecha.set(f.desde,Math.max(1,parseInt(f.vecesSemana)||defaultFreq));
+  });
+  if(!porFecha.size) porFecha.set(p.inicio,defaultFreq);
+  if(!porFecha.has(p.inicio)) porFecha.set(p.inicio,defaultFreq);
+  p.frecuencias=[...porFecha.entries()]
+    .map(([desde,vecesSemana])=>({desde,vecesSemana}))
+    .sort((a,b)=>a.desde.localeCompare(b.desde));
+}
+
+function normalizarPausas(p){
+  if(!Array.isArray(p.pausas)) p.pausas=[];
+  p.pausas=p.pausas
+    .filter(pp=>pp&&pp.desde&&pp.hasta)
+    .map(pp=>({
+      id:pp.id||('vp'+(nextPauseId++)),
+      actor:pp.actor==='paciente'?'paciente':'terapeuta',
+      categoria:pp.categoria==='pausa'?'pausa':'vacaciones',
+      desde:pp.desde,
+      hasta:pp.hasta,
+      nota:pp.nota||''
+    }))
+    .sort((a,b)=>a.desde.localeCompare(b.desde));
+}
+
+function inferStatusReason(p){
+  const note=(p.statusNote||'').toLowerCase();
+  if(note.includes('alta')) return 'alta';
+  if(note.includes('cierre')) return 'cierre';
+  if(note.includes('pausa')) return 'pausa';
+  if(note.includes('suspend')) return 'suspendio';
+  return 'otro';
+}
+
+function normalizarStatusHistory(p){
+  if(!Array.isArray(p.statusHistory)||!p.statusHistory.length){
+    p.statusHistory=[{fecha:p.inicio,status:'active',reason:'otro',note:'Inicio de tratamiento'}];
+    if(p.status==='inactive') p.statusHistory.push({fecha:p.statusDate,status:'inactive',reason:p.statusReason||inferStatusReason(p),note:p.statusNote||''});
+  }
+  p.statusHistory=p.statusHistory
+    .filter(ev=>ev&&ev.fecha&&ev.status)
+    .map(ev=>({
+      fecha:ev.fecha,
+      status:ev.status==='inactive'?'inactive':'active',
+      reason:ev.reason||inferStatusReason({statusNote:ev.note||''}),
+      note:ev.note||''
+    }))
+    .sort((a,b)=>a.fecha.localeCompare(b.fecha));
+}
+
+function normalizePatient(p){
+  if(!p.notas) p.notas=[];
+  if(!p.cambios) p.cambios=[];
+  if(!p.tarifas) p.tarifas=[{monto:p.tarifa||0,desde:p.inicio,hasta:null}];
+  p.therapistCancelWeeksPerYear=Number.isFinite(Number(p.therapistCancelWeeksPerYear))?Number(p.therapistCancelWeeksPerYear):Number.isFinite(Number(p.cancelWeeksPerYear))?Number(p.cancelWeeksPerYear):DEFAULT_THERAPIST_CANCEL_WEEKS;
+  p.patientAbsenceWeeksPerYear=Number.isFinite(Number(p.patientAbsenceWeeksPerYear))?Number(p.patientAbsenceWeeksPerYear):0;
+  p.status=(p.status==='inactive')?'inactive':'active';
+  p.statusDate=p.statusDate||p.inicio;
+  p.statusNote=p.statusNote||'';
+  p.statusReason=p.statusReason||inferStatusReason(p);
+  normalizarStatusHistory(p);
+  normalizarFrecuencias(p);
+  normalizarPausas(p);
+  return p;
+}
+
+function statusReasonLabel(reason){
+  return {all:'Todos',suspendio:'Suspendió',alta:'Alta',cierre:'Cierre',pausa:'Pausa',otro:'Otro'}[reason]||'Otro';
+}
+
+function ensurePatientActiveForScheduling(p){
+  if(p.status==='inactive'){
+    alert('Este paciente está inactivo. Reactívalo en Editar > Estado del proceso antes de registrar nuevas sesiones.');
+    return false;
+  }
+  return true;
+}
+
+function setInactiveFilter(filter){
+  inactiveFilter=filter;
+  renderInactivePatients();
+}
+
+function setActiveSearch(value){
+  activeSearch=(value||'').toLowerCase().trim();
+  renderPatients();
+}
+
+function setInactiveSearch(value){
+  inactiveSearch=(value||'').toLowerCase().trim();
+  renderInactivePatients();
+}
+
+function matchesPatientSearch(p,query){
+  if(!query) return true;
+  return p.nombre.toLowerCase().includes(query);
+}
+
+function getTimelineEvents(p){
+  const eventos=[];
+  eventos.push({fecha:p.inicio,tipo:'datos',desc:'Inicio de tratamiento'});
+  (p.frecuencias||[]).forEach(f=>eventos.push({fecha:f.desde,tipo:'horario',desc:`Frecuencia: ${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana`}));
+  (p.pausas||[]).forEach(pp=>eventos.push({fecha:pp.desde,tipo:'horario',desc:`${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${pp.actor}: ${pp.desde}→${pp.hasta}${pp.nota?` — ${pp.nota}`:''}`}));
+  (p.statusHistory||[]).forEach(ev=>eventos.push({fecha:ev.fecha,tipo:'datos',desc:`${ev.status==='inactive'?'Paciente inactivo':'Reingreso / activo'}: ${statusReasonLabel(ev.reason)}${ev.note?` — ${ev.note}`:''}`}));
+  return eventos.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+}
+
+function buildTimelineHTML(p){
+  const eventos=getTimelineEvents(p);
+  const rows=eventos.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(ev=>`<div class="log-row"><span class="log-date">${ev.fecha}</span><span class="log-desc">${ev.desc}</span><span class="log-tag ${ev.tipo==='horario'?'lt-horario':'lt-datos'}">${ev.tipo==='horario'?'ritmo':'estado'}</span></div>`).join('');
+  return rows||'<div class="timeline-empty">Sin eventos relevantes.</div>';
+}
+
 function saveState(){
-  const store={patients, nextId, nextSesId, nextPayId, nextNoteId};
+  const store={patients, nextId, nextSesId, nextPayId, nextNoteId, nextPauseId};
   localStorage.setItem('axolotlPatients', JSON.stringify(store));
 }
 
@@ -475,11 +627,12 @@ function loadState(){
   try {
     const data=JSON.parse(raw);
     if(data && Array.isArray(data.patients)){
-      patients=data.patients;
+      patients=data.patients.map(normalizePatient);
       nextId=data.nextId||nextId;
       nextSesId=data.nextSesId||nextSesId;
       nextPayId=data.nextPayId||nextPayId;
       nextNoteId=data.nextNoteId||nextNoteId;
+      nextPauseId=data.nextPauseId||nextPauseId;
     }
   } catch(e){console.warn('No se pudo cargar el estado desde localStorage',e);}
 }
@@ -533,8 +686,146 @@ let patients = [
    pagos:[{id:'p1',fecha:'2024-07-15',monto:1500},{id:'p2',fecha:'2024-08-01',monto:1500}]}
 ];
 let nextId=4,nextSesId=100,nextPayId=100;
+let nextPauseId=50;
 let curId=null,curTab='sesiones',curBitTab='log';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
+let resumenPeriod='mes';
+let detallePeriod='mes';
+let lastPatientListView='pacientes';
+let inactiveFilter='all';
+let activeSearch='';
+let inactiveSearch='';
+const DEFAULT_THERAPIST_CANCEL_WEEKS=6.5;
+
+function activePatients(){return patients.filter(p=>p.status!=='inactive');}
+function inactivePatients(){return patients.filter(p=>p.status==='inactive');}
+
+function getWeekBounds(baseDate){
+  const start=new Date(baseDate);
+  const diff=(start.getDay()+6)%7;
+  start.setDate(start.getDate()-diff);
+  start.setHours(0,0,0,0);
+  const end=new Date(start);
+  end.setDate(start.getDate()+6);
+  end.setHours(23,59,59,999);
+  return {start,end};
+}
+
+function getPeriodBounds(period,baseDate){
+  const d=new Date(baseDate);
+  if(period==='semana') return getWeekBounds(d);
+  if(period==='anio'){
+    return {
+      start:new Date(d.getFullYear(),0,1,0,0,0,0),
+      end:new Date(d.getFullYear(),11,31,23,59,59,999)
+    };
+  }
+  return {
+    start:new Date(d.getFullYear(),d.getMonth(),1,0,0,0,0),
+    end:new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59,999)
+  };
+}
+
+function sesionesDadasEnRango(p,start,end){
+  const cs=s=>(s.tipo==='asistio'||s.tipo==='reposicion');
+  return p.sesiones.filter(s=>{
+    const d=new Date(s.fecha+'T12:00');
+    return cs(s) && d>=start && d<=end;
+  }).length;
+}
+
+function sesionesProgramadasEntreFechas(p,startDate,endDate){
+  if(!p.dias || !p.dias.length) return 0;
+  const start=new Date(startDate+'T12:00');
+  const end=new Date(endDate+'T12:00');
+  if(isNaN(start.getTime())||isNaN(end.getTime())||end<start) return 0;
+  let total=0;
+  const cursor=new Date(start);
+  while(cursor<=end){
+    const dow=(cursor.getDay()+6)%7;
+    if(p.dias.includes(dow)) total++;
+    cursor.setDate(cursor.getDate()+1);
+  }
+  return total;
+}
+
+function overlapDays(startA,endA,startB,endB){
+  const start=Math.max(startA.getTime(),startB.getTime());
+  const end=Math.min(endA.getTime(),endB.getTime());
+  if(end<start) return 0;
+  return Math.floor((end-start)/(24*60*60*1000))+1;
+}
+
+function frecuenciaVigenteEnFecha(p,dateStr){
+  normalizarFrecuencias(p);
+  let actual=p.frecuencias[0]||{desde:p.inicio,vecesSemana:Math.max(1,(p.dias||[]).length||1)};
+  p.frecuencias.forEach(f=>{if(f.desde<=dateStr) actual=f;});
+  return actual;
+}
+
+function calcularTramosFrecuencia(p,targetDateStr){
+  normalizarFrecuencias(p);
+  const start=new Date(p.inicio+'T12:00');
+  const end=new Date(targetDateStr+'T12:00');
+  if(isNaN(start.getTime())||isNaN(end.getTime())||end<start) return [];
+  const frecuencias=p.frecuencias.filter(f=>f.desde<=targetDateStr).sort((a,b)=>a.desde.localeCompare(b.desde));
+  const msPerDay=24*60*60*1000;
+  return frecuencias.map((f,index)=>{
+    const segStart=new Date((index===0?p.inicio:f.desde)+'T12:00');
+    const next=frecuencias[index+1];
+    const segEnd=next?new Date(new Date(next.desde+'T12:00').getTime()-msPerDay):new Date(end);
+    const realStart=segStart<start?new Date(start):segStart;
+    const realEnd=segEnd>end?new Date(end):segEnd;
+    if(realEnd<realStart) return null;
+    const days=Math.floor((realEnd-realStart)/msPerDay)+1;
+    const weeks=days/7;
+    return {desde:f.desde,hasta:realEnd.toISOString().split('T')[0],vecesSemana:f.vecesSemana,weeks,planned:weeks*f.vecesSemana};
+  }).filter(Boolean);
+}
+
+function calcularPausasEnTramos(p,tramos,targetDateStr){
+  normalizarPausas(p);
+  const targetEnd=new Date(targetDateStr+'T12:00');
+  const result={terapeuta:0,paciente:0};
+  p.pausas.forEach(pausa=>{
+    const pausaStart=new Date(pausa.desde+'T12:00');
+    const pausaEnd=new Date(pausa.hasta+'T12:00');
+    if(isNaN(pausaStart.getTime())||isNaN(pausaEnd.getTime())||pausaEnd<pausaStart||pausaStart>targetEnd) return;
+    tramos.forEach(tramo=>{
+      const tramoStart=new Date(tramo.desde+'T12:00');
+      const tramoEnd=new Date(tramo.hasta+'T12:00');
+      const days=overlapDays(tramoStart,tramoEnd,pausaStart,pausaEnd);
+      if(!days) return;
+      result[pausa.actor]+=(days/7)*tramo.vecesSemana;
+    });
+  });
+  return result;
+}
+
+function estimarSesionActual(p,targetDateStr){
+  const start=new Date(p.inicio+'T12:00');
+  const end=new Date(targetDateStr+'T12:00');
+  if(isNaN(start.getTime())||isNaN(end.getTime())||end<start){
+    return {estimada:0,programadas:0,canceladasEstimadas:0,semanas:0,tramos:[],therapistEstimated:0,patientEstimated:0,therapistPauses:0,patientPauses:0};
+  }
+  const tramos=calcularTramosFrecuencia(p,targetDateStr);
+  const planned=Math.round(tramos.reduce((a,t)=>a+t.planned,0));
+  const msPerDay=24*60*60*1000;
+  const days=Math.floor((end-start)/msPerDay)+1;
+  const weeks=days/7;
+  const therapistEstimated=Math.round(tramos.reduce((a,t)=>a+((t.weeks/52)*p.therapistCancelWeeksPerYear*t.vecesSemana),0));
+  const patientEstimated=Math.round(tramos.reduce((a,t)=>a+((t.weeks/52)*p.patientAbsenceWeeksPerYear*t.vecesSemana),0));
+  const pauseAdjustments=calcularPausasEnTramos(p,tramos,targetDateStr);
+  const therapistPauses=Math.round(pauseAdjustments.terapeuta);
+  const patientPauses=Math.round(pauseAdjustments.paciente);
+  const canceladasEstimadas=therapistEstimated+patientEstimated+therapistPauses+patientPauses;
+  const estimada=Math.max(0,planned-canceladasEstimadas);
+  return {estimada,programadas:planned,canceladasEstimadas,semanas:weeks,tramos,therapistEstimated,patientEstimated,therapistPauses,patientPauses};
+}
+
+function textoPeriodo(period){
+  return period==='semana'?'esta semana':period==='anio'?'este año':'este mes';
+}
 
 // ── SIDEBAR BADGE ────────────────────────────────────────────
 function updateSidebarBadge(){
@@ -548,16 +839,16 @@ function updateSidebarBadge(){
 
 // ── STATS ────────────────────────────────────────────────────
 function renderStats(){
+  const activos=activePatients();
   const hoy=new Date();
   const lun=new Date(hoy);lun.setDate(hoy.getDate()-((hoy.getDay()+6)%7));lun.setHours(0,0,0,0);
   const dom=new Date(lun);dom.setDate(lun.getDate()+6);dom.setHours(23,59,59,999);
   const cs=s=>(s.tipo==='asistio'||s.tipo==='reposicion');
-  const sem=patients.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d>=lun&&d<=dom}).length,0);
-  const mes=patients.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d.getMonth()===hoy.getMonth()&&d.getFullYear()===hoy.getFullYear()}).length,0);
-  const adeudoT=patients.reduce((a,p)=>a+p.adeudo,0);
+  const sem=activos.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d>=lun&&d<=dom}).length,0);
+  const mes=activos.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d.getMonth()===hoy.getMonth()&&d.getFullYear()===hoy.getFullYear()}).length,0);
   const pendT=totalPendientesHoy();
   document.getElementById('stats-grid').innerHTML=`
-    <div class="stat-card"><div class="stat-label">Pacientes</div><div class="stat-value">${patients.length}</div><div class="stat-sub">activos</div></div>
+    <div class="stat-card"><div class="stat-label">Pacientes</div><div class="stat-value">${activos.length}</div><div class="stat-sub">activos</div></div>
     <div class="stat-card"><div class="stat-label">Esta semana</div><div class="stat-value">${sem}</div><div class="stat-sub">sesiones</div></div>
     <div class="stat-card"><div class="stat-label">Este mes</div><div class="stat-value">${mes}</div><div class="stat-sub">sesiones dadas</div></div>
     <div class="stat-card"><div class="stat-label">Sin registrar</div><div class="stat-value" style="color:${pendT>0?'#b95d37':'#2d7a6e'}">${pendT}</div><div class="stat-sub">pendientes</div></div>`;
@@ -566,13 +857,15 @@ function renderStats(){
 
 // ── LISTA PACIENTES ──────────────────────────────────────────
 function renderPatients(){
+  const activos=activePatients().filter(p=>matchesPatientSearch(p,activeSearch));
   renderStats();
   const el=document.getElementById('patient-list');
-  if(!patients.length){el.innerHTML=`<div class="empty"><img src="${AXO.normal2}"><p>Sin pacientes registrados.</p></div>`;return}
+  if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="${AXO.normal2}"><p>Sin pacientes activos.</p></div>`;return}
   const hoy=new Date();
   const pendTotal=totalPendientesHoy();
   const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">⚠</span><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
-  el.innerHTML=alertaHtml+patients.map(p=>{
+  const searchHtml=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."><div style="font-size:12px;color:var(--ink-light)">${activos.length} resultado${activos.length!==1?'s':''}</div></div>`;
+  el.innerHTML=searchHtml+alertaHtml+activos.map(p=>{
     const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion').length;
     const tv=tarifaVigente(p);
     const pend=sesionesPendientes(p).length;
@@ -590,13 +883,35 @@ function renderPatients(){
   }).join('');
 }
 
+function renderInactivePatients(){
+  const toolbar=document.getElementById('inactive-toolbar');
+  const el=document.getElementById('inactive-list');
+  const allInactivos=inactivePatients();
+  const filteredByReason=inactiveFilter==='all'?allInactivos:allInactivos.filter(p=>p.statusReason===inactiveFilter);
+  const inactivos=filteredByReason.filter(p=>matchesPatientSearch(p,inactiveSearch));
+  toolbar.innerHTML=`<div class="toolbar-row"><div class="period-switch">
+      ${['all','suspendio','alta','cierre','pausa','otro'].map(filter=>`<button class="period-btn${inactiveFilter===filter?' active':''}" onclick="setInactiveFilter('${filter}')">${statusReasonLabel(filter)}</button>`).join('')}
+    </div><input class="form-input" style="max-width:320px" value="${inactiveSearch}" oninput="setInactiveSearch(this.value)" placeholder="Buscar paciente inactivo..."><div style="font-size:12px;color:var(--ink-light)">${inactivos.length} paciente${inactivos.length!==1?'s':''}</div></div>`;
+  if(!inactivos.length){el.innerHTML=`<div class="empty"><img src="${AXO.pensando1}"><p>No hay pacientes inactivos con ese motivo.</p></div>`;return;}
+  el.innerHTML=inactivos.map(p=>`<div class="patient-card" onclick="showDetalle(${p.id})">
+    <div class="person-avatar">${PERSON_SVG}</div>
+    <div class="p-info">
+      <div class="p-name">${shortName(p.nombre)}</div>
+      <div class="p-meta">${statusReasonLabel(p.statusReason)} · Inactivo desde ${p.statusDate}${p.statusNote?` · ${p.statusNote}`:''}</div>
+    </div>
+    <div class="p-badges"><span class="badge b-day">${statusReasonLabel(p.statusReason)}</span></div>
+  </div>`).join('');
+}
+
 // ── showView ─────────────────────────────────────────────────
 function showView(v){
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   const n=document.getElementById('nav-'+v);if(n) n.classList.add('active');
+  if(v==='pacientes'||v==='inactivos') lastPatientListView=v;
   if(v==='pacientes') renderPatients();
+  if(v==='inactivos') renderInactivePatients();
   if(v==='semana') renderSemana();
   if(v==='resumen') renderResumen();
   if(v==='prospectado') renderProspectado();
@@ -605,10 +920,11 @@ function showView(v){
 // ── DETALLE ──────────────────────────────────────────────────
 function showDetalle(id){
   curId=id;curTab='sesiones';curBitTab='log';
+  detallePeriod='mes';
   const p=patients.find(x=>x.id===id);
   const hoy=new Date();calYear=hoy.getFullYear();calMonth=hoy.getMonth();
   document.getElementById('det-nombre').textContent=p.nombre;
-  document.getElementById('det-sub').textContent=`En tratamiento desde ${p.inicio}`;
+  document.getElementById('det-sub').textContent=p.status==='inactive'?`${statusReasonLabel(p.statusReason)} desde ${p.statusDate}`:`En tratamiento desde ${p.inicio}`;
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('view-detalle').classList.add('active');
@@ -625,6 +941,126 @@ function switchBitTab(t){
   document.querySelectorAll('.bitpanel').forEach(e=>e.classList.toggle('active',e.id==='bitpanel-'+t));
 }
 
+function setResumenPeriod(period){
+  resumenPeriod=period;
+  renderResumen();
+}
+
+function setDetallePeriod(period){
+  detallePeriod=period;
+  const p=patients.find(x=>x.id===curId);
+  if(p) renderDetalle(p);
+}
+
+function onEstDateChange(pid){
+  const p=patients.find(x=>x.id===pid);
+  if(p) renderDetalle(p);
+}
+
+function agregarCambioFrecuencia(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  const desde=document.getElementById('e-freq-desde').value;
+  const vecesSemana=parseInt(document.getElementById('e-freq-veces').value);
+  if(!desde){alert('Selecciona desde cuándo aplica la frecuencia');return;}
+  if(!vecesSemana||vecesSemana<1||vecesSemana>7){alert('Escribe una frecuencia válida');return;}
+  normalizarFrecuencias(p);
+  const existing=p.frecuencias.find(f=>f.desde===desde);
+  if(existing){
+    const anterior=existing.vecesSemana;
+    existing.vecesSemana=vecesSemana;
+    addLog(p,'horario',`Frecuencia ajustada: ${desde} ${anterior}→${vecesSemana} sesión(es)/semana`);
+  } else {
+    p.frecuencias.push({desde,vecesSemana});
+    normalizarFrecuencias(p);
+    addLog(p,'horario',`Frecuencia nueva: ${desde} ${vecesSemana} sesión(es)/semana`);
+  }
+  saveState();
+  curTab='editar';
+  renderDetalle(p);
+}
+
+function deleteFrecuencia(pid,desde){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  normalizarFrecuencias(p);
+  if(p.frecuencias.length<=1){alert('Debe existir al menos una frecuencia');return;}
+  const freq=p.frecuencias.find(f=>f.desde===desde);
+  if(!freq) return;
+  p.frecuencias=p.frecuencias.filter(f=>f.desde!==desde);
+  normalizarFrecuencias(p);
+  addLog(p,'horario',`Frecuencia eliminada: ${desde} ${freq.vecesSemana} sesión(es)/semana`);
+  saveState();
+  curTab='editar';
+  renderDetalle(p);
+}
+
+function agregarPausa(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  const actor=document.getElementById('e-pausa-actor').value;
+  const categoria=document.getElementById('e-pausa-categoria').value;
+  const desde=document.getElementById('e-pausa-desde').value;
+  const hasta=document.getElementById('e-pausa-hasta').value;
+  const nota=document.getElementById('e-pausa-nota').value.trim();
+  if(!desde||!hasta){alert('Selecciona inicio y fin de la pausa');return;}
+  if(hasta<desde){alert('La fecha final debe ser posterior a la inicial');return;}
+  p.pausas.push({id:'vp'+(nextPauseId++),actor,categoria,desde,hasta,nota});
+  normalizarPausas(p);
+  addLog(p,'horario',`${categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${actor}: ${desde}→${hasta}${nota?` — ${nota}`:''}`);
+  saveState();
+  curTab='editar';
+  renderDetalle(p);
+}
+
+function deletePausa(pid,pauseId){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  const pausa=p.pausas.find(pp=>pp.id===pauseId);
+  if(!pausa) return;
+  p.pausas=p.pausas.filter(pp=>pp.id!==pauseId);
+  addLog(p,'horario',`${pausa.categoria==='vacaciones'?'Vacaciones':'Pausa'} eliminada: ${pausa.actor} ${pausa.desde}→${pausa.hasta}`);
+  saveState();
+  curTab='editar';
+  renderDetalle(p);
+}
+
+function exportPatientSummary(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  normalizePatient(p);
+  const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion').length;
+  const faltas=p.sesiones.filter(s=>s.tipo==='falta').length;
+  const cancels=p.sesiones.filter(s=>s.tipo==='cancelada').length;
+  const repos=p.sesiones.filter(s=>s.tipo==='reposicion').length;
+  const tv=tarifaVigente(p);
+  const timelineLines=getTimelineEvents(p)
+    .slice()
+    .reverse()
+    .map(ev=>`${ev.fecha} | ${ev.desc}`);
+  const text=[
+    `Paciente: ${p.nombre}`,
+    `Estado actual: ${p.status==='inactive'?'Inactivo':'Activo'}`,
+    `Inicio tratamiento: ${p.inicio}`,
+    `Tarifa vigente: $${tv.toLocaleString('es-MX')}`,
+    `Sesiones asistidas: ${n}`,
+    `Faltas del paciente: ${faltas}`,
+    `Canceladas por terapeuta: ${cancels}`,
+    `Reposiciones: ${repos}`,
+    `Frecuencia actual: ${frecuenciaVigenteEnFecha(p,today()).vecesSemana} por semana`,
+    `Ausencias terapeuta/año: ${p.therapistCancelWeeksPerYear}`,
+    `Ausencias paciente/año: ${p.patientAbsenceWeeksPerYear}`,
+    '',
+    'Linea de tiempo',
+    ...timelineLines
+  ].join('\r\n');
+  const blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`${p.nombre.replace(/[^a-z0-9]+/gi,'_').toLowerCase()}_resumen.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // ── POPOVER ──────────────────────────────────────────────────
 // El popover ahora incluye:
 //  - opciones de tipo (asistio, falta, cancelada, reposicion)
@@ -639,6 +1075,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   moveRepoMode=false;
   popoverState={pid,dateStr,sesId:ses?ses.id:null};
   const p=patients.find(x=>x.id===pid);
+  if(!ensurePatientActiveForScheduling(p)) return;
   const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
   const hora=horaDia(p,dow);
   const tipoActual=ses?ses.tipo:null;
@@ -652,8 +1089,8 @@ function openPopover(pid,dateStr,ses,anchorEl){
 
   const opts=[
     {tipo:'asistio',icon:'✓',label:'Asistió'},
-    {tipo:'falta',icon:'✗',label:'Faltó'},
-    {tipo:'cancelada',icon:'—',label:'Cancelada (no cuenta)'},
+    {tipo:'falta',icon:'✗',label:'Faltó paciente (sí cuenta)'},
+    {tipo:'cancelada',icon:'—',label:'Cancelé yo (sin costo)'},
     {tipo:'reposicion',icon:'↩',label:'Reposición'},
   ];
 
@@ -739,6 +1176,7 @@ function toggleMoveRepo(pid,dateStr,sesId){
 function showReposicionPicker(pid,dateStr){
   closePopover();
   const p=patients.find(x=>x.id===parseInt(pid));
+  if(!ensurePatientActiveForScheduling(p)) return;
   const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
   const defaultHora=horaDia(p,dow);
   document.getElementById('modal-title').textContent='Reposición de sesión';
@@ -764,6 +1202,7 @@ function confirmarReposicionDesdePopover(pid,dateStr){
 
 function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
   const p=patients.find(x=>x.id===parseInt(pid));
+  if(!ensurePatientActiveForScheduling(p)) return;
   const tv=tarifaVigente(p);
   const source=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped);
   if(source){
@@ -794,6 +1233,7 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
 // Mover sesión de reposición (o la reposición asociada a una falta) a otra fecha
 function confirmarMoveRepo(pid,sesId){
   const p=patients.find(x=>x.id===parseInt(pid));
+  if(!ensurePatientActiveForScheduling(p)) return;
   const ses=p.sesiones.find(s=>s.id===sesId);
   if(!ses) return;
   const nuevaFecha=document.getElementById('move-repo-date').value;
@@ -828,6 +1268,7 @@ function confirmarMoveRepo(pid,sesId){
 // ── REGISTRAR DESDE POPOVER ──────────────────────────────────
 function registrarDesdePop(pid,dateStr,tipo){
   const p=patients.find(x=>x.id===parseInt(pid));
+  if(!ensurePatientActiveForScheduling(p)) return;
   const tv=tarifaVigente(p);
   const existing=p.sesiones.find(s=>s.fecha===dateStr);
 
@@ -912,11 +1353,12 @@ function registrarDesdePop(pid,dateStr,tipo){
       if(tipo==='asistio'||tipo==='falta') p.adeudo+=tv;
     }
     existing.tipo=tipo;
-    addLog(p,'datos',`Sesión ${dateStr}: ${ant}→${tipo}`);
+    if(tipo==='falta'||ant==='falta') addLog(p,'datos',`Sesión ${dateStr}: ${ant}→${tipo}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo});
     if(p.pago==='sesion'&&(tipo==='asistio'||tipo==='falta')) p.adeudo+=tv;
+    if(tipo==='falta') addLog(p,'datos',`Falta del paciente: ${dateStr}`);
   }
 
   closePopover();
@@ -929,6 +1371,7 @@ function registrarDesdePop(pid,dateStr,tipo){
 // ── ELIMINAR RESPUESTA — sin confirm, solo borra la respuesta del día ──
 function deleteSesionPop(pid,sid){
   const p=patients.find(x=>x.id===parseInt(pid));
+  if(!ensurePatientActiveForScheduling(p)) return;
   const ses=p.sesiones.find(s=>s.id===sid);
   if(!ses) return;
   const tv=tarifaVigente(p);
@@ -974,6 +1417,7 @@ function exposeSesMap(p){
 }
 
 function buildCalendar(p){
+  const isInactive=p.status==='inactive';
   const firstDay=new Date(calYear,calMonth,1);
   const lastDay=new Date(calYear,calMonth+1,0);
   const startDow=(firstDay.getDay()+6)%7;
@@ -1007,12 +1451,12 @@ function buildCalendar(p){
     let pip='';
     if(ses){
       const icons={asistio:'✓',falta:'✗',cancelada:'—',reposicion:'↩'}[ses.tipo]||'?';
-      const label={asistio:'Asistió',falta:'Faltó',cancelada:'Cancelada',reposicion:'Reposi.'}[ses.tipo]||ses.tipo;
+      const label={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.'}[ses.tipo]||ses.tipo;
       // Mostrar indicador de reposición movible
       const hasRepo=ses.tipo==='reposicion'||(ses.tipo==='falta'&&ses.repoId);
-      pip=`<div class="cal-pip ${ses.tipo}" onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)" title="Clic para editar">${icons} ${label}${hasRepo?' ✦':''}</div>`;
+      pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' ✦':''}</div>`;
     } else if(isProg&&!isFuture){
-      pip=`<div class="cal-pip sin-registro" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sin registrar">? Sin reg.</div>`;
+      pip=isInactive?`<div class="cal-pip sin-registro" title="Paciente inactivo">Sin reg.</div>`:`<div class="cal-pip sin-registro" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sin registrar">? Sin reg.</div>`;
     } else if(isProg&&isFuture){
       pip=`<div class="cal-prog-dot" title="${hora}"></div>`;
     }
@@ -1024,6 +1468,7 @@ function buildCalendar(p){
 
   const nPend=pendientes.size;
   const alertaCal=nPend>0?`<div style="background:#fffbf7;border:1px solid #f0c8a0;border-radius:8px;padding:7px 12px;font-size:12px;color:#7a4a1e;margin-bottom:.75rem">⚠ ${nPend} sesión${nPend!==1?'es':''} sin registrar en ${MESES[calMonth]}. Haz clic en las celdas <span style="background:#fdf8f5;border:1.5px dashed #ddd;padding:1px 5px;border-radius:4px;font-size:11px">? Sin reg.</span> para llenarlas.</div>`:'';
+  const inactiveAlert=isInactive?`<div style="background:#f0f3f5;border:1px solid #d8e0e5;border-radius:8px;padding:7px 12px;font-size:12px;color:#61727e;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. Reactívalo para registrar nuevas sesiones.</div>`:'';
 
   return `
     <div class="cal-nav">
@@ -1031,12 +1476,13 @@ function buildCalendar(p){
       <span class="cal-nav-title">${MESES[calMonth]} ${calYear}</span>
       <button class="cal-nav-btn" onclick="calNext(${p.id})">›</button>
     </div>
+    ${inactiveAlert}
     ${alertaCal}
     <div class="cal-grid">${cells}</div>
     <div class="cal-legend">
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#d4ede8"></div>Asistió</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fde0cc"></div>Faltó</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f0eeec"></div>Cancelada</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fde0cc"></div>Faltó paciente</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f0eeec"></div>Cancelada por terapeuta</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#ede8f8"></div>Reposición</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fdf8f5;border:1.5px dashed #ddd"></div>Sin registrar</div>
       <div class="cal-leg-item"><span style="font-size:10px;color:var(--ink-light)">✦ = movible</span></div>
@@ -1056,6 +1502,7 @@ function calNext(pid){
 
 // ── RENDER DETALLE ───────────────────────────────────────────
 function renderDetalle(p){
+  normalizePatient(p);
   exposeSesMap(p);
   const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion').length;
   const faltas=p.sesiones.filter(s=>s.tipo==='falta').length;
@@ -1064,6 +1511,14 @@ function renderDetalle(p){
   const tv=tarifaVigente(p);
   const diasHoras=p.dias.map(d=>`${DIAS_FULL[d]} ${horaDia(p,d)}`).join(' · ');
   const pend=sesionesPendientes(p);
+  const now=new Date();
+  const detailBounds=getPeriodBounds(detallePeriod,now);
+  const sesionesPeriodo=sesionesDadasEnRango(p,detailBounds.start,detailBounds.end);
+  const estTargetInput=document.getElementById('est-fecha');
+  const estTarget=estTargetInput?estTargetInput.value:today();
+  const est=estimarSesionActual(p,estTarget);
+  const registradasHastaFecha=sesionesDadasEnRango(p,new Date(p.inicio+'T00:00:00'),new Date(estTarget+'T23:59:59'));
+  const freqActual=frecuenciaVigenteEnFecha(p,estTarget);
 
   const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">⚠</span><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
 
@@ -1108,6 +1563,7 @@ function renderDetalle(p){
 
   // Edit panel
   const editHtml=buildEditPanel(p);
+  const timelineHtml=buildTimelineHTML(p);
 
   document.getElementById('det-content').innerHTML=`
     ${alertaHtml}
@@ -1115,9 +1571,10 @@ function renderDetalle(p){
       <img src="${axoHero(p)}" class="hero-axo" alt="Axo-lotl">
       <div style="flex:1;min-width:0">
         <div class="hero-name">${p.nombre}</div>
-        <div class="hero-sub">${diasHoras} · Sesión #${n} · $${tv.toLocaleString('es-MX')}/sesión</div>
+        <div class="hero-sub">${diasHoras} · Sesión #${n} · $${tv.toLocaleString('es-MX')}/sesión · ${p.status==='inactive'?'Inactivo':'Activo'}</div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0">
+        <button class="btn-sec btn-sm" onclick="exportPatientSummary(${p.id})">Exportar resumen</button>
         <button class="btn-danger btn-sm" onclick="deletePatient(${p.id})">Eliminar paciente</button>
       </div>
     </div>
@@ -1134,14 +1591,40 @@ function renderDetalle(p){
     <div class="dtab-panel active" id="panel-sesiones">
       <div class="detail-grid">
         <div class="dsec">
-          <div class="sec-title">Resumen clínico</div>
+          <div class="sec-title-row">
+            <span class="sec-title">Resumen clínico</span>
+            <div class="period-switch">
+              <button class="period-btn${detallePeriod==='semana'?' active':''}" onclick="setDetallePeriod('semana')">Semana</button>
+              <button class="period-btn${detallePeriod==='mes'?' active':''}" onclick="setDetallePeriod('mes')">Mes</button>
+              <button class="period-btn${detallePeriod==='anio'?' active':''}" onclick="setDetallePeriod('anio')">Año</button>
+            </div>
+          </div>
           <div class="drow"><span class="dkey">Inicio tratamiento</span><span class="dval">${p.inicio}</span></div>
           <div class="drow"><span class="dkey">Sesiones asistidas</span><span class="dval">${n}</span></div>
-          <div class="drow"><span class="dkey">Faltas</span><span class="dval">${faltas}</span></div>
-          <div class="drow"><span class="dkey">Canceladas (mías)</span><span class="dval">${cancels}</span></div>
+          <div class="drow"><span class="dkey">Sesiones ${textoPeriodo(detallePeriod)}</span><span class="dval">${sesionesPeriodo}</span></div>
+          <div class="drow"><span class="dkey">Faltas del paciente</span><span class="dval">${faltas}</span></div>
+          <div class="drow"><span class="dkey">Canceladas por terapeuta</span><span class="dval">${cancels}</span></div>
           <div class="drow"><span class="dkey">Reposiciones</span><span class="dval">${repos}</span></div>
+          <div class="drow"><span class="dkey">Frecuencia vigente</span><span class="dval">${freqActual.vecesSemana} por semana</span></div>
+          <div class="drow"><span class="dkey">Ausencias terapeuta</span><span class="dval">${p.therapistCancelWeeksPerYear} sem/año</span></div>
+          <div class="drow"><span class="dkey">Ausencias paciente</span><span class="dval">${p.patientAbsenceWeeksPerYear} sem/año</span></div>
           <div class="drow"><span class="dkey">Duración</span><span class="dval">${p.duracion||45} min</span></div>
           <div class="drow"><span class="dkey">Primera sesión sin costo</span><span class="dval">${p.primeraSinCosto?'sí':'no'}</span></div>
+          <div class="est-card">
+            <div class="est-head">Estimador de número de sesión</div>
+            <div class="est-row">
+              <div class="form-group">
+                <label class="form-label">Calcular al día</label>
+                <input class="form-input" type="date" id="est-fecha" value="${estTarget}" onchange="onEstDateChange(${p.id})">
+              </div>
+            </div>
+            <div class="est-main">Sesión aproximada #${est.estimada}</div>
+            <div class="est-sub">Programadas en agenda: ${est.programadas} · Ajuste total: -${est.canceladasEstimadas}.</div>
+            <div class="est-sub">Promedio terapeuta: -${est.therapistEstimated} · Promedio paciente: -${est.patientEstimated}.</div>
+            <div class="est-sub">Vacaciones/pausas terapeuta: -${est.therapistPauses} · Vacaciones/pausas paciente: -${est.patientPauses}.</div>
+            <div class="est-sub">Registradas en expediente hasta esa fecha: ${registradasHastaFecha}. Si te falta registrar semanas, usa la estimada como referencia.</div>
+            <div class="est-sub">Frecuencia al ${estTarget}: ${freqActual.vecesSemana} por semana. El promedio y las pausas se calculan por separado para terapeuta y paciente.</div>
+          </div>
         </div>
         <div class="dsec">
           <div class="sec-title">Estado de cuenta</div>
@@ -1161,6 +1644,7 @@ function renderDetalle(p){
           </div>
         </div>
         <div class="dsec full" id="cal-container">${buildCalendar(p)}</div>
+        <div class="dsec full"><div class="sec-title">Línea de tiempo</div><div class="timeline-wrap">${timelineHtml}</div></div>
       </div>
     </div>
 
@@ -1256,9 +1740,13 @@ function deleteNota(pid,nid){
 
 // ── EDIT PANEL ───────────────────────────────────────────────
 function buildEditPanel(p){
+  normalizePatient(p);
   const tv=tarifaVigente(p);
   const diasBtns=DIAS.map((d,i)=>`<button class="day-btn${p.dias.includes(i)?' sel':''}" onclick="toggleDayEdit(this,${i})" data-d="${i}">${d}</button>`).join('');
   const horasRows=p.dias.map(i=>`<div class="hora-dia-row" id="hora-row-${i}"><span class="hora-dia-label">${DIAS_FULL[i]}</span><input class="hora-dia-input" id="hora-${i}" type="time" value="${horaDia(p,i)}"></div>`).join('');
+  const freqActual=frecuenciaVigenteEnFecha(p,today());
+  const frecuenciasHtml=p.frecuencias.map((f,index)=>`<div class="freq-item"><div><div>${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana</div><div class="freq-meta">Desde ${f.desde}</div></div>${index===0?'':`<button class="btn-ghost" onclick="deleteFrecuencia(${p.id},'${f.desde}')">Eliminar</button>`}</div>`).join('');
+  const pausasHtml=p.pausas.length?p.pausas.map(pp=>`<div class="freq-item"><div><div>${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} · ${pp.actor}</div><div class="freq-meta">${pp.desde} → ${pp.hasta}${pp.nota?` · ${pp.nota}`:''}</div></div><button class="btn-ghost" onclick="deletePausa(${p.id},'${pp.id}')">Eliminar</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin vacaciones o pausas registradas.</div>';
   return `
     <div class="edit-banner">✏ <strong>Modo edición</strong> — Los cambios se registran en la bitácora automáticamente.</div>
     <div class="detail-grid">
@@ -1287,11 +1775,66 @@ function buildEditPanel(p){
         </div>
       </div>
       <div class="dsec full">
+        <div class="sec-title">Estado del proceso</div>
+        <div class="form-grid" style="margin-top:.25rem">
+          <div class="form-group"><label class="form-label">Estado</label>
+            <select class="form-input" id="e-status">
+              <option value="active"${p.status==='active'?' selected':''}>Activo</option>
+              <option value="inactive"${p.status==='inactive'?' selected':''}>Inactivo</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Fecha del estado</label><input class="form-input" id="e-status-date" type="date" value="${p.statusDate||today()}"></div>
+          <div class="form-group"><label class="form-label">Motivo</label>
+            <select class="form-input" id="e-status-reason">
+              <option value="suspendio"${p.statusReason==='suspendio'?' selected':''}>Suspendió</option>
+              <option value="alta"${p.statusReason==='alta'?' selected':''}>Alta</option>
+              <option value="cierre"${p.statusReason==='cierre'?' selected':''}>Cierre</option>
+              <option value="pausa"${p.statusReason==='pausa'?' selected':''}>Pausa</option>
+              <option value="otro"${p.statusReason==='otro'?' selected':''}>Otro</option>
+            </select>
+          </div>
+          <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-status-note" value="${p.statusNote||''}" placeholder="Ej: suspendió terapia, alta, cierre temporal"></div>
+        </div>
+      </div>
+      <div class="dsec full">
         <div class="sec-title">Días y horas de sesión</div>
         <div style="margin-bottom:.75rem"><div class="form-label" style="margin-bottom:8px">Días fijos</div>
         <div class="days-row" id="e-dias">${diasBtns}</div></div>
         <div id="e-horas-container">${horasRows}</div>
+        <div class="alert-box">Los días fijos afectan la agenda actual. Para cambios históricos de una a dos sesiones por semana, usa el bloque de frecuencia de abajo.</div>
         <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarDatosGenerales(${p.id})">Guardar cambios</button></div>
+      </div>
+      <div class="dsec full">
+        <div class="sec-title">Frecuencia y ajuste fino</div>
+        <div class="form-grid" style="margin-top:.25rem">
+          <div class="form-group"><label class="form-label">Frecuencia vigente</label><input class="form-input" value="${freqActual.vecesSemana} sesión${freqActual.vecesSemana!==1?'es':''}/semana" disabled></div>
+          <div class="form-group"><label class="form-label">Ausencias terapeuta al año</label><input class="form-input" id="e-therapist-cancel-weeks" type="number" step="0.5" min="0" value="${p.therapistCancelWeeksPerYear}"></div>
+          <div class="form-group"><label class="form-label">Ausencias paciente al año</label><input class="form-input" id="e-patient-absence-weeks" type="number" step="0.5" min="0" value="${p.patientAbsenceWeeksPerYear}"></div>
+        </div>
+        <div class="form-grid" style="margin-top:.75rem">
+          <div class="form-group"><label class="form-label">Nueva frecuencia</label><input class="form-input" id="e-freq-veces" type="number" min="1" max="7" value="${freqActual.vecesSemana}"></div>
+          <div class="form-group"><label class="form-label">Vigente desde</label><input class="form-input" id="e-freq-desde" type="date" value="${today()}"></div>
+        </div>
+        <div class="est-row">
+          <button class="btn-primary" onclick="agregarCambioFrecuencia(${p.id})">Registrar cambio de frecuencia</button>
+        </div>
+        <div class="freq-list">${frecuenciasHtml}</div>
+      </div>
+      <div class="dsec full">
+        <div class="sec-title">Vacaciones y pausas largas</div>
+        <div class="form-grid" style="margin-top:.25rem">
+          <div class="form-group"><label class="form-label">De quién es la pausa</label>
+            <select class="form-input" id="e-pausa-actor"><option value="terapeuta">Terapeuta</option><option value="paciente">Paciente</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Tipo</label>
+            <select class="form-input" id="e-pausa-categoria"><option value="vacaciones">Vacaciones</option><option value="pausa">Pausa</option></select>
+          </div>
+          <div class="form-group"><label class="form-label">Desde</label><input class="form-input" id="e-pausa-desde" type="date" value="${today()}"></div>
+          <div class="form-group"><label class="form-label">Hasta</label><input class="form-input" id="e-pausa-hasta" type="date" value="${today()}"></div>
+          <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-pausa-nota" placeholder="Ej: vacaciones de verano, pausa terapéutica"></div>
+        </div>
+        <div class="est-row"><button class="btn-primary" onclick="agregarPausa(${p.id})">Registrar vacaciones o pausa</button></div>
+        <div class="freq-list">${pausasHtml}</div>
       </div>
       <div class="dsec full">
         <div class="sec-title">Cambio de tarifa</div>
@@ -1324,6 +1867,7 @@ function toggleDayEdit(btn,i){
 
 function guardarDatosGenerales(id){
   const p=patients.find(x=>x.id===id);
+  normalizePatient(p);
   const diasSel=[...document.querySelectorAll('#e-dias .day-btn.sel')].map(b=>parseInt(b.dataset.d));
   const nuevasHoras={};
   diasSel.forEach(i=>{const inp=document.getElementById('hora-'+i);nuevasHoras[i]=inp?inp.value:horaDia(p,i);});
@@ -1333,14 +1877,40 @@ function guardarDatosGenerales(id){
   const nuevoPago=document.getElementById('e-pago').value;
   const nuevaDuracion=parseInt(document.getElementById('e-duracion').value)||45;
   const nuevaPrimeraSinCosto=document.getElementById('e-primera-sin-costo').checked;
+  const nuevoStatus=document.getElementById('e-status').value;
+  const nuevoStatusDate=document.getElementById('e-status-date').value||today();
+  const nuevoStatusReason=document.getElementById('e-status-reason').value;
+  const nuevoStatusNote=document.getElementById('e-status-note').value.trim();
+  const nuevasCancelWeeksTerapeuta=parseFloat(document.getElementById('e-therapist-cancel-weeks').value);
+  const nuevasCancelWeeksPaciente=parseFloat(document.getElementById('e-patient-absence-weeks').value);
   if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}"→"${nuevoNombre}"`);
   if(nuevoInicio!==p.inicio) cambios.push(`Inicio: ${p.inicio}→${nuevoInicio}`);
   if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)}→${pagoLabel(nuevoPago)}`);
   if(p.duracion!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45}→${nuevaDuracion} min`);
   if(p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto? 'sí':'no'}→${nuevaPrimeraSinCosto? 'sí':'no'}`);
+  if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==p.statusNote) cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'}→${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?` — ${nuevoStatusNote}`:''}`);
+  if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear) cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear}→${nuevasCancelWeeksTerapeuta} semanas/año`);
+  if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear) cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear}→${nuevasCancelWeeksPaciente} semanas/año`);
   if(p.dias.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${p.dias.map(d=>DIAS[d]).join(',')}]→[${diasSel.map(d=>DIAS[d]).join(',')}]`);
   diasSel.forEach(i=>{if(nuevasHoras[i]!==horaDia(p,i)) cambios.push(`${DIAS[i]}: ${horaDia(p,i)}→${nuevasHoras[i]}`);});
+  const oldInicio=p.inicio;
   p.nombre=nuevoNombre;p.inicio=nuevoInicio;p.pago=nuevoPago;p.duracion=nuevaDuracion;p.primeraSinCosto=nuevaPrimeraSinCosto;p.dias=diasSel;p.horas=nuevasHoras;p.hora=nuevasHoras[diasSel[0]]||'00:00';
+  p.status=nuevoStatus;
+  p.statusDate=nuevoStatusDate;
+  p.statusReason=nuevoStatusReason;
+  p.statusNote=nuevoStatusNote;
+  if(nuevoStatus!==p.statusHistory[p.statusHistory.length-1]?.status || nuevoStatusDate!==p.statusHistory[p.statusHistory.length-1]?.fecha || nuevoStatusReason!==p.statusHistory[p.statusHistory.length-1]?.reason || nuevoStatusNote!==p.statusHistory[p.statusHistory.length-1]?.note){
+    p.statusHistory.push({fecha:nuevoStatusDate,status:nuevoStatus,reason:nuevoStatusReason,note:nuevoStatusNote});
+    normalizarStatusHistory(p);
+  }
+  if(!isNaN(nuevasCancelWeeksTerapeuta)) p.therapistCancelWeeksPerYear=nuevasCancelWeeksTerapeuta;
+  if(!isNaN(nuevasCancelWeeksPaciente)) p.patientAbsenceWeeksPerYear=nuevasCancelWeeksPaciente;
+  if(oldInicio!==nuevoInicio){
+    const primera=p.frecuencias[0];
+    if(primera&&primera.desde===oldInicio) primera.desde=nuevoInicio;
+  }
+  if(p.frecuencias.length===1) p.frecuencias[0].vecesSemana=Math.max(1,diasSel.length||1);
+  normalizarFrecuencias(p);
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   document.getElementById('det-nombre').textContent=p.nombre;
   saveState();
@@ -1378,6 +1948,7 @@ function regPago(id,inputId,dateInputId,methodInputId){
 // ── REPOSICIÓN MODAL ─────────────────────────────────────────
 function abrirReposicion(){
   const p=patients.find(x=>x.id===curId);
+  if(!ensurePatientActiveForScheduling(p)) return;
   const hoy=new Date();
   const diasHastaLun=(8-(hoy.getDay()||7))%7||7;
   const lunSig=new Date(hoy);lunSig.setDate(hoy.getDate()+diasHastaLun);
@@ -1400,6 +1971,7 @@ function abrirReposicion(){
 }
 function confirmarReposicion(id){
   const p=patients.find(x=>x.id===id);
+  if(!ensurePatientActiveForScheduling(p)) return;
   const fechaOrig=document.getElementById('rep-original').value;
   const fechaRepo=document.getElementById('rep-dia').value;
   const nota=document.getElementById('rep-nota').value||'';
@@ -1443,13 +2015,14 @@ function confirmarReposicion(id){
 
 // ── SEMANA ───────────────────────────────────────────────────
 function renderSemana(){
+  const activos=activePatients();
   const hoy=new Date();
   const lun=new Date(hoy);lun.setDate(hoy.getDate()-((hoy.getDay()+6)%7));
   const cols=DIAS.map((dia,i)=>{
     const fecha=new Date(lun);fecha.setDate(lun.getDate()+i);
     const fechaStr=fecha.toISOString().split('T')[0];
-    const slots=patients.filter(p=>p.dias.includes(i));
-    const repos=patients.flatMap(p=>p.sesiones.filter(s=>s.tipo==='reposicion'&&s.fecha.startsWith(fechaStr)).map(s=>({...s,pNombre:p.nombre,pId:p.id})));
+    const slots=activos.filter(p=>p.dias.includes(i));
+    const repos=activos.flatMap(p=>p.sesiones.filter(s=>s.tipo==='reposicion'&&s.fecha.startsWith(fechaStr)).map(s=>({...s,pNombre:p.nombre,pId:p.id})));
     const sh=slots.map(p=>`<div class="wslot" onclick="showDetalle(${p.id})"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${horaDia(p,i)}</div></div>`).join('');
     const rh=repos.map(r=>`<div class="wslot repo" onclick="showDetalle(${r.pId})"><div style="font-weight:500">↩ ${r.pNombre.split(' ')[0]}</div><div>Repo.</div></div>`).join('');
     return `<div class="wday"><div class="wday-name">${dia}<br><span style="font-size:9px;opacity:.6">${fechaStr.slice(5)}</span></div>${sh}${rh}</div>`;
@@ -1459,16 +2032,24 @@ function renderSemana(){
 
 // ── RESUMEN ──────────────────────────────────────────────────
 function renderResumen(){
+  const activos=activePatients();
   const hoy=new Date();
-  const lun=new Date(hoy);lun.setDate(hoy.getDate()-((hoy.getDay()+6)%7));lun.setHours(0,0,0,0);
-  const dom=new Date(lun);dom.setDate(lun.getDate()+6);dom.setHours(23,59,59,999);
-  const cs=s=>(s.tipo==='asistio'||s.tipo==='reposicion');
-  const sem=patients.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d>=lun&&d<=dom}).length,0);
-  const mes=patients.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d.getMonth()===hoy.getMonth()&&d.getFullYear()===hoy.getFullYear()}).length,0);
-  const anio=patients.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d.getFullYear()===hoy.getFullYear()}).length,0);
+  const semBounds=getPeriodBounds('semana',hoy);
+  const mesBounds=getPeriodBounds('mes',hoy);
+  const anioBounds=getPeriodBounds('anio',hoy);
+  const sem=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,semBounds.start,semBounds.end),0);
+  const mes=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,mesBounds.start,mesBounds.end),0);
+  const anio=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,anioBounds.start,anioBounds.end),0);
+  const activeBounds=getPeriodBounds(resumenPeriod,hoy);
+  const activeCount=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,activeBounds.start,activeBounds.end),0);
   const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const pm=Array(12).fill(0);
-  patients.forEach(p=>p.sesiones.forEach(s=>{if(cs(s)){const d=new Date(s.fecha+'T12:00');if(d.getFullYear()===hoy.getFullYear())pm[d.getMonth()]++;}}));
+  activos.forEach(p=>p.sesiones.forEach(s=>{
+    if(s.tipo==='asistio'||s.tipo==='reposicion'){
+      const d=new Date(s.fecha+'T12:00');
+      if(d.getFullYear()===hoy.getFullYear()) pm[d.getMonth()]++;
+    }
+  }));
   const mx=Math.max(...pm,1);
   const bars=meses.map((m,i)=>`<div class="bcol"><div class="bval">${pm[i]||''}</div><div class="bbar${i===hoy.getMonth()?' cur':''}" style="height:${Math.max(3,Math.round(pm[i]/mx*60))}px"></div><div class="blabel">${m}</div></div>`).join('');
   document.getElementById('resumen-content').innerHTML=`
@@ -1477,20 +2058,36 @@ function renderResumen(){
       <div class="rcard"><div class="rnum">${mes}</div><div class="rlabel">Este mes</div><div class="rsub">${hoy.toLocaleString('es-MX',{month:'long'})}</div></div>
       <div class="rcard"><div class="rnum">${anio}</div><div class="rlabel">Este año ${hoy.getFullYear()}</div></div>
     </div>
+    <div class="dsec" style="background:white;margin-bottom:1rem">
+      <div class="sec-title-row">
+        <span class="sec-title">Vista por periodo</span>
+        <div class="period-switch">
+          <button class="period-btn${resumenPeriod==='semana'?' active':''}" onclick="setResumenPeriod('semana')">Semana</button>
+          <button class="period-btn${resumenPeriod==='mes'?' active':''}" onclick="setResumenPeriod('mes')">Mes</button>
+          <button class="period-btn${resumenPeriod==='anio'?' active':''}" onclick="setResumenPeriod('anio')">Año</button>
+        </div>
+      </div>
+      <div class="drow"><span class="dkey">Sesiones dadas ${textoPeriodo(resumenPeriod)}</span><span class="dval">${activeCount}</span></div>
+    </div>
     <div class="dsec" style="background:white"><div class="sec-title">Sesiones por mes — ${hoy.getFullYear()}</div><div class="bar-chart">${bars}</div></div>
     <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Por paciente</div>
-      ${patients.map(p=>{const n=p.sesiones.filter(s=>cs(s)).length;const nm=p.sesiones.filter(s=>cs(s)&&new Date(s.fecha+'T12:00').getMonth()===hoy.getMonth()).length;return`<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total · ${nm} este mes</span></div>`;}).join('')}
+      ${activos.map(p=>{
+        const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion').length;
+        const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
+        return `<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total · ${np} ${textoPeriodo(resumenPeriod)}</span></div>`;
+      }).join('')}
     </div>`;
 }
 
 // ── PROSPECTADO ──────────────────────────────────────────────
 function renderProspectado(){
+  const activos=activePatients();
   const hoy=new Date();const y=hoy.getFullYear(),m=hoy.getMonth();
-  const totalProsp=patients.reduce((a,p)=>a+ingresoProspMes(p,y,m),0);
-  const totalDeuda=patients.reduce((a,p)=>a+p.adeudo,0);
+  const totalProsp=activos.reduce((a,p)=>a+ingresoProspMes(p,y,m),0);
+  const totalDeuda=activos.reduce((a,p)=>a+p.adeudo,0);
   const neto=Math.max(0,totalProsp-totalDeuda);
   const ratio=totalProsp>0?totalDeuda/totalProsp:0;
-  const rowsHtml=patients.map(p=>{
+  const rowsHtml=activos.map(p=>{
     const prosp=ingresoProspMes(p,y,m);
     const numSes=sesionesEnMes(p,y,m);
     const tv=tarifaVigente(p);
@@ -1595,6 +2192,13 @@ function guardarNuevo(){
     hora:horas[newPatDias[0]]||'10:00',horas,
     tarifa,pago:document.getElementById('fp').value,
     duracion,primeraSinCosto,
+    status:'active',statusDate:inicio,statusNote:'',
+    statusReason:'otro',
+    statusHistory:[{fecha:inicio,status:'active',reason:'otro',note:'Inicio de tratamiento'}],
+    therapistCancelWeeksPerYear:DEFAULT_THERAPIST_CANCEL_WEEKS,
+    patientAbsenceWeeksPerYear:0,
+    frecuencias:[{desde:inicio,vecesSemana:Math.max(1,newPatDias.length)}],
+    pausas:[],
     pagado:0,adeudo:0,sesiones:[],pagos:[],notas:[],
     tarifas:[{monto:tarifa,desde:inicio,hasta:null}],
     cambios:[{fecha:today(),tipo:'datos',desc:'Expediente creado'}]
@@ -1606,6 +2210,7 @@ function closeModal(){document.getElementById('modal-overlay').classList.remove(
 function closeModalOut(e){ /* overlay click no cierra modal */ }
 
 loadState();
+patients=patients.map(normalizePatient);
 patients.forEach(exposeSesMap);
 renderPatients();
 saveState();
