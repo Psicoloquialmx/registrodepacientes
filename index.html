@@ -409,6 +409,15 @@ function tarifaVigente(p){
   if(!p.tarifas||!p.tarifas.length) return p.tarifa;
   return [...p.tarifas].sort((a,b)=>b.desde.localeCompare(a.desde))[0].monto;
 }
+function shortName(nombre){
+  if(!nombre) return '';
+  const partes=nombre.trim().split(/\s+/);
+  if(partes.length===1) return partes[0];
+  const primer=partes[0];
+  const apellidos=partes.slice(1);
+  const inicial=apellidos[0][0]?apellidos[0][0].toUpperCase():'';
+  return `${primer} ${inicial}.`;
+}
 function addLog(p,tipo,desc){
   if(!p.cambios) p.cambios=[];
   p.cambios.unshift({fecha:today(),tipo,desc});
@@ -551,7 +560,7 @@ function renderPatients(){
     return `<div class="patient-card" onclick="showDetalle(${p.id})">
       <div class="person-avatar">${PERSON_SVG}</div>
       <div class="p-info">
-        <div class="p-name">${p.nombre}</div>
+        <div class="p-name">${shortName(p.nombre)}</div>
         <div class="p-meta">Sesión #${n} · ${diasHoras} · ${pagoLabel(p.pago)} · $${tv.toLocaleString('es-MX')}/ses</div>
       </div>
       <div class="p-badges">${pendBadge}${badge}</div>
@@ -1168,16 +1177,37 @@ function confirmarReposicion(id){
   const fechaOrig=document.getElementById('rep-original').value;
   const fechaRepo=document.getElementById('rep-dia').value;
   const nota=document.getElementById('rep-nota').value||'';
-  // Marcar original como falta con referencia a la reposición
+  if(!fechaOrig||!fechaRepo){alert('Selecciona ambas fechas');return;}
+
   const repoId='s'+(nextSesId++);
-  const sesOrig=p.sesiones.find(s=>s.fecha===fechaOrig&&s.tipo==='asistio');
-  if(sesOrig){sesOrig.tipo='falta';sesOrig.repoId=repoId;}
-  else{
+  let sesOrig=p.sesiones.find(s=>s.fecha===fechaOrig && s.tipo!=='cancelada');
+  if(sesOrig){
+    sesOrig.tipo='falta';
+    sesOrig.repoId=repoId;
+  } else {
     const n2=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     p.sesiones.push({id:'s'+(nextSesId-1),num:n2,fecha:fechaOrig,tipo:'falta',repoId});
   }
-  const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-  p.sesiones.push({id:repoId,num:n,fecha:fechaRepo,tipo:'reposicion',nota:nota||`Repone ${fechaOrig}`,reponeId:sesOrig?.id});
+
+  let sesRepo=p.sesiones.find(s=>s.fecha===fechaRepo);
+  if(sesRepo){
+    sesRepo.tipo='reposicion';
+    sesRepo.repoId=repoId;
+    sesRepo.reponeId=sesOrig?.id;
+    sesRepo.nota=nota||`Repone ${fechaOrig}`;
+  } else {
+    const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
+    p.sesiones.push({
+      id:repoId,
+      num:n,
+      fecha:fechaRepo,
+      tipo:'reposicion',
+      nota:nota||`Repone ${fechaOrig}`,
+      reponeId:sesOrig?.id,
+      repoId:repoId
+    });
+  }
+
   addLog(p,'reposicion',`Repo: ${fechaRepo} (repone ${fechaOrig})${nota?' — '+nota:''}`);
   closeModal();curTab='sesiones';exposeSesMap(p);renderDetalle(p);updateSidebarBadge();
 }
