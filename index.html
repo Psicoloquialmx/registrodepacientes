@@ -369,7 +369,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-overlay" onclick="closeModalOut(event)">
+<div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title" id="modal-title">Nuevo paciente</span>
@@ -1603,7 +1603,7 @@ function guardarNuevo(){
   closeModal();renderPatients();
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
-function closeModalOut(e){if(e.target===document.getElementById('modal-overlay'))closeModal()}
+function closeModalOut(e){ /* overlay click no cierra modal */ }
 
 loadState();
 patients.forEach(exposeSesMap);
