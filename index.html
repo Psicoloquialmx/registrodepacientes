@@ -460,6 +460,27 @@ let nextNoteId=200;
 function addNota(p,titulo,cuerpo,tag){
   if(!p.notas) p.notas=[];
   p.notas.unshift({id:'n'+(nextNoteId++),fecha:today(),titulo,cuerpo,tag});
+  saveState();
+}
+
+function saveState(){
+  const store={patients, nextId, nextSesId, nextPayId, nextNoteId};
+  localStorage.setItem('axolotlPatients', JSON.stringify(store));
+}
+
+function loadState(){
+  const raw=localStorage.getItem('axolotlPatients');
+  if(!raw) return;
+  try {
+    const data=JSON.parse(raw);
+    if(data && Array.isArray(data.patients)){
+      patients=data.patients;
+      nextId=data.nextId||nextId;
+      nextSesId=data.nextSesId||nextSesId;
+      nextPayId=data.nextPayId||nextPayId;
+      nextNoteId=data.nextNoteId||nextNoteId;
+    }
+  } catch(e){console.warn('No se pudo cargar el estado desde localStorage',e);}
 }
 
 // ── Datos de ejemplo ────────────────────────────────────────
@@ -626,6 +647,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   const tieneFaltaRepo=ses&&ses.tipo==='falta'&&ses.repoId;
   const repoAsociada=esRepo||tieneFaltaRepo;
   const isSourceRepo=ses&&ses.tipo==='falta'&&ses.repoId&&ses.replaced;
+  const isSourceText=ses&&ses.tipo==='falta'&&ses.repoTo?`Esta sesión fue repuesta a ${ses.repoTo}`:'Esta sesión fue reposicionada.';
 
   const opts=[
     {tipo:'asistio',icon:'✓',label:'Asistió'},
@@ -641,7 +663,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
       <div class="ses-popover-title">${dateStr} · ${hora}</div>
       <div class="ses-popover-opts">
         <div class="ses-opt selected" style="cursor:default;background:#f0f0f0;color:#707070">
-          Esta sesión fue movida a reposición y no puede editarse aquí.
+          ${isSourceText}
         </div>
       </div>
       <div class="ses-popover-footer">
@@ -716,18 +738,25 @@ function confirmarMoveRepo(pid,sesId){
     // Mover esta reposición
     addLog(p,'reposicion',`Reposición movida: ${fechaAnterior}→${nuevaFecha}`);
     ses.fecha=nuevaFecha;
+    ses.replaced=true;
+    ses.repoTo=nuevaFecha;
   } else if(ses.tipo==='falta'&&ses.repoId){
     // Mover la reposición asociada
     const repo=p.sesiones.find(s=>s.id===ses.repoId);
     if(repo){
       addLog(p,'reposicion',`Reposición (de falta ${fechaAnterior}) movida: ${repo.fecha}→${nuevaFecha}`);
       repo.fecha=nuevaFecha;
+      repo.replaced=true;
+      repo.repoTo=nuevaFecha;
+      ses.replaced=true;
+      ses.repoTo=nuevaFecha;
     }
   }
   closePopover();
   exposeSesMap(p);
   renderDetalle(p);
   updateSidebarBadge();
+  saveState();
 }
 
 // ── REGISTRAR DESDE POPOVER ──────────────────────────────────
@@ -748,6 +777,7 @@ function registrarDesdePop(pid,dateStr,tipo){
     source.tipo='falta';
     source.repoId='s'+(nextSesId++);
     source.replaced=true;
+    source.repoTo=nuevaFecha;
 
     let target=p.sesiones.find(s=>s.fecha===nuevaFecha);
     if(target){
@@ -771,6 +801,7 @@ function registrarDesdePop(pid,dateStr,tipo){
     }
 
     addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaFecha}`);
+    saveState();
     closePopover();
     exposeSesMap(p);
     renderDetalle(p);
@@ -797,6 +828,7 @@ function registrarDesdePop(pid,dateStr,tipo){
   exposeSesMap(p);
   renderDetalle(p);
   updateSidebarBadge();
+  saveState();
 }
 
 // ── ELIMINAR RESPUESTA — sin confirm, solo borra la respuesta del día ──
@@ -813,6 +845,7 @@ function deleteSesionPop(pid,sid){
   exposeSesMap(p);
   renderDetalle(p);
   updateSidebarBadge();
+  saveState();
 }
 
 // ── ELIMINAR PAGO — sin confirm ───────────────────────────────
@@ -824,6 +857,7 @@ function deletePago(pid,payId){
   addLog(p,'datos',`Pago eliminado: $${pay.monto.toLocaleString('es-MX')} del ${pay.fecha}`);
   p.pagos=p.pagos.filter(x=>x.id!==payId);
   renderDetalle(p);
+  saveState();
 }
 
 function deletePatient(pid){
@@ -833,6 +867,7 @@ function deletePatient(pid){
   const p=patients[idx];
   if(!confirm(`¿Eliminar a ${p.nombre} del registro? Esta acción no se puede deshacer.`)) return;
   patients.splice(idx,1);
+  saveState();
   showView('pacientes');
   renderPatients();
 }
@@ -936,11 +971,11 @@ function renderDetalle(p){
   const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">⚠</span><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
 
   // Pagos — × sin confirm
-  const payLog=[...p.pagos].reverse().map(py=>`<div class="prow">
-    <span class="pdate">${py.fecha}</span>
+  const payLog=[...p.pagos].reverse().map(py=>{const metodo=py.metodo||'efectivo'; return `<div class="prow">
+    <span class="pdate">${py.fecha} · ${metodo}</span>
     <span class="pamt">+$${py.monto.toLocaleString('es-MX')}</span>
     <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">×</button>
-  </div>`).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
+  </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
 
   // Tarifas
   const tarifasHtml=(p.tarifas||[]).map((t,i)=>`<div class="tariff-row">
@@ -1019,7 +1054,11 @@ function renderDetalle(p){
           <div class="reg-row">
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Registrar pago ($)</div>
             <input class="inp-sm" type="number" id="pay-in" value="${tv}"></div>
-            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in')">Registrar</button>
+            <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
+            <input class="inp-sm" type="date" id="pay-date" value="${today()}"></div>
+            <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
+            <select class="inp-sm" id="pay-method"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
+            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in','pay-date','pay-method')">Registrar</button>
           </div>
         </div>
         <div class="dsec full" id="cal-container">${buildCalendar(p)}</div>
@@ -1034,7 +1073,11 @@ function renderDetalle(p){
         <div class="reg-row" style="margin-top:1rem">
           <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Monto ($)</div>
           <input class="inp-sm" type="number" id="pay-in2" value="${tv}"></div>
-          <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2')">Registrar pago</button>
+          <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
+          <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
+          <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
+          <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
+          <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2')">Registrar pago</button>
         </div>
       </div>
     </div>
@@ -1188,6 +1231,7 @@ function guardarDatosGenerales(id){
   p.nombre=nuevoNombre;p.inicio=nuevoInicio;p.pago=nuevoPago;p.dias=diasSel;p.horas=nuevasHoras;p.hora=nuevasHoras[diasSel[0]]||'00:00';
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   document.getElementById('det-nombre').textContent=p.nombre;
+  saveState();
   curTab='bitacora';curBitTab='log';renderDetalle(p);
 }
 
@@ -1204,15 +1248,19 @@ function guardarNuevaTarifa(id){
     if(!resp){const ses=p.adeudo/tv;p.adeudo=Math.round(ses*monto);addLog(p,'tarifa',`Tarifa $${tv}→$${monto} desde ${desde}. Adeudo recalculado: $${p.adeudo.toLocaleString('es-MX')}`);}
     else addLog(p,'tarifa',`Tarifa $${tv}→$${monto} desde ${desde}. Adeudo previo mantenido`);
   } else addLog(p,'tarifa',`Tarifa $${tv}→$${monto}/sesión desde ${desde}`);
+  saveState();
   curTab='tarifas';renderDetalle(p);
 }
 
-function regPago(id,inputId){
+function regPago(id,inputId,dateInputId,methodInputId){
   const p=patients.find(x=>x.id===id);
   const m=parseInt(document.getElementById(inputId).value)||tarifaVigente(p);
-  p.pagos.push({id:'p'+(nextPayId++),fecha:today(),monto:m});
+  const fecha=document.getElementById(dateInputId)?.value||today();
+  const metodo=document.getElementById(methodInputId)?.value||'efectivo';
+  p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo});
   p.pagado+=m;p.adeudo=Math.max(0,p.adeudo-m);
   renderDetalle(p);
+  saveState();
 }
 
 // ── REPOSICIÓN MODAL ─────────────────────────────────────────
@@ -1277,6 +1325,7 @@ function confirmarReposicion(id){
   }
 
   addLog(p,'reposicion',`Repo: ${fechaRepo} (repone ${fechaOrig})${nota?' — '+nota:''}`);
+  saveState();
   closeModal();curTab='sesiones';exposeSesMap(p);renderDetalle(p);updateSidebarBadge();
 }
 
@@ -1428,13 +1477,16 @@ function guardarNuevo(){
     tarifas:[{monto:tarifa,desde:inicio,hasta:null}],
     cambios:[{fecha:today(),tipo:'datos',desc:'Expediente creado'}]
   });
+  saveState();
   closeModal();renderPatients();
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
 function closeModalOut(e){if(e.target===document.getElementById('modal-overlay'))closeModal()}
 
+loadState();
 patients.forEach(exposeSesMap);
 renderPatients();
+saveState();
 
 </script>
 </body>
