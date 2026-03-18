@@ -625,6 +625,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   const esRepo=ses&&ses.tipo==='reposicion';
   const tieneFaltaRepo=ses&&ses.tipo==='falta'&&ses.repoId;
   const repoAsociada=esRepo||tieneFaltaRepo;
+  const isSourceRepo=ses&&ses.tipo==='falta'&&ses.repoId&&ses.replaced;
 
   const opts=[
     {tipo:'asistio',icon:'✓',label:'Asistió'},
@@ -634,6 +635,27 @@ function openPopover(pid,dateStr,ses,anchorEl){
   ];
 
   const pop=document.getElementById('ses-popover');
+
+  if(isSourceRepo){
+    pop.innerHTML=`
+      <div class="ses-popover-title">${dateStr} · ${hora}</div>
+      <div class="ses-popover-opts">
+        <div class="ses-opt selected" style="cursor:default;background:#f0f0f0;color:#707070">
+          Esta sesión fue movida a reposición y no puede editarse aquí.
+        </div>
+      </div>
+      <div class="ses-popover-footer">
+        <button class="popover-close" onclick="closePopover()">Cerrar</button>
+      </div>`;
+    const rect=anchorEl.getBoundingClientRect();
+    let top=rect.bottom+6,left=rect.left;
+    if(left+240>window.innerWidth) left=window.innerWidth-248;
+    if(top+340>window.innerHeight) top=rect.top-350;
+    pop.style.cssText=`display:block;top:${top}px;left:${left}px`;
+    document.getElementById('popover-bg').style.display='block';
+    return;
+  }
+
   pop.innerHTML=`
     <div class="ses-popover-title">${dateStr} · ${hora}</div>
     <div class="ses-popover-opts">
@@ -1184,9 +1206,11 @@ function confirmarReposicion(id){
   if(sesOrig){
     sesOrig.tipo='falta';
     sesOrig.repoId=repoId;
+    sesOrig.replaced=true; // marca fecha original como reposicionada y no editable
   } else {
     const n2=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    p.sesiones.push({id:'s'+(nextSesId-1),num:n2,fecha:fechaOrig,tipo:'falta',repoId});
+    p.sesiones.push({id:'s'+(nextSesId-1),num:n2,fecha:fechaOrig,tipo:'falta',repoId,replaced:true});
+    sesOrig = p.sesiones[p.sesiones.length-1];
   }
 
   let sesRepo=p.sesiones.find(s=>s.fecha===fechaRepo);
