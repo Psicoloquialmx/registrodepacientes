@@ -751,6 +751,17 @@ function deletePago(pid,payId){
   renderDetalle(p);
 }
 
+function deletePatient(pid){
+  const id=parseInt(pid);
+  const idx=patients.findIndex(x=>x.id===id);
+  if(idx===-1) return;
+  const p=patients[idx];
+  if(!confirm(`¿Eliminar a ${p.nombre} del registro? Esta acción no se puede deshacer.`)) return;
+  patients.splice(idx,1);
+  showView('pacientes');
+  renderPatients();
+}
+
 // ── CALENDARIO ───────────────────────────────────────────────
 function exposeSesMap(p){
   window['sesMap_'+p.id]={};
@@ -898,6 +909,9 @@ function renderDetalle(p){
       <div style="flex:1;min-width:0">
         <div class="hero-name">${p.nombre}</div>
         <div class="hero-sub">${diasHoras} · Sesión #${n} · $${tv.toLocaleString('es-MX')}/sesión</div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0">
+        <button class="btn-danger btn-sm" onclick="deletePatient(${p.id})">Eliminar paciente</button>
       </div>
     </div>
 
