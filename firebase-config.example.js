@@ -1,0 +1,8 @@
+window.FIREBASE_CONFIG = {
+  apiKey: 'REEMPLAZAR_API_KEY',
+  authDomain: 'REEMPLAZAR_AUTH_DOMAIN',
+  projectId: 'REEMPLAZAR_PROJECT_ID',
+  storageBucket: 'REEMPLAZAR_STORAGE_BUCKET',
+  messagingSenderId: 'REEMPLAZAR_MESSAGING_SENDER_ID',
+  appId: 'REEMPLAZAR_APP_ID'
+};
