@@ -766,53 +766,43 @@ function registrarDesdePop(pid,dateStr,tipo){
   const existing=p.sesiones.find(s=>s.fecha===dateStr);
 
   if(tipo==='reposicion'){
-    const nuevaFecha=prompt('Selecciona fecha destino para la reposición (YYYY-MM-DD):', dateStr);
+    const nuevaFecha=prompt('¿A qué fecha se movió la sesión? (YYYY-MM-DD)', dateStr);
     if(!nuevaFecha){return;}
     if(nuevaFecha===dateStr){alert('Elige una fecha distinta para la reposición.');return;}
     if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)){alert('Formato inválido. Usa YYYY-MM-DD.');return;}
 
-    let source = existing;
-    const repoId = 's'+(nextSesId++);
-
-    if(!source){
-      const n0 = p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-      source = {id:'s'+(nextSesId++), num:n0, fecha:dateStr, tipo:'falta'};
-      p.sesiones.push(source);
+    const source=existing;
+    if(source){
+      p.sesiones=p.sesiones.filter(s=>s.id!==source.id);
+      if(p.pago==='sesion' && (source.tipo==='asistio'||source.tipo==='falta')){
+        p.adeudo=Math.max(0,p.adeudo-tv); // descontar carga previa
+      }
+      addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaFecha}`);
     } else {
-      const ant = source.tipo;
-      if(p.pago==='sesion' && (ant==='asistio'||ant==='falta')) p.adeudo=Math.max(0,p.adeudo-tv);
-      source.tipo='falta';
-      addLog(p,'datos',`Sesión ${dateStr}: ${ant}→falta (reposicion)`);
+      addLog(p,'reposicion',`Sesión ${dateStr} (no registrada) movida a ${nuevaFecha}`);
     }
-
-    if(p.pago==='sesion' && source.tipo==='falta') p.adeudo+=tv;
-
-    source.repoId=repoId;
-    source.replaced=true;
-    source.repoTo=nuevaFecha;
 
     let target=p.sesiones.find(s=>s.fecha===nuevaFecha);
     if(target){
       const antTar=target.tipo;
       if(p.pago==='sesion' && (antTar==='asistio'||antTar==='falta')) p.adeudo=Math.max(0,p.adeudo-tv);
       target.tipo='reposicion';
-      target.repoId=source.repoId;
-      target.reponeId=source.id;
+      target.reponeId=source?.id;
       target.nota=`Repone ${dateStr}`;
+      target.repoId=source?.id||'s'+(nextSesId++);
     } else {
       const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
       p.sesiones.push({
-        id:source.repoId,
+        id:'s'+(nextSesId++),
         num:n,
         fecha:nuevaFecha,
         tipo:'reposicion',
         nota:`Repone ${dateStr}`,
-        reponeId:source.id,
-        repoId:source.repoId
+        reponeId:source?.id||null,
+        repoId:source?.id||null
       });
     }
 
-    addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaFecha}`);
     saveState();
     closePopover();
     exposeSesMap(p);
