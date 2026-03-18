@@ -449,6 +449,7 @@ function sesionesPendientes(p){
     const dow=(new Date(year,month,d).getDay()+6)%7;
     if(!p.dias.includes(dow)) continue;
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr && s.skipped)) continue;
     if(!p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
   }
   return pending;
@@ -646,8 +647,8 @@ function openPopover(pid,dateStr,ses,anchorEl){
   const esRepo=ses&&ses.tipo==='reposicion';
   const tieneFaltaRepo=ses&&ses.tipo==='falta'&&ses.repoId;
   const repoAsociada=esRepo||tieneFaltaRepo;
-  const isSourceRepo=ses&&ses.tipo==='falta'&&ses.repoId&&ses.replaced;
-  const isSourceText=ses&&ses.tipo==='falta'&&ses.repoTo?`Esta sesión fue repuesta a ${ses.repoTo}`:'Esta sesión fue reposicionada.';
+  const isSourceRepo=ses&&ses.skipped;
+  const isSourceText=ses&&ses.skipped?`Sesión movida a ${ses.movedTo} ${ses.movedTime}`:'Esta sesión fue reposicionada.';
 
   const opts=[
     {tipo:'asistio',icon:'✓',label:'Asistió'},
@@ -785,14 +786,28 @@ function registrarDesdePop(pid,dateStr,tipo){
     }
 
     const source=existing;
+    const sourceHora=horaDia(p, (new Date(`${dateStr}T12:00`).getDay()+6)%7);
+    const nuevaHora=horaDia(p, (new Date(`${nuevaIso}T12:00`).getDay()+6)%7);
     if(source){
-      p.sesiones=p.sesiones.filter(s=>s.id!==source.id);
       if(p.pago==='sesion' && (source.tipo==='asistio'||source.tipo==='falta')){
         p.adeudo=Math.max(0,p.adeudo-tv); // descontar carga previa
       }
-      addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaFecha}`);
+      source.tipo='reprogramada';
+      source.skipped=true;
+      source.movedTo=nuevaIso;
+      source.movedTime=nuevaHora;
+      addLog(p,'reposicion',`Sesión ${dateStr} ${sourceHora} movida a ${nuevaIso} ${nuevaHora}`);
     } else {
-      addLog(p,'reposicion',`Sesión ${dateStr} (no registrada) movida a ${nuevaFecha}`);
+      p.sesiones.push({
+        id:'s'+(nextSesId++),
+        num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,
+        fecha:dateStr,
+        tipo:'reprogramada',
+        skipped:true,
+        movedTo:nuevaIso,
+        movedTime:nuevaHora
+      });
+      addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
     }
 
     let target=p.sesiones.find(s=>s.fecha===nuevaIso);
@@ -911,10 +926,12 @@ function buildCalendar(p){
   for(let d=1;d<=totalDays;d++){
     const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dow=(new Date(calYear,calMonth,d).getDay()+6)%7;
-    const isProg=p.dias.includes(dow);
+    const isMovedFrom=p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr&&s.skipped);
+    const isProg=p.dias.includes(dow) && !isMovedFrom;
     const isToday=dateStr===todayStr;
     const isFuture=new Date(dateStr+'T23:59:00')>hoy;
-    const ses=sesMap[dateStr];
+    let ses=sesMap[dateStr];
+    if(ses && ses.skipped) ses=null;
     const hora=isProg?horaDia(p,dow):null;
     const isPend=pendientes.has(dateStr);
 
