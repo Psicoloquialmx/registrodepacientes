@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════
+  AXO-LOTL CONSULTA — Sistema de gestión
+  para psicoterapeutas / psicoanalistas
+═══════════════════════════════════════════════
+
+CÓMO USAR
+─────────
+1. Abre el archivo "axolotl-consulta.html" en 
+   cualquier navegador moderno (Chrome, Firefox,
+   Edge, Safari).
+   
+2. No requiere internet ni instalación.
+   Todo funciona offline.
+
+ARCHIVOS
+────────
+• axolotl-consulta.html  → La aplicación completa
+• pacientes-ejemplo.json → Estructura de datos de 
+                           referencia (no se carga 
+                           automáticamente)
+• LEEME.txt              → Este archivo
+
+FUNCIONES PRINCIPALES
+─────────────────────
+✓ Registro de pacientes con días/horas individuales
+✓ Calendario visual de sesiones por mes
+✓ Registro y edición de asistencia desde el calendario
+✓ Reposición de sesiones (movible a otra fecha)
+✓ Control de pagos y adeudos
+✓ Historial de tarifas con fechas de vigencia
+✓ Prospectado de ingreso mensual (sesiones reales)
+✓ Notas clínicas en bitácora
+✓ Alerta de sesiones sin registrar
+✓ Vista semanal de espacios
+
+NOTA IMPORTANTE
+───────────────
+Los datos se guardan solo en memoria mientras
+la app está abierta. Al cerrar el navegador 
+se pierden. 
+
+Para guardar datos permanentemente, en una 
+próxima versión se puede agregar exportación/
+importación de JSON.
+
+Desarrollado con Claude (Anthropic) — 2025

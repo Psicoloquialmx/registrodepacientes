@@ -1,0 +1,283 @@
+{
+  "patients": [
+    {
+      "id": 1,
+      "nombre": "Ana García",
+      "inicio": "2024-03-10",
+      "dias": [
+        0,
+        2
+      ],
+      "hora": "09:00",
+      "horas": {
+        "0": "09:00",
+        "2": "10:30"
+      },
+      "tarifa": 800,
+      "pago": "sesion",
+      "pagado": 2400,
+      "adeudo": 0,
+      "tarifas": [
+        {
+          "monto": 800,
+          "desde": "2024-03-10",
+          "hasta": null
+        }
+      ],
+      "cambios": [
+        {
+          "fecha": "2024-03-10",
+          "tipo": "datos",
+          "desc": "Expediente creado"
+        }
+      ],
+      "notas": [
+        {
+          "id": "n1",
+          "fecha": "2024-03-18",
+          "titulo": "Primera impresión",
+          "cuerpo": "Paciente con alta capacidad de introspección. Refiere sueños recurrentes desde la infancia.",
+          "tag": "clinica"
+        }
+      ],
+      "sesiones": [
+        {
+          "id": "s1",
+          "num": 1,
+          "fecha": "2024-03-11",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s2",
+          "num": 2,
+          "fecha": "2024-03-13",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s3",
+          "num": 3,
+          "fecha": "2024-03-18",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s4",
+          "num": 4,
+          "fecha": "2024-03-20",
+          "tipo": "falta"
+        },
+        {
+          "id": "s5",
+          "num": 5,
+          "fecha": "2024-03-25",
+          "tipo": "asistio"
+        }
+      ],
+      "pagos": [
+        {
+          "id": "p1",
+          "fecha": "2024-03-11",
+          "monto": 800
+        },
+        {
+          "id": "p2",
+          "fecha": "2024-03-13",
+          "monto": 800
+        },
+        {
+          "id": "p3",
+          "fecha": "2024-03-25",
+          "monto": 800
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "nombre": "Carlos Mendoza",
+      "inicio": "2024-05-06",
+      "dias": [
+        1,
+        4
+      ],
+      "hora": "11:00",
+      "horas": {
+        "1": "11:00",
+        "4": "17:00"
+      },
+      "tarifa": 900,
+      "pago": "mensual",
+      "pagado": 3600,
+      "adeudo": 1800,
+      "tarifas": [
+        {
+          "monto": 900,
+          "desde": "2024-05-06",
+          "hasta": null
+        }
+      ],
+      "cambios": [
+        {
+          "fecha": "2024-05-06",
+          "tipo": "datos",
+          "desc": "Expediente creado"
+        }
+      ],
+      "notas": [],
+      "sesiones": [
+        {
+          "id": "s1",
+          "num": 1,
+          "fecha": "2024-05-07",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s2",
+          "num": 2,
+          "fecha": "2024-05-09",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s3",
+          "num": 3,
+          "fecha": "2024-05-14",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s4",
+          "num": 4,
+          "fecha": "2024-05-16",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s5",
+          "num": 5,
+          "fecha": "2024-05-21",
+          "tipo": "falta"
+        },
+        {
+          "id": "s6",
+          "num": 6,
+          "fecha": "2024-05-23",
+          "tipo": "asistio"
+        }
+      ],
+      "pagos": [
+        {
+          "id": "p1",
+          "fecha": "2024-05-01",
+          "monto": 1800
+        },
+        {
+          "id": "p2",
+          "fecha": "2024-06-01",
+          "monto": 1800
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "nombre": "Laura Torres",
+      "inicio": "2024-07-15",
+      "dias": [
+        2
+      ],
+      "hora": "18:00",
+      "horas": {
+        "2": "18:00"
+      },
+      "tarifa": 750,
+      "pago": "quincenal",
+      "pagado": 3000,
+      "adeudo": 750,
+      "tarifas": [
+        {
+          "monto": 750,
+          "desde": "2024-07-15",
+          "hasta": null
+        }
+      ],
+      "cambios": [
+        {
+          "fecha": "2024-07-15",
+          "tipo": "datos",
+          "desc": "Expediente creado"
+        }
+      ],
+      "notas": [],
+      "sesiones": [
+        {
+          "id": "s1",
+          "num": 1,
+          "fecha": "2024-07-17",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s2",
+          "num": 2,
+          "fecha": "2024-07-24",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s3",
+          "num": 3,
+          "fecha": "2024-07-31",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s4",
+          "num": 4,
+          "fecha": "2024-08-07",
+          "tipo": "asistio"
+        },
+        {
+          "id": "s5",
+          "num": 5,
+          "fecha": "2024-08-14",
+          "tipo": "falta"
+        }
+      ],
+      "pagos": [
+        {
+          "id": "p1",
+          "fecha": "2024-07-15",
+          "monto": 1500
+        },
+        {
+          "id": "p2",
+          "fecha": "2024-08-01",
+          "monto": 1500
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "version": "1.0",
+    "descripcion": "Datos de ejemplo para Axo-lotl Consulta",
+    "dias_semana": {
+      "0": "Lunes",
+      "1": "Martes",
+      "2": "Miércoles",
+      "3": "Jueves",
+      "4": "Viernes",
+      "5": "Sábado",
+      "6": "Domingo"
+    },
+    "tipos_sesion": [
+      "asistio",
+      "falta",
+      "cancelada",
+      "reposicion"
+    ],
+    "tipos_pago": [
+      "sesion",
+      "mensual",
+      "quincenal",
+      "inicio"
+    ],
+    "tipos_nota": [
+      "clinica",
+      "avance",
+      "alerta",
+      "general"
+    ]
+  }
+}
