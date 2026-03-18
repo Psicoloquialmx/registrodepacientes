@@ -766,10 +766,23 @@ function registrarDesdePop(pid,dateStr,tipo){
   const existing=p.sesiones.find(s=>s.fecha===dateStr);
 
   if(tipo==='reposicion'){
-    const nuevaFecha=prompt('¿A qué fecha se movió la sesión? (YYYY-MM-DD)', dateStr);
+    const nuevaFecha=prompt('¿A qué fecha se movió la sesión? (DD-MM-YYYY)', `${dateStr.split('-')[2]}-${dateStr.split('-')[1]}-${dateStr.split('-')[0]}`);
     if(!nuevaFecha){return;}
-    if(nuevaFecha===dateStr){alert('Elige una fecha distinta para la reposición.');return;}
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)){alert('Formato inválido. Usa YYYY-MM-DD.');return;}
+    if(!/^\d{2}-\d{2}-\d{4}$/.test(nuevaFecha)){
+      alert('Formato inválido. Usa DD-MM-YYYY.');
+      return;
+    }
+    const [d,m,y] = nuevaFecha.split('-');
+    const nuevaIso = `${y}-${m}-${d}`;
+    if(nuevaIso===dateStr){
+      alert('Elige una fecha distinta para la reposición.');
+      return;
+    }
+    const FechaObjeto = new Date(`${y}-${m}-${d}T12:00`);
+    if(isNaN(FechaObjeto.getTime())){
+      alert('Fecha inválida.');
+      return;
+    }
 
     const source=existing;
     if(source){
@@ -782,7 +795,7 @@ function registrarDesdePop(pid,dateStr,tipo){
       addLog(p,'reposicion',`Sesión ${dateStr} (no registrada) movida a ${nuevaFecha}`);
     }
 
-    let target=p.sesiones.find(s=>s.fecha===nuevaFecha);
+    let target=p.sesiones.find(s=>s.fecha===nuevaIso);
     if(target){
       const antTar=target.tipo;
       if(p.pago==='sesion' && (antTar==='asistio'||antTar==='falta')) p.adeudo=Math.max(0,p.adeudo-tv);
@@ -795,7 +808,7 @@ function registrarDesdePop(pid,dateStr,tipo){
       p.sesiones.push({
         id:'s'+(nextSesId++),
         num:n,
-        fecha:nuevaFecha,
+        fecha:nuevaIso,
         tipo:'reposicion',
         nota:`Repone ${dateStr}`,
         reponeId:source?.id||null,
