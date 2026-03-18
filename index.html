@@ -657,6 +657,17 @@ function openPopover(pid,dateStr,ses,anchorEl){
     {tipo:'reposicion',icon:'↩',label:'Reposición'},
   ];
 
+  const optsHtml = opts.map(o=>{
+    if(o.tipo==='reposicion'){
+      return `<div class="ses-opt ${o.tipo}${tipoActual===o.tipo?' selected':''}" onclick="showReposicionPicker('${pid}','${dateStr}')">
+        <span class="ses-opt-icon">${o.icon}</span> ${o.label}
+      </div>`;
+    }
+    return `<div class="ses-opt ${o.tipo}${tipoActual===o.tipo?' selected':''}" onclick="registrarDesdePop('${pid}','${dateStr}','${o.tipo}')">
+      <span class="ses-opt-icon">${o.icon}</span> ${o.label}
+    </div>`;
+  }).join('');
+
   const pop=document.getElementById('ses-popover');
 
   if(isSourceRepo){
@@ -682,9 +693,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   pop.innerHTML=`
     <div class="ses-popover-title">${dateStr} · ${hora}</div>
     <div class="ses-popover-opts">
-      ${opts.map(o=>`<div class="ses-opt ${o.tipo}${tipoActual===o.tipo?' selected':''}" onclick="registrarDesdePop('${pid}','${dateStr}','${o.tipo}')">
-        <span class="ses-opt-icon">${o.icon}</span> ${o.label}
-      </div>`).join('')}
+      ${optsHtml}
       ${repoAsociada?`<div class="ses-opt-move" onclick="toggleMoveRepo('${pid}','${dateStr}','${ses.id}')">
         ✦ Mover ${esRepo?'esta reposición':'la reposición'} a otra fecha
       </div>`:''}
@@ -724,6 +733,62 @@ function toggleMoveRepo(pid,dateStr,sesId){
     inp.value=dateStr;
     inp.focus();
   }
+}
+
+// Mover sesión de reposición (o la reposición asociada a una falta) a otra fecha
+function showReposicionPicker(pid,dateStr){
+  closePopover();
+  const p=patients.find(x=>x.id===parseInt(pid));
+  const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
+  const defaultHora=horaDia(p,dow);
+  document.getElementById('modal-title').textContent='Reposición de sesión';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Fecha destino</label><input class="form-input" id="rep-calc-fecha" type="date" value="${dateStr}"></div>
+      <div class="form-group"><label class="form-label">Hora destino</label><input class="form-input" id="rep-calc-hora" type="time" value="${defaultHora}"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-sec" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="confirmarReposicionDesdePopover(${pid},'${dateStr}')">Confirmar</button></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function confirmarReposicionDesdePopover(pid,dateStr){
+  const newDate=document.getElementById('rep-calc-fecha').value;
+  const newTime=document.getElementById('rep-calc-hora').value;
+  if(!newDate||!newTime){alert('Completa fecha y hora');return;}
+  const [y,m,d]=newDate.split('-');
+  const nuevaIso=`${y}-${m}-${d}`;
+  if(nuevaIso===dateStr){alert('Elige fecha distinta');return;}
+  doReposicion(pid,dateStr,nuevaIso,newTime);
+  closeModal();
+}
+
+function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  const tv=tarifaVigente(p);
+  const source=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped);
+  if(source){
+    if(p.pago==='sesion'&&(source.tipo==='asistio'||source.tipo==='falta')) p.adeudo=Math.max(0,p.adeudo-tv);
+    source.skipped=true;
+    source.tipo='reprogramada';
+    source.movedTo=nuevaIso;
+    source.movedTime=nuevaHora;
+    addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
+  } else {
+    addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
+  }
+  let target=p.sesiones.find(s=>s.fecha===nuevaIso && s.tipo!=='reprogramada');
+  if(target){
+    if(p.pago==='sesion'&&(target.tipo==='asistio'||target.tipo==='falta')) p.adeudo=Math.max(0,p.adeudo-tv);
+    target.tipo='reposicion';
+    target.hora=nuevaHora;
+  } else {
+    const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
+    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:nuevaIso,tipo:'reposicion',hora:nuevaHora});
+  }
+  saveState();
+  exposeSesMap(p);
+  renderDetalle(p);
+  updateSidebarBadge();
 }
 
 // Mover sesión de reposición (o la reposición asociada a una falta) a otra fecha
@@ -1075,6 +1140,8 @@ function renderDetalle(p){
           <div class="drow"><span class="dkey">Faltas</span><span class="dval">${faltas}</span></div>
           <div class="drow"><span class="dkey">Canceladas (mías)</span><span class="dval">${cancels}</span></div>
           <div class="drow"><span class="dkey">Reposiciones</span><span class="dval">${repos}</span></div>
+          <div class="drow"><span class="dkey">Duración</span><span class="dval">${p.duracion||45} min</span></div>
+          <div class="drow"><span class="dkey">Primera sesión sin costo</span><span class="dval">${p.primeraSinCosto?'sí':'no'}</span></div>
         </div>
         <div class="dsec">
           <div class="sec-title">Estado de cuenta</div>
@@ -1208,6 +1275,15 @@ function buildEditPanel(p){
               <option value="inicio"${p.pago==='inicio'?' selected':''}>Inicio de mes</option>
             </select>
           </div>
+          <div class="form-group"><label class="form-label">Duración por sesión</label>
+            <select class="form-input" id="e-duracion">
+              ${[45,60,75,90,105,120,135,150].map(x=>`<option value="${x}"${p.duracion===x?' selected':''}>${x} min</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="e-primera-sin-costo" ${p.primeraSinCosto?'checked':''}>
+            <label class="form-label" for="e-primera-sin-costo" style="margin:0">Primera sesión sin costo</label>
+          </div>
         </div>
       </div>
       <div class="dsec full">
@@ -1255,12 +1331,16 @@ function guardarDatosGenerales(id){
   const nuevoNombre=document.getElementById('e-nombre').value.trim();
   const nuevoInicio=document.getElementById('e-inicio').value;
   const nuevoPago=document.getElementById('e-pago').value;
+  const nuevaDuracion=parseInt(document.getElementById('e-duracion').value)||45;
+  const nuevaPrimeraSinCosto=document.getElementById('e-primera-sin-costo').checked;
   if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}"→"${nuevoNombre}"`);
   if(nuevoInicio!==p.inicio) cambios.push(`Inicio: ${p.inicio}→${nuevoInicio}`);
   if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)}→${pagoLabel(nuevoPago)}`);
+  if(p.duracion!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45}→${nuevaDuracion} min`);
+  if(p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto? 'sí':'no'}→${nuevaPrimeraSinCosto? 'sí':'no'}`);
   if(p.dias.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${p.dias.map(d=>DIAS[d]).join(',')}]→[${diasSel.map(d=>DIAS[d]).join(',')}]`);
   diasSel.forEach(i=>{if(nuevasHoras[i]!==horaDia(p,i)) cambios.push(`${DIAS[i]}: ${horaDia(p,i)}→${nuevasHoras[i]}`);});
-  p.nombre=nuevoNombre;p.inicio=nuevoInicio;p.pago=nuevoPago;p.dias=diasSel;p.horas=nuevasHoras;p.hora=nuevasHoras[diasSel[0]]||'00:00';
+  p.nombre=nuevoNombre;p.inicio=nuevoInicio;p.pago=nuevoPago;p.duracion=nuevaDuracion;p.primeraSinCosto=nuevaPrimeraSinCosto;p.dias=diasSel;p.horas=nuevasHoras;p.hora=nuevasHoras[diasSel[0]]||'00:00';
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   document.getElementById('det-nombre').textContent=p.nombre;
   saveState();
@@ -1468,6 +1548,13 @@ function openModalNuevo(){
       <div class="form-group form-full"><label class="form-label">Hora por día</label>
         <div id="new-horas-container" style="margin-top:6px"><p style="font-size:12px;color:var(--ink-light)">Selecciona los días para asignar horas.</p></div>
       </div>
+      <div class="form-group"><label class="form-label">Duración por sesión</label>
+        <select class="form-input" id="fduracion">${[45,60,75,90,105,120,135,150].map(x=>`<option value="${x}">${x} min</option>`).join('')}</select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="ffirstfree">
+        <label class="form-label" for="ffirstfree" style="margin:0">Primera sesión sin costo</label>
+      </div>
       <div class="form-group"><label class="form-label">Tarifa por sesión ($)</label><input class="form-input" id="ft" type="number" placeholder="800"></div>
     </div>
     <div class="modal-footer"><button class="btn-sec" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="guardarNuevo()">Guardar paciente</button></div>`;
@@ -1501,10 +1588,13 @@ function guardarNuevo(){
   const inicio=document.getElementById('fi').value;
   const horas={};
   newPatDias.forEach(i=>{const inp=document.getElementById('new-hora-'+i);horas[i]=inp?inp.value:'10:00';});
+  const duracion=parseInt(document.getElementById('fduracion').value)||45;
+  const primeraSinCosto=document.getElementById('ffirstfree').checked;
   patients.push({
     id:nextId++,nombre,inicio,dias:newPatDias,
     hora:horas[newPatDias[0]]||'10:00',horas,
     tarifa,pago:document.getElementById('fp').value,
+    duracion,primeraSinCosto,
     pagado:0,adeudo:0,sesiones:[],pagos:[],notas:[],
     tarifas:[{monto:tarifa,desde:inicio,hasta:null}],
     cambios:[{fecha:today(),tipo:'datos',desc:'Expediente creado'}]
