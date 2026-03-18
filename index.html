@@ -765,17 +765,29 @@ function registrarDesdePop(pid,dateStr,tipo){
   const tv=tarifaVigente(p);
   const existing=p.sesiones.find(s=>s.fecha===dateStr);
 
-  if(tipo==='reposicion' && existing){
+  if(tipo==='reposicion'){
     const nuevaFecha=prompt('Selecciona fecha destino para la reposición (YYYY-MM-DD):', dateStr);
     if(!nuevaFecha){return;}
     if(nuevaFecha===dateStr){alert('Elige una fecha distinta para la reposición.');return;}
     if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)){alert('Formato inválido. Usa YYYY-MM-DD.');return;}
 
-    const source=existing;
-    const ant=source.tipo;
-    if(p.pago==='sesion' && (ant==='asistio'||ant==='falta')) p.adeudo=Math.max(0,p.adeudo-tv);
-    source.tipo='falta';
-    source.repoId='s'+(nextSesId++);
+    let source = existing;
+    const repoId = 's'+(nextSesId++);
+
+    if(!source){
+      const n0 = p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
+      source = {id:'s'+(nextSesId++), num:n0, fecha:dateStr, tipo:'falta'};
+      p.sesiones.push(source);
+    } else {
+      const ant = source.tipo;
+      if(p.pago==='sesion' && (ant==='asistio'||ant==='falta')) p.adeudo=Math.max(0,p.adeudo-tv);
+      source.tipo='falta';
+      addLog(p,'datos',`Sesión ${dateStr}: ${ant}→falta (reposicion)`);
+    }
+
+    if(p.pago==='sesion' && source.tipo==='falta') p.adeudo+=tv;
+
+    source.repoId=repoId;
     source.replaced=true;
     source.repoTo=nuevaFecha;
 
