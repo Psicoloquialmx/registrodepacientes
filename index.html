@@ -597,6 +597,23 @@ body.auth-locked .auth-screen{display:flex}
 })();
 </script>
 
+<script>
+// Bridge de arranque: evita timeout si el módulo principal tarda en exponer handlers.
+(function(){
+  if(!Array.isArray(window.__authActionQueue)) window.__authActionQueue=[];
+  if(typeof window.submitAuth!=='function'){
+    window.submitAuth=function(){
+      window.__authActionQueue.push('submit');
+    };
+  }
+  if(typeof window.sendPasswordReset!=='function'){
+    window.sendPasswordReset=function(){
+      window.__authActionQueue.push('reset');
+    };
+  }
+})();
+</script>
+
 <script src="./firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
@@ -1212,6 +1229,13 @@ async function sendPasswordReset(){
 
 window.submitAuth=submitAuth;
 window.sendPasswordReset=sendPasswordReset;
+if(Array.isArray(window.__authActionQueue)&&window.__authActionQueue.length){
+  const queued=window.__authActionQueue.splice(0);
+  queued.forEach(action=>{
+    if(action==='submit') submitAuth();
+    if(action==='reset') sendPasswordReset();
+  });
+}
 
 async function signOutUser(){
   if(auth) await auth.signOut();
