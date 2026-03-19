@@ -102,7 +102,30 @@ body.auth-locked .auth-screen{display:flex}
 .today-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.65rem}
 .today-name{font-family:'Lora',serif;font-size:15px;color:var(--ink)}
 .today-meta{font-size:12px;color:var(--ink-light);margin-top:2px}
-.today-form{display:grid;grid-template-columns:1.4fr .9fr auto;gap:8px;align-items:end}
+.today-form{display:flex;flex-direction:column;gap:8px}
+.yn-row{display:flex;flex-direction:column;gap:5px}
+.yn-toggle{display:flex;gap:6px;flex-wrap:wrap}
+.yn-btn{border:1px solid #ddd;background:white;color:var(--ink-light);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.yn-btn.active{border-color:var(--terra);background:rgba(185,93,55,.12);color:#7e3c22}
+.today-pay-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.today-status-label{font-size:13px;font-weight:600;color:var(--ink);padding:6px 0 2px}
+.today-extra-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.today-extra-actions .btn-sec{font-size:11px;padding:4px 10px;border-radius:6px}
+.quick-pay{position:relative}
+.quick-pay-toggle{display:flex;align-items:center;gap:6px;background:#f5f2f0;border:1px solid #e3ddd8;color:var(--ink);padding:7px 11px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;list-style:none}
+.quick-pay-toggle::-webkit-details-marker{display:none}
+.quick-pay-toggle::after{content:'▾';font-size:10px;color:var(--ink-light)}
+.quick-pay[open] .quick-pay-toggle{background:white;border-color:#d9d1cb;box-shadow:0 2px 8px rgba(30,42,50,.08)}
+.quick-pay[open] .quick-pay-toggle::after{content:'▴'}
+.quick-pay-panel{position:absolute;right:0;top:calc(100% + 8px);width:320px;background:white;border:1px solid #e7e1dc;border-radius:12px;padding:12px;box-shadow:0 14px 28px rgba(30,42,50,.16);z-index:25}
+.quick-pay-title{font-size:12px;color:var(--ink-light);margin-bottom:8px}
+.quick-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.quick-pay-grid .form-group{gap:4px}
+.quick-pay-grid .form-label{font-size:11px}
+.quick-pay-grid .form-input{padding:7px 9px;font-size:12px}
+.quick-pay-grid .form-full{grid-column:1/-1}
+.quick-pay-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.quick-pay-note{font-size:11px;color:var(--ink-light);margin-top:8px}
 .p-info{flex:1;min-width:0}
 .p-name{font-size:14px;font-weight:500;color:var(--ink);font-family:'Lora',serif}
 .p-meta{font-size:12px;color:var(--ink-light);margin-top:2px}
@@ -388,6 +411,10 @@ input[type="file"].form-input{cursor:pointer}
   .main{width:100%}
   .topbar{padding:.75rem 1rem}
   .topbar-left{flex-direction:row;align-items:center;gap:.6rem}
+  .topbar{flex-wrap:wrap;align-items:flex-start}
+  #view-hoy .quick-pay{width:100%}
+  #view-hoy .quick-pay-toggle{width:100%;justify-content:center;border-radius:10px}
+  #view-hoy .quick-pay-panel{position:static;width:100%;margin-top:8px;box-shadow:none}
   .topbar-left .page-sub{display:none}
   .topbar-left .page-title{font-size:16px;line-height:1.2}
   .topbar .menu-toggle{display:flex !important;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(0,0,0,.05);border:1px solid #ede9e6;border-radius:8px;color:var(--ink);cursor:pointer;font-size:18px;margin-right:6px;border:none;font-family:inherit;flex-shrink:0}
@@ -486,6 +513,34 @@ input[type="file"].form-input{cursor:pointer}
     <div id="view-hoy" class="view active">
       <div class="topbar">
         <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()">☰</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
+        <details class="quick-pay" id="quick-pay-drawer">
+          <summary class="quick-pay-toggle">Pago rápido</summary>
+          <div class="quick-pay-panel">
+            <div class="quick-pay-title">Registrar pago manual</div>
+            <div class="quick-pay-grid">
+              <div class="form-group form-full">
+                <label class="form-label">Paciente activo</label>
+                <select class="form-input" id="quick-pay-patient"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Cantidad</label>
+                <input class="form-input" id="quick-pay-amount" type="number" min="1" placeholder="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Forma de pago</label>
+                <select class="form-input" id="quick-pay-method">
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="paypal">PayPal</option>
+                </select>
+              </div>
+            </div>
+            <div class="quick-pay-actions">
+              <button class="btn-primary btn-sm" onclick="registerQuickPay()">Guardar pago</button>
+            </div>
+            <div class="quick-pay-note">Se registra con la fecha de hoy y descuenta del adeudo.</div>
+          </div>
+        </details>
       </div>
       <div class="content" id="hoy-content"></div>
     </div>
@@ -678,7 +733,7 @@ function axoHero(p){
   if(p.adeudo<=tarifaVigente(p)) return AXO.pensando4;
   return AXO.pensando2;
 }
-function axoProsp(r){ return r>0.3?AXO.pensando3:r>0.1?AXO.pensando1:AXO.normal2 }
+function axoProsp(r){ return 'Assets/Axolotl/Pensando-3.svg'; }
 
 // Silueta SVG — TODAS las listas, NUNCA axolote
 const PERSON_SVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>`;
@@ -898,6 +953,10 @@ function matchesPatientSearch(p,query){
   return p.nombre.toLowerCase().includes(query);
 }
 
+function sortPatientsByName(list){
+  return [...list].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es',{sensitivity:'base'}));
+}
+
 function getTimelineEvents(p){
   const eventos=[];
   eventos.push({fecha:p.inicio,tipo:'datos',desc:'Inicio de tratamiento'});
@@ -986,6 +1045,9 @@ let saveTimer=null;
 let isHydrating=false;
 let firebaseConfigMissing=false;
 let forceProfileSetupOnNextAuth=false;
+const INACTIVITY_LOGOUT_MS=10*60*1000;
+let inactivityTimer=null;
+let inactivityHandlersBound=false;
 const FIREBASE_CONFIG_FALLBACK={
   apiKey:'AIzaSyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI',
   authDomain:'registro-de-pacientes-f729f.firebaseapp.com',
@@ -1345,16 +1407,51 @@ function isRecoverableAuthBootError(err){
   return /invalid_grant|INVALID_REFRESH_TOKEN|TOKEN_EXPIRED|user-token-expired|invalid-user-token/i.test(`${code} ${msg}`);
 }
 
+function clearInactivityLogoutTimer(){
+  if(!inactivityTimer) return;
+  clearTimeout(inactivityTimer);
+  inactivityTimer=null;
+}
+
+function scheduleInactivityLogout(){
+  clearInactivityLogoutTimer();
+  if(!currentUser||!auth) return;
+  inactivityTimer=setTimeout(async ()=>{
+    try {
+      await auth.signOut();
+      showAuthMessage('Sesión cerrada por 10 minutos de inactividad.', 'info');
+      setSyncStatus('Sesión cerrada por inactividad');
+    } catch(err){
+      console.error('No se pudo cerrar sesión por inactividad',err);
+    }
+  },INACTIVITY_LOGOUT_MS);
+}
+
+function bindInactivityHandlers(){
+  if(inactivityHandlersBound) return;
+  const touch=()=>{
+    if(currentUser) scheduleInactivityLogout();
+  };
+  ['mousedown','keydown','touchstart','pointerdown','scroll'].forEach(evt=>{
+    document.addEventListener(evt,touch,{passive:true});
+  });
+  window.addEventListener('focus',touch);
+  inactivityHandlersBound=true;
+}
+
 async function handleAuthStateChanged(user){
   currentUser=user;
   setSidebarUser(user);
   setSidebarAxoForSession(user);
   if(!user){
+    clearInactivityLogoutTimer();
     applyStore(getEmptyStore());
     lockApp();
     setSyncStatus(firebaseConfigMissing?'Configura Firebase':'Esperando inicio de sesión');
     return;
   }
+  bindInactivityHandlers();
+  scheduleInactivityLogout();
   unlockApp();
   await hydrateUserStore(user.uid);
   if(forceProfileSetupOnNextAuth||therapistProfileNeedsSetup()){
@@ -1399,7 +1496,7 @@ async function initFirebase(){
   auth=firebase.auth();
   db=firebase.firestore();
   firebaseReady=true;
-  await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
   auth.onAuthStateChanged(async user=>{
     try {
       if(user){
@@ -1595,7 +1692,7 @@ function renderStats(){
 
 // ── LISTA PACIENTES ──────────────────────────────────────────
 function renderPatients(){
-  const activos=activePatients().filter(p=>matchesPatientSearch(p,activeSearch));
+  const activos=sortPatientsByName(activePatients().filter(p=>matchesPatientSearch(p,activeSearch)));
   renderStats();
   const el=document.getElementById('patient-list');
   if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="Assets/Axolotl/Angustia-4.svg"><p>Sin pacientes activos.</p></div>`;return}
@@ -1624,9 +1721,9 @@ function renderPatients(){
 function renderInactivePatients(){
   const toolbar=document.getElementById('inactive-toolbar');
   const el=document.getElementById('inactive-list');
-  const allInactivos=inactivePatients();
+  const allInactivos=sortPatientsByName(inactivePatients());
   const filteredByReason=inactiveFilter==='all'?allInactivos:allInactivos.filter(p=>p.statusReason===inactiveFilter);
-  const inactivos=filteredByReason.filter(p=>matchesPatientSearch(p,inactiveSearch));
+  const inactivos=sortPatientsByName(filteredByReason.filter(p=>matchesPatientSearch(p,inactiveSearch)));
   toolbar.innerHTML=`<div class="toolbar-row"><div class="period-switch">
       ${['all','suspendio','alta','cierre','pausa','otro'].map(filter=>`<button class="period-btn${inactiveFilter===filter?' active':''}" onclick="setInactiveFilter('${filter}')">${statusReasonLabel(filter)}</button>`).join('')}
     </div><input class="form-input" style="max-width:320px" value="${inactiveSearch}" oninput="setInactiveSearch(this.value)" placeholder="Buscar paciente inactivo..."><div style="font-size:12px;color:var(--ink-light)">${inactivos.length} paciente${inactivos.length!==1?'s':''}</div></div>`;
@@ -1745,18 +1842,20 @@ function saveTherapistProfile(){
 function renderHoy(){
   const el=document.getElementById('hoy-content');
   if(!el) return;
+  syncQuickPayPatients();
   const todayStr=today();
   const nowDow=(new Date(todayStr+'T12:00').getDay()+6)%7;
   const rows=[];
   activePatients().forEach(p=>{
     normalizePatient(p);
-    const movedFrom=p.sesiones.some(s=>s.fecha.split(' ')[0]===todayStr&&s.skipped);
+    const skippedSes=p.sesiones.find(s=>s.fecha.split(' ')[0]===todayStr&&s.skipped);
+    const movedFrom=!!skippedSes;
     const fixedToday=!p.noFixedSchedule&&p.dias.includes(nowDow)&&!movedFrom;
     const ses=p.sesiones.find(s=>s.fecha.split(' ')[0]===todayStr&&!s.skipped);
-    if(!fixedToday&&!ses) return;
-    const hora=ses?.hora||(fixedToday?horaDia(p,nowDow):'--:--');
+    if(!fixedToday&&!ses&&!movedFrom) return;
+    const hora=ses?.hora||skippedSes?.hora||(fixedToday?horaDia(p,nowDow):'--:--');
     const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===todayStr);
-    rows.push({p,ses,hora,fixedToday,autoPay});
+    rows.push({p,ses,hora,fixedToday,autoPay,movedFrom,skippedSes});
   });
 
   rows.sort((a,b)=>{
@@ -1770,11 +1869,34 @@ function renderHoy(){
     return;
   }
 
-  el.innerHTML=`<div class="dsec" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start"><div><div class="sec-title">${new Date(todayStr+'T12:00').toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'long'})}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Registra asistencia y pago por sesión. Esto se refleja en el calendario del paciente.</p></div><button class="btn-ghost" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div>
+  el.innerHTML=`<div class="dsec" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start"><div><div class="sec-title">${new Date(todayStr+'T12:00').toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'long'})}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Registra asistencia y pago por sesión. Esto se refleja en el calendario del paciente.</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
+    if(r.movedFrom){
+      const sk=r.skippedSes;
+      const reschLabel=sk?.movedTo?new Date(sk.movedTo+'T12:00').toLocaleDateString('es-MX',{weekday:'short',day:'2-digit',month:'short'})+(sk.movedTime?' '+sk.movedTime:''):''
+      return `<div class="today-card">
+        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
+        <div class="today-form" style="padding-top:4px">
+          <div class="today-status-label">Reagendada${reschLabel?' \u2192 '+reschLabel:''}</div>
+          <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="cancelTodayReposicion(${p.id})">Cancelar reposición</button>
+        </div>
+      </div>`;
+    }
+    if(r.ses?.therapistCancel){
+      return `<div class="today-card">
+        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
+        <div class="today-form" style="padding-top:4px">
+          <div class="today-status-label">Cancelación del terapeuta</div>
+          <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="undoTerapeutaCancel(${p.id})">Deshacer</button>
+        </div>
+      </div>`;
+    }
     const tipoActual=r.ses?.tipo&&['asistio','falta','cancelada','reposicion'].includes(r.ses.tipo)?r.ses.tipo:'asistio';
     const tv=tarifaVigente(p);
+    const attendedYes=tipoActual==='asistio'||tipoActual==='reposicion'||tipoActual==='extra';
+    const chargeOnMiss=attendedYes?true:tipoActual==='falta'?!r.ses?.noCharge:false;
+    const paidYes=!!r.autoPay;
     return `<div class="today-card">
       <div class="today-head">
         <div>
@@ -1784,21 +1906,138 @@ function renderHoy(){
         <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
       </div>
       <div class="today-form">
-        <div class="form-group" style="margin:0"><label class="form-label">Asistencia</label>
-          <select class="form-input" id="today-tipo-${p.id}">
-            <option value="asistio"${tipoActual==='asistio'?' selected':''}>Asistió</option>
-            <option value="falta"${tipoActual==='falta'?' selected':''}>Faltó paciente</option>
-            <option value="cancelada"${tipoActual==='cancelada'?' selected':''}>Cancelada por terapeuta</option>
-            <option value="reposicion"${tipoActual==='reposicion'?' selected':''}>Reposición</option>
-          </select>
+        <input type="hidden" id="today-attended-${p.id}" value="${attendedYes?'si':'no'}">
+        <input type="hidden" id="today-charge-${p.id}" value="${chargeOnMiss?'si':'no'}">
+        <input type="hidden" id="today-paid-${p.id}" value="${paidYes?'si':'no'}">
+
+        <div class="yn-row">
+          <label class="form-label">¿Asistió?</label>
+          <div class="yn-toggle" id="today-attended-group-${p.id}">
+            <button type="button" class="yn-btn${attendedYes?' active':''}" onclick="setTodayToggle(${p.id},'attended','si')">Sí</button>
+            <button type="button" class="yn-btn${!attendedYes?' active':''}" onclick="setTodayToggle(${p.id},'attended','no')">No</button>
+          </div>
         </div>
-        <div class="form-group" style="margin:0"><label class="form-label">Pago</label>
-          <div style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="today-paid-${p.id}" ${r.autoPay?'checked':''}><label for="today-paid-${p.id}" style="font-size:12px;color:var(--ink-light)">Pagó</label><input class="inp-sm" style="width:92px" id="today-amt-${p.id}" type="number" value="${r.autoPay?r.autoPay.monto:tv}"></div>
+
+        <div class="yn-row" id="today-charge-wrap-${p.id}" style="display:${attendedYes?'none':'block'}">
+          <label class="form-label">¿Se cobra la sesión?</label>
+          <div class="yn-toggle" id="today-charge-group-${p.id}">
+            <button type="button" class="yn-btn${chargeOnMiss?' active':''}" onclick="setTodayToggle(${p.id},'charge','si')">Sí</button>
+            <button type="button" class="yn-btn${!chargeOnMiss?' active':''}" onclick="setTodayToggle(${p.id},'charge','no')">No</button>
+          </div>
         </div>
+
+        <div class="yn-row" id="today-paid-wrap-${p.id}" style="display:${attendedYes||chargeOnMiss?'block':'none'}">
+          <label class="form-label">¿Pagó?</label>
+          <div class="yn-toggle" id="today-paid-group-${p.id}">
+            <button type="button" class="yn-btn${paidYes?' active':''}" onclick="setTodayToggle(${p.id},'paid','si')">Sí</button>
+            <button type="button" class="yn-btn${!paidYes?' active':''}" onclick="setTodayToggle(${p.id},'paid','no')">No</button>
+          </div>
+          <div class="today-pay-row" id="today-amount-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
+            <label for="today-amt-${p.id}" style="font-size:12px;color:var(--ink-light)">Monto</label>
+            <input class="inp-sm" style="width:92px" id="today-amt-${p.id}" type="number" value="${r.autoPay?r.autoPay.monto:tv}">
+          </div>
+        </div>
+
         <button class="btn-primary btn-sm" onclick="saveTodaySession(${p.id})">Guardar</button>
+        <div class="today-extra-actions">
+          <button class="btn-sec btn-sm" onclick="saveTerapeutaCancel(${p.id})">Cancelación del terapeuta</button>
+          <button class="btn-sec btn-sm" onclick="openTodayReposicionModal(${p.id})">Reposición</button>
+        </div>
       </div>
     </div>`;
   }).join('')}</div>`;
+}
+
+function syncQuickPayPatients(){
+  const sel=document.getElementById('quick-pay-patient');
+  const amountInput=document.getElementById('quick-pay-amount');
+  if(!sel) return;
+  const currentValue=sel.value;
+  const actives=sortPatientsByName(activePatients().map(p=>{normalizePatient(p);return p;}));
+  if(!actives.length){
+    sel.innerHTML='<option value="">Sin pacientes activos</option>';
+    sel.disabled=true;
+    if(amountInput){amountInput.value='';amountInput.disabled=true;}
+    return;
+  }
+  sel.disabled=false;
+  if(amountInput) amountInput.disabled=false;
+  sel.innerHTML=actives.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+  if(currentValue&&actives.some(p=>String(p.id)===String(currentValue))) sel.value=currentValue;
+  const selected=actives.find(p=>String(p.id)===String(sel.value))||actives[0];
+  if(selected&&amountInput&&!amountInput.value) amountInput.value=tarifaVigente(selected);
+  sel.onchange=()=>{
+    const pp=patients.find(x=>String(x.id)===String(sel.value));
+    if(pp&&amountInput) amountInput.value=tarifaVigente(pp);
+  };
+}
+
+function registerQuickPay(){
+  const sel=document.getElementById('quick-pay-patient');
+  const amountInput=document.getElementById('quick-pay-amount');
+  const methodSel=document.getElementById('quick-pay-method');
+  if(!sel||!amountInput||!methodSel) return;
+  if(!sel.value){alert('Selecciona un paciente activo.');return;}
+  const p=patients.find(x=>x.id===parseInt(sel.value));
+  if(!p){alert('Paciente no encontrado.');return;}
+  if(!ensurePatientActiveForScheduling(p)) return;
+  const amount=Math.max(0,parseInt(amountInput.value)||0);
+  if(amount<=0){alert('Escribe una cantidad válida.');return;}
+  const metodo=methodSel.value||'efectivo';
+  const fecha=today();
+  p.pagos.push({id:'p'+(nextPayId++),fecha,monto:amount,metodo});
+  p.pagado+=amount;
+  p.adeudo=Math.max(0,p.adeudo-amount);
+  addLog(p,'datos',`Pago rápido registrado: $${amount.toLocaleString('es-MX')} (${metodo})`);
+  exposeSesMap(p);
+  saveState();
+  const drawer=document.getElementById('quick-pay-drawer');
+  if(drawer) drawer.open=false;
+  amountInput.value=tarifaVigente(p);
+  renderHoy();
+  if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
+}
+
+function setTodayToggle(pid,field,value){
+  const hidden=document.getElementById(`today-${field}-${pid}`);
+  if(!hidden) return;
+  hidden.value=value;
+  const group=document.getElementById(`today-${field}-group-${pid}`);
+  if(group){
+    const buttons=[...group.querySelectorAll('.yn-btn')];
+    buttons.forEach(btn=>btn.classList.remove('active'));
+    const active=buttons.find(btn=>btn.textContent.trim().toLowerCase().startsWith(value==='si'?'sí':'no')||btn.textContent.trim().toLowerCase().startsWith(value));
+    if(active) active.classList.add('active');
+  }
+  refreshTodayCardLogic(pid);
+}
+
+function refreshTodayCardLogic(pid){
+  const attended=(document.getElementById(`today-attended-${pid}`)?.value||'si')==='si';
+  const charge=(document.getElementById(`today-charge-${pid}`)?.value||'si')==='si';
+  let paid=(document.getElementById(`today-paid-${pid}`)?.value||'no')==='si';
+
+  const chargeWrap=document.getElementById(`today-charge-wrap-${pid}`);
+  const paidWrap=document.getElementById(`today-paid-wrap-${pid}`);
+  const amountWrap=document.getElementById(`today-amount-wrap-${pid}`);
+
+  if(chargeWrap) chargeWrap.style.display=attended?'none':'block';
+
+  const shouldAskPaid=attended||charge;
+  if(!shouldAskPaid){
+    const paidInput=document.getElementById(`today-paid-${pid}`);
+    if(paidInput) paidInput.value='no';
+    paid=false;
+    const paidGroup=document.getElementById(`today-paid-group-${pid}`);
+    if(paidGroup){
+      const yesBtn=paidGroup.querySelector('.yn-btn:nth-child(1)');
+      const noBtn=paidGroup.querySelector('.yn-btn:nth-child(2)');
+      if(yesBtn) yesBtn.classList.remove('active');
+      if(noBtn) noBtn.classList.add('active');
+    }
+  }
+  if(paidWrap) paidWrap.style.display=shouldAskPaid?'block':'none';
+  if(amountWrap) amountWrap.style.display=(shouldAskPaid&&paid)?'flex':'none';
 }
 
 function saveTodaySession(pid){
@@ -1810,13 +2049,19 @@ function saveTodaySession(pid){
     alert(`No puedes registrar sesiones antes del inicio de tratamiento (${p.inicio}).`);
     return;
   }
-  const tipo=(document.getElementById(`today-tipo-${pid}`)?.value)||'asistio';
-  const paid=!!document.getElementById(`today-paid-${pid}`)?.checked;
+  const attended=(document.getElementById(`today-attended-${pid}`)?.value||'si')==='si';
+  const charge=(document.getElementById(`today-charge-${pid}`)?.value||'si')==='si';
+  const paid=(document.getElementById(`today-paid-${pid}`)?.value||'no')==='si';
+  const noCharge=!attended&&!charge;
+  const tipo=attended?'asistio':'falta';
   const amount=Math.max(0,parseInt(document.getElementById(`today-amt-${pid}`)?.value)||tarifaVigente(p));
   const tv=tarifaVigente(p);
-  const billable=t=>t==='asistio'||t==='falta'||t==='extra';
-  if(paid&&!billable(tipo)){
-    alert('Solo puedes registrar pago cuando la sesión fue asistida o marcada como falta.');
+  const isBillable=(sessionType,sessionNoCharge=false)=>{
+    if(sessionType==='falta'&&sessionNoCharge) return false;
+    return sessionType==='asistio'||sessionType==='falta'||sessionType==='extra';
+  };
+  if(paid&&!isBillable(tipo,noCharge)){
+    alert('Solo puedes registrar pago cuando la sesión es cobrable.');
     return;
   }
   const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
@@ -1824,19 +2069,21 @@ function saveTodaySession(pid){
   let ses=p.sesiones.find(s=>s.fecha===dateStr&&!s.skipped);
   if(ses){
     const ant=ses.tipo;
+    const antNoCharge=!!ses.noCharge;
     if(p.pago==='sesion'){
-      if(billable(ant)) p.adeudo=Math.max(0,p.adeudo-tv);
-      if(billable(tipo)) p.adeudo+=tv;
+      if(isBillable(ant,antNoCharge)) p.adeudo=Math.max(0,p.adeudo-tv);
+      if(isBillable(tipo,noCharge)) p.adeudo+=tv;
     }
     ses.tipo=tipo;
+    ses.noCharge=noCharge;
     if(!ses.hora) ses.hora=defaultHora;
-    addLog(p,'datos',`Registro hoy ${dateStr}: ${ant}→${tipo}`);
+    addLog(p,'datos',`Registro hoy ${dateStr}: ${ant}→${tipo}${noCharge?' (sin cobro)':''}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    ses={id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo,hora:defaultHora};
+    ses={id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo,noCharge,hora:defaultHora};
     p.sesiones.push(ses);
-    if(p.pago==='sesion'&&billable(tipo)) p.adeudo+=tv;
-    addLog(p,'datos',`Registro hoy ${dateStr}: ${tipo}`);
+    if(p.pago==='sesion'&&isBillable(tipo,noCharge)) p.adeudo+=tv;
+    addLog(p,'datos',`Registro hoy ${dateStr}: ${tipo}${noCharge?' (sin cobro)':''}`);
   }
 
   const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===dateStr);
@@ -1860,6 +2107,128 @@ function saveTodaySession(pid){
     addLog(p,'datos',`Pago de hoy removido: $${autoPay.monto.toLocaleString('es-MX')}`);
   }
 
+  exposeSesMap(p);
+  saveState();
+  renderHoy();
+  if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
+}
+
+function saveTerapeutaCancel(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const dateStr=today();
+  const tv=tarifaVigente(p);
+  const billable=t=>t==='asistio'||t==='falta'||t==='extra';
+  let ses=p.sesiones.find(s=>s.fecha===dateStr&&!s.skipped);
+  if(ses){
+    if(p.pago==='sesion'&&billable(ses.tipo)&&!ses.noCharge) p.adeudo=Math.max(0,p.adeudo-tv);
+    ses.tipo='cancelada';
+    ses.noCharge=true;
+    ses.therapistCancel=true;
+  } else {
+    const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
+    p.sesiones.push({id:'s'+(nextSesId++),num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,fecha:dateStr,tipo:'cancelada',noCharge:true,therapistCancel:true,hora:horaDia(p,dow)});
+  }
+  const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===dateStr);
+  if(autoPay){
+    p.pagado-=autoPay.monto;
+    p.adeudo+=autoPay.monto;
+    p.pagos=p.pagos.filter(py=>py.id!==autoPay.id);
+  }
+  addLog(p,'datos',`Cancelación del terapeuta: ${dateStr}`);
+  exposeSesMap(p);
+  saveState();
+  renderHoy();
+}
+
+function undoTerapeutaCancel(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const dateStr=today();
+  p.sesiones=p.sesiones.filter(s=>!(s.fecha===dateStr&&s.therapistCancel));
+  addLog(p,'datos',`Cancelación del terapeuta deshecha: ${dateStr}`);
+  exposeSesMap(p);
+  saveState();
+  renderHoy();
+}
+
+function openTodayReposicionModal(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const todayStr=today();
+  const dow=(new Date(todayStr+'T12:00').getDay()+6)%7;
+  const defaultHora=horaDia(p,dow);
+  document.getElementById('modal-title').textContent='Reposición de sesión';
+  document.getElementById('modal-body').innerHTML=`
+    <p style="font-size:13px;color:var(--ink-light);margin-bottom:12px">¿A qué fecha y hora se repone la sesión de hoy?</p>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Nueva fecha</label><input class="form-input" id="rep-today-fecha" type="date" min="${todayStr}"></div>
+      <div class="form-group"><label class="form-label">Nueva hora</label><input class="form-input" id="rep-today-hora" type="time" value="${defaultHora}"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-sec" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="confirmarTodayReposicion(${pid})">Confirmar</button></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function confirmarTodayReposicion(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const newDate=document.getElementById('rep-today-fecha').value;
+  const newTime=document.getElementById('rep-today-hora').value;
+  if(!newDate||!newTime){alert('Completa fecha y hora');return;}
+  const todayStr=today();
+  if(newDate===todayStr){alert('Elige una fecha distinta a hoy');return;}
+  if(isBeforeTreatmentStart(p,newDate)){alert(`Fecha anterior al inicio de tratamiento (${p.inicio}).`);return;}
+  let source=p.sesiones.find(s=>s.fecha===todayStr&&!s.skipped);
+  if(!source){
+    const dow=(new Date(todayStr+'T12:00').getDay()+6)%7;
+    source={id:'s'+(nextSesId++),num:p.sesiones.length+1,fecha:todayStr,tipo:null,hora:horaDia(p,dow)};
+    p.sesiones.push(source);
+  }
+  const billable=t=>t==='asistio'||t==='falta'||t==='extra';
+  if(p.pago==='sesion'&&billable(source.tipo)&&!source.noCharge) p.adeudo=Math.max(0,p.adeudo-tarifaVigente(p));
+  source.originalTipo=source.tipo;
+  source.skipped=true;
+  source.tipo='reprogramada';
+  source.movedTo=newDate;
+  source.movedTime=newTime;
+  let target=p.sesiones.find(s=>s.fecha===newDate&&!s.skipped&&s.tipo!=='reprogramada');
+  if(!target){
+    const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
+    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:newDate,tipo:'reposicion',hora:newTime,fromDate:todayStr});
+  } else {
+    target.tipo='reposicion';
+    target.hora=newTime;
+    target.fromDate=todayStr;
+  }
+  addLog(p,'reposicion',`Sesión ${todayStr} reagendada a ${newDate} ${newTime}`);
+  exposeSesMap(p);
+  saveState();
+  closeModal();
+  renderHoy();
+  if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
+}
+
+function cancelTodayReposicion(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const todayStr=today();
+  const source=p.sesiones.find(s=>s.fecha===todayStr&&s.skipped);
+  if(!source) return;
+  const targetDate=source.movedTo;
+  const targetTime=source.movedTime;
+  if(targetDate){
+    p.sesiones=p.sesiones.filter(s=>!(s.fecha===targetDate&&s.tipo==='reposicion'&&s.hora===targetTime&&s.fromDate===todayStr));
+  }
+  if(source.originalTipo!==undefined&&source.originalTipo!==null){
+    source.tipo=source.originalTipo;
+    delete source.skipped;
+    delete source.originalTipo;
+    delete source.movedTo;
+    delete source.movedTime;
+  } else {
+    p.sesiones=p.sesiones.filter(s=>s.id!==source.id);
+  }
+  addLog(p,'reposicion',`Reposición de ${todayStr} cancelada`);
   exposeSesMap(p);
   saveState();
   renderHoy();
