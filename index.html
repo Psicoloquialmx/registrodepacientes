@@ -46,9 +46,10 @@ body.auth-locked .auth-screen{display:flex}
 /* ── SIDEBAR ── */
 .sidebar{width:220px;flex-shrink:0;background:var(--ink);display:flex;flex-direction:column}
 .sidebar-header{padding:1.25rem;border-bottom:1px solid rgba(255,255,255,0.08)}
-.brand{display:flex;align-items:center;gap:10px}
-.brand-dot{width:112px;height:32px;display:flex;align-items:center;justify-content:flex-start;flex-shrink:0}
+.brand{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.brand-dot{width:150px;height:44px;display:flex;align-items:center;justify-content:flex-start;flex-shrink:0}
 .brand-logo{width:100%;height:100%;object-fit:contain;object-position:left center}
+.brand-text{display:flex;flex-direction:column;gap:1px}
 .brand-name{font-family:'Lora',serif;color:white;font-size:14px;font-weight:600}
 .brand-role{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px}
 .profile-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}
@@ -442,7 +443,7 @@ input[type="file"].form-input{cursor:pointer}
     <div class="sidebar-header">
       <div class="brand">
         <div class="brand-dot"><img class="brand-logo" id="brand-logo" src="Assets/Branding/Logo-Color.svg" alt="Psicoloquial"></div>
-        <div><div class="brand-name" id="brand-name"></div><div class="brand-role" id="brand-role"></div></div>
+        <div class="brand-text"><div class="brand-name" id="brand-name"></div><div class="brand-role" id="brand-role"></div></div>
       </div>
       <div class="sidebar-auth">
         <div class="sidebar-auth-email" id="sidebar-user-email">Sin sesión</div>
@@ -991,7 +992,8 @@ function getDefaultTherapistProfile(){
     bio:'',
     license:'',
     clinicName:'',
-    timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'America/Mexico_City',
+    clinicAffiliation:'',
+    timezone:'America/Mexico_City',
     currency:'MXN',
     defaultSessionDuration:45,
     defaultSessionRate:800,
@@ -999,6 +1001,30 @@ function getDefaultTherapistProfile(){
     firstSessionNoChargeDefault:false,
     logoUrl:''
   };
+}
+
+function therapistTimezoneOptions(){
+  return [
+    {value:'America/Mexico_City',label:'Ciudad de Mexico (GMT-6/-5)'},
+    {value:'America/Cancun',label:'Cancun (GMT-5)'},
+    {value:'America/Tijuana',label:'Tijuana (GMT-8/-7)'},
+    {value:'America/Bogota',label:'Bogota (GMT-5)'},
+    {value:'America/Lima',label:'Lima (GMT-5)'},
+    {value:'America/Santiago',label:'Santiago (GMT-4/-3)'},
+    {value:'America/Buenos_Aires',label:'Buenos Aires (GMT-3)'},
+    {value:'Europe/Madrid',label:'Madrid (GMT+1/+2)'}
+  ];
+}
+
+function timezoneLabel(value){
+  const found=therapistTimezoneOptions().find(z=>z.value===value);
+  return found?found.label:value;
+}
+
+function timezoneOptionsHtml(selected){
+  const opts=therapistTimezoneOptions().map(z=>`<option value="${z.value}"${z.value===selected?' selected':''}>${z.label}</option>`).join('');
+  if(therapistTimezoneOptions().some(z=>z.value===selected)) return opts;
+  return `<option value="${escAttr(selected)}" selected>${escAttr(selected)}</option>${opts}`;
 }
 
 function normalizeTherapistProfile(raw){
@@ -1014,6 +1040,7 @@ function normalizeTherapistProfile(raw){
     bio:(data.bio||'').toString().trim(),
     license:(data.license||'').toString().trim(),
     clinicName:(data.clinicName||'').toString().trim(),
+    clinicAffiliation:(data.clinicAffiliation||'').toString().trim(),
     timezone:(data.timezone||base.timezone).toString().trim()||base.timezone,
     currency:(data.currency||base.currency).toString().trim().toUpperCase()||base.currency,
     defaultSessionDuration:Number.isFinite(Number(data.defaultSessionDuration))?Number(data.defaultSessionDuration):base.defaultSessionDuration,
@@ -1604,7 +1631,8 @@ function renderInactivePatients(){
 
 function renderTherapistProfileView(){
   const p=normalizeTherapistProfile(therapistProfile);
-  const clinicLabel=p.clinicName||'Consultorio';
+  const clinicLabel=p.clinicName||'Consultorio no especificado';
+  const affiliationLabel=p.clinicAffiliation||'Sin clínica asociada';
   const summaryParts=[p.profession,p.specialty,p.pronouns].filter(Boolean).join(' · ');
   const displayName=p.displayName||'Completa tu perfil';
   const summaryLabel=summaryParts||'Nombre y profesión pendientes';
@@ -1617,7 +1645,7 @@ function renderTherapistProfileView(){
           <div>
             <div style="font-family:'Lora',serif;font-size:20px;color:var(--ink)">${escAttr(displayName)}</div>
             <div style="font-size:12px;color:var(--ink-light)">${escAttr(summaryLabel)}</div>
-            <div style="font-size:11px;color:var(--ink-light);margin-top:2px">${escAttr(clinicLabel)} · ${escAttr(p.currency)} · ${escAttr(p.timezone)}</div>
+            <div style="font-size:11px;color:var(--ink-light);margin-top:2px">${escAttr(clinicLabel)} · ${escAttr(affiliationLabel)} · ${escAttr(p.currency)} · ${escAttr(timezoneLabel(p.timezone))}</div>
           </div>
         </div>
         <div style="margin-top:.85rem;font-size:12px;color:var(--ink-light);line-height:1.6">${escAttr(p.bio||'Agrega una biografía corta para mostrar tu enfoque clínico en reportes y vistas compartidas.')}</div>
@@ -1637,9 +1665,10 @@ function renderTherapistProfileView(){
         <div class="form-group"><label class="form-label">Profesión / rol</label><input class="form-input" id="tp-profession" value="${escAttr(p.profession)}" placeholder="Ej: Psicóloga clínica"></div>
         <div class="form-group"><label class="form-label">Pronombres (opcional)</label><input class="form-input" id="tp-pronouns" value="${escAttr(p.pronouns)}" placeholder="ella, él, elle"></div>
         <div class="form-group"><label class="form-label">Especialidad (opcional)</label><input class="form-input" id="tp-specialty" value="${escAttr(p.specialty)}" placeholder="Trauma, parejas, infancia..."></div>
-        <div class="form-group"><label class="form-label">Consultorio / marca</label><input class="form-input" id="tp-clinic-name" value="${escAttr(p.clinicName)}"></div>
+        <div class="form-group"><label class="form-label">Consultorio / marca (opcional)</label><input class="form-input" id="tp-clinic-name" value="${escAttr(p.clinicName)}"></div>
+        <div class="form-group"><label class="form-label">Clínica a la que pertenece (opcional)</label><input class="form-input" id="tp-clinic-affiliation" value="${escAttr(p.clinicAffiliation)}"></div>
         <div class="form-group"><label class="form-label">Cédula/Licencia (opcional)</label><input class="form-input" id="tp-license" value="${escAttr(p.license)}"></div>
-        <div class="form-group"><label class="form-label">Zona horaria</label><input class="form-input" id="tp-timezone" value="${escAttr(p.timezone)}"></div>
+        <div class="form-group"><label class="form-label">Zona horaria</label><select class="form-input" id="tp-timezone">${timezoneOptionsHtml(p.timezone)}</select></div>
         <div class="form-group"><label class="form-label">Moneda</label><input class="form-input" id="tp-currency" value="${escAttr(p.currency)}" maxlength="3" placeholder="MXN"></div>
         <div class="form-group"><label class="form-label">Duración default (min)</label><input class="form-input" id="tp-duration" type="number" min="15" step="5" value="${p.defaultSessionDuration}"></div>
         <div class="form-group"><label class="form-label">Tarifa default ($)</label><input class="form-input" id="tp-rate" type="number" min="0" value="${p.defaultSessionRate}"></div>
@@ -1649,7 +1678,7 @@ function renderTherapistProfileView(){
           <option value="quincenal"${p.defaultPaymentMode==='quincenal'?' selected':''}>Quincenal</option>
           <option value="inicio"${p.defaultPaymentMode==='inicio'?' selected':''}>Inicio de mes</option>
         </select></div>
-        <div class="form-group"><label class="form-label">Logo (imagen)</label><input class="form-input" id="tp-logo-file" type="file" accept="image/*" onchange="handleLogoUpload()"></div>
+        <div class="form-group"><label class="form-label">Logo (imagen opcional)</label><input class="form-input" id="tp-logo-file" type="file" accept="image/*" onchange="handleLogoUpload()"></div>
         <div class="form-group form-full" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" id="tp-first-free" ${p.firstSessionNoChargeDefault?'checked':''}>
           <label class="form-label" for="tp-first-free" style="margin:0">Primera sesión sin costo por default</label>
@@ -1672,6 +1701,7 @@ function handleLogoUpload(){
 }
 
 function saveTherapistProfile(){
+  const current=normalizeTherapistProfile(therapistProfile);
   const displayName=document.getElementById('tp-display-name').value.trim();
   const profession=document.getElementById('tp-profession').value.trim();
   if(!displayName){alert('Escribe el nombre visible del terapeuta.');return;}
@@ -1682,6 +1712,7 @@ function saveTherapistProfile(){
     pronouns:document.getElementById('tp-pronouns').value.trim(),
     specialty:document.getElementById('tp-specialty').value.trim(),
     clinicName:document.getElementById('tp-clinic-name').value.trim(),
+    clinicAffiliation:document.getElementById('tp-clinic-affiliation').value.trim(),
     license:document.getElementById('tp-license').value.trim(),
     timezone:document.getElementById('tp-timezone').value.trim(),
     currency:document.getElementById('tp-currency').value.trim().toUpperCase(),
@@ -1689,7 +1720,7 @@ function saveTherapistProfile(){
     defaultSessionRate:parseInt(document.getElementById('tp-rate').value)||0,
     defaultPaymentMode:document.getElementById('tp-payment').value,
     firstSessionNoChargeDefault:document.getElementById('tp-first-free').checked,
-    logoUrl:window.__logoUrlData||p.logoUrl||'',
+    logoUrl:window.__logoUrlData||current.logoUrl||'',
     bio:document.getElementById('tp-bio').value.trim()
   });
   applyTherapistProfileDisplay();
