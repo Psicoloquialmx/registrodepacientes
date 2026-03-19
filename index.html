@@ -918,6 +918,14 @@ let therapistProfile={};
 let saveTimer=null;
 let isHydrating=false;
 let firebaseConfigMissing=false;
+const FIREBASE_CONFIG_FALLBACK={
+  apiKey:'AIzaSyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI',
+  authDomain:'registro-de-pacientes-f729f.firebaseapp.com',
+  projectId:'registro-de-pacientes-f729f',
+  storageBucket:'registro-de-pacientes-f729f.firebasestorage.app',
+  messagingSenderId:'327033644024',
+  appId:'1:327033644024:web:38299c8aa2cf178207ac0d'
+};
 
 function getDefaultTherapistProfile(){
   return {
@@ -1221,16 +1229,25 @@ async function handleAuthStateChanged(user){
 async function initFirebase(){
   bindAuthTabs();
   switchAuthMode('login');
-  const config=window.FIREBASE_CONFIG;
+  const config=requiredFirebaseConfig(window.FIREBASE_CONFIG)?window.FIREBASE_CONFIG:FIREBASE_CONFIG_FALLBACK;
   if(!requiredFirebaseConfig(config)){
     firebaseConfigMissing=true;
     showAuthMessage('Falta configurar Firebase. Necesito apiKey, authDomain, projectId y appId del proyecto asociado a sebastian@psicoloquial.mx.', 'error');
-    document.getElementById('auth-submit').disabled=true;
-    document.getElementById('auth-reset').disabled=true;
+    const submitBtn=document.getElementById('auth-submit');
+    const resetBtn=document.getElementById('auth-reset');
+    if(submitBtn) submitBtn.disabled=false;
+    if(resetBtn) resetBtn.disabled=false;
     setSyncStatus('Configura Firebase');
     return;
   }
-  firebase.initializeApp(config);
+  firebaseConfigMissing=false;
+  const submitBtn=document.getElementById('auth-submit');
+  const resetBtn=document.getElementById('auth-reset');
+  if(submitBtn) submitBtn.disabled=false;
+  if(resetBtn) resetBtn.disabled=false;
+  if(!firebase.apps.length){
+    firebase.initializeApp(config);
+  }
   auth=firebase.auth();
   db=firebase.firestore();
   firebaseReady=true;
