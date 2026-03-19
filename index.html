@@ -1208,6 +1208,9 @@ async function sendPasswordReset(){
   }
 }
 
+window.submitAuth=submitAuth;
+window.sendPasswordReset=sendPasswordReset;
+
 async function signOutUser(){
   if(auth) await auth.signOut();
 }
