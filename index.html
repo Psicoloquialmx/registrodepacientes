@@ -383,9 +383,9 @@ body.auth-locked .auth-screen{display:flex}
     <div class="auth-card">
       <div class="auth-title">Registro de pacientes y asistencias</div>
       <div class="auth-sub">Accede con tu correo profesional para ver solo tus pacientes y sincronizar la información en línea.</div>
-      <div class="auth-tabs">
-        <button type="button" class="auth-tab active" id="auth-tab-login" onclick="switchAuthMode('login')">Iniciar sesión</button>
-        <button type="button" class="auth-tab" id="auth-tab-register" onclick="switchAuthMode('register')">Crear cuenta</button>
+      <div class="auth-tabs" id="auth-tabs">
+        <button type="button" class="auth-tab active" id="auth-tab-login" data-auth-mode="login">Iniciar sesión</button>
+        <button type="button" class="auth-tab" id="auth-tab-register" data-auth-mode="register">Crear cuenta</button>
       </div>
       <div class="auth-msg" id="auth-message"></div>
       <div class="form-grid">
@@ -394,8 +394,8 @@ body.auth-locked .auth-screen{display:flex}
         <div class="form-group form-full" id="auth-name-group" style="display:none"><label class="form-label">Nombre visible</label><input class="form-input" id="auth-name" type="text" autocomplete="name"></div>
       </div>
       <div class="auth-actions">
-        <button class="btn-primary" id="auth-submit" onclick="submitAuth()">Entrar</button>
-        <button class="btn-ghost" id="auth-reset" onclick="sendPasswordReset()">Recuperar contraseña</button>
+        <button type="button" class="btn-primary" id="auth-submit">Entrar</button>
+        <button type="button" class="btn-ghost" id="auth-reset">Recuperar contraseña</button>
       </div>
       <div class="auth-note" id="auth-setup-note">Configura Firebase para habilitar acceso multiusuario y sincronización.</div>
     </div>
@@ -499,6 +499,44 @@ body.auth-locked .auth-screen{display:flex}
 
 <div id="ses-popover" class="ses-popover" style="display:none"></div>
 <div id="popover-bg" style="position:fixed;inset:0;z-index:299;display:none" onclick="closePopover()"></div>
+
+<script>
+(function(){
+  function setMode(mode){
+    const loginTab=document.getElementById('auth-tab-login');
+    const registerTab=document.getElementById('auth-tab-register');
+    const nameGroup=document.getElementById('auth-name-group');
+    const submitBtn=document.getElementById('auth-submit');
+    const resetBtn=document.getElementById('auth-reset');
+    if(loginTab) loginTab.classList.toggle('active',mode==='login');
+    if(registerTab) registerTab.classList.toggle('active',mode==='register');
+    if(nameGroup) nameGroup.style.display=mode==='register'?'flex':'none';
+    if(submitBtn) submitBtn.textContent=mode==='login'?'Entrar':'Crear cuenta';
+    if(resetBtn) resetBtn.style.display=mode==='login'?'inline-flex':'none';
+  }
+  window.__authUiSetMode=setMode;
+  function bind(){
+    const tabs=document.getElementById('auth-tabs');
+    const loginTab=document.getElementById('auth-tab-login');
+    const registerTab=document.getElementById('auth-tab-register');
+    if(tabs){
+      tabs.addEventListener('click',e=>{
+        const btn=e.target.closest('[data-auth-mode]');
+        if(!btn) return;
+        setMode(btn.getAttribute('data-auth-mode'));
+      });
+    }
+    if(loginTab) loginTab.addEventListener('click',()=>setMode('login'));
+    if(registerTab) registerTab.addEventListener('click',()=>setMode('register'));
+    setMode('login');
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',bind);
+  } else {
+    bind();
+  }
+})();
+</script>
 
 <script src="./firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
@@ -896,6 +934,10 @@ function requiredFirebaseConfig(config){
 
 function switchAuthMode(mode){
   authMode=mode;
+  if(typeof window.__authUiSetMode==='function'){
+    window.__authUiSetMode(mode);
+    return;
+  }
   const loginTab=document.getElementById('auth-tab-login');
   const registerTab=document.getElementById('auth-tab-register');
   const nameGroup=document.getElementById('auth-name-group');
@@ -911,12 +953,27 @@ function switchAuthMode(mode){
 function bindAuthTabs(){
   const loginTab=document.getElementById('auth-tab-login');
   const registerTab=document.getElementById('auth-tab-register');
+  const submitBtn=document.getElementById('auth-submit');
+  const resetBtn=document.getElementById('auth-reset');
+  const pwdInput=document.getElementById('auth-password');
+  const nameInput=document.getElementById('auth-name');
   if(loginTab){
     loginTab.addEventListener('click',()=>switchAuthMode('login'));
   }
   if(registerTab){
     registerTab.addEventListener('click',()=>switchAuthMode('register'));
   }
+  if(submitBtn){
+    submitBtn.addEventListener('click',submitAuth);
+  }
+  if(resetBtn){
+    resetBtn.addEventListener('click',sendPasswordReset);
+  }
+  const submitOnEnter=e=>{
+    if(e.key==='Enter') submitAuth();
+  };
+  if(pwdInput) pwdInput.addEventListener('keydown',submitOnEnter);
+  if(nameInput) nameInput.addEventListener('keydown',submitOnEnter);
 }
 
 function showAuthMessage(text,type='info'){
