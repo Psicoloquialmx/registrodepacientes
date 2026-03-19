@@ -441,7 +441,7 @@ input[type="file"].form-input{cursor:pointer}
   <nav class="sidebar">
     <div class="sidebar-header">
       <div class="brand">
-        <div class="brand-dot"><img class="brand-logo" id="brand-logo" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Psicoloquial"></div>
+        <div class="brand-dot"><img class="brand-logo" id="brand-logo" src="Assets/Branding/Logo-Color.svg" alt="Psicoloquial"></div>
         <div><div class="brand-name" id="brand-name"></div><div class="brand-role" id="brand-role"></div></div>
       </div>
       <div class="sidebar-auth">
@@ -1042,7 +1042,7 @@ function applyTherapistProfileDisplay(){
   if(roleEl) roleEl.textContent=p.profession||'Sin profesión configurada';
   const logoEl=document.getElementById('brand-logo');
   if(logoEl){
-    logoEl.src=p.logoUrl||'Assets/Branding/Logo-Reducido-Alt.svg';
+    logoEl.src='Assets/Branding/Logo-Color.svg';
     logoEl.alt=p.clinicName||'Logo del consultorio';
   }
 }
@@ -1613,7 +1613,7 @@ function renderTherapistProfileView(){
       <div class="dsec">
         <div class="sec-title">Perfil visible</div>
         <div style="display:flex;gap:12px;align-items:center;margin-top:.5rem">
-          <div class="person-avatar"><img src="${escAttr(p.logoUrl||'Assets/Branding/Logo-Reducido-Alt.svg')}" alt="Logo"></div>
+          <div class="person-avatar" style="width:120px;height:64px;border-radius:10px"><img style="object-fit:contain;border-radius:0;padding:6px" src="${escAttr(p.logoUrl||'Assets/Branding/Logo-Reducido-Alt.svg')}" alt="Logo"></div>
           <div>
             <div style="font-family:'Lora',serif;font-size:20px;color:var(--ink)">${escAttr(displayName)}</div>
             <div style="font-size:12px;color:var(--ink-light)">${escAttr(summaryLabel)}</div>
