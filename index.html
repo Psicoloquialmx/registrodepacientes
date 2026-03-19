@@ -59,8 +59,8 @@ body.auth-locked .auth-screen{display:flex}
 .nav-item.active{color:white;background:rgba(165,196,188,.15);border-left:2px solid #a5c4bc}
 .nav-ico{font-size:13px;opacity:.7;width:16px;text-align:center}
 .nav-badge{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:#b95d37;color:white;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;min-width:18px;text-align:center}
-.sidebar-axo-wrap{margin-top:auto;height:130px;overflow:hidden;position:relative;background:radial-gradient(circle at 78% 86%,rgba(247,228,241,.35) 0,rgba(165,196,188,.22) 38%,rgba(56,70,81,0) 72%)}
-.sidebar-axo-wrap img{width:112px;position:absolute;bottom:-4px;right:-6px;object-fit:contain;opacity:.98;mix-blend-mode:normal;filter:drop-shadow(0 4px 10px rgba(20,28,34,.32))}
+.sidebar-axo-wrap{margin-top:auto;height:180px;overflow:visible;position:relative;background:radial-gradient(circle at 78% 86%,rgba(247,228,241,.35) 0,rgba(165,196,188,.22) 38%,rgba(56,70,81,0) 72%)}
+.sidebar-axo-wrap img{width:140px;position:absolute;bottom:-8px;right:-12px;object-fit:contain;opacity:.98;mix-blend-mode:normal;filter:drop-shadow(0 4px 10px rgba(20,28,34,.32))}
 
 /* ── MAIN ── */
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -124,6 +124,7 @@ body.auth-locked .auth-screen{display:flex}
 .form-group{display:flex;flex-direction:column;gap:5px}
 .form-label{font-size:12px;color:var(--ink-light);font-weight:500}
 .form-input{border:1px solid #ddd;border-radius:8px;padding:8px 11px;font-size:13px;background:white;color:var(--ink);font-family:'DM Sans',sans-serif}
+input[type="file"].form-input{cursor:pointer}
 .form-input:focus{outline:none;border-color:var(--sage-dark)}
 .days-row{display:flex;gap:6px;flex-wrap:wrap}
 .day-btn{width:36px;height:36px;border-radius:50%;border:1px solid #ddd;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink-light);transition:all .15s;font-family:'DM Sans',sans-serif}
@@ -440,7 +441,7 @@ body.auth-locked .auth-screen{display:flex}
   <nav class="sidebar">
     <div class="sidebar-header">
       <div class="brand">
-        <div class="brand-dot"><img class="brand-logo" id="brand-logo" src="Assets/Branding/LogoClaim-Color-.svg" alt="Psicoloquial"></div>
+        <div class="brand-dot"><img class="brand-logo" id="brand-logo" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Psicoloquial"></div>
         <div><div class="brand-name" id="brand-name"></div><div class="brand-role" id="brand-role"></div></div>
       </div>
       <div class="sidebar-auth">
@@ -1041,7 +1042,7 @@ function applyTherapistProfileDisplay(){
   if(roleEl) roleEl.textContent=p.profession||'Sin profesión configurada';
   const logoEl=document.getElementById('brand-logo');
   if(logoEl){
-    logoEl.src=p.logoUrl||'Assets/Branding/LogoClaim-Color-.svg';
+    logoEl.src=p.logoUrl||'Assets/Branding/Logo-Reducido-Alt.svg';
     logoEl.alt=p.clinicName||'Logo del consultorio';
   }
 }
@@ -1558,7 +1559,7 @@ function renderPatients(){
   const activos=activePatients().filter(p=>matchesPatientSearch(p,activeSearch));
   renderStats();
   const el=document.getElementById('patient-list');
-  if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="${AXO.normal2}"><p>Sin pacientes activos.</p></div>`;return}
+  if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="Assets/Axolotl/Angustia-4.svg"><p>Sin pacientes activos.</p></div>`;return}
   const hoy=new Date();
   const pendTotal=totalPendientesHoy();
   const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">⚠</span><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
@@ -1590,7 +1591,7 @@ function renderInactivePatients(){
   toolbar.innerHTML=`<div class="toolbar-row"><div class="period-switch">
       ${['all','suspendio','alta','cierre','pausa','otro'].map(filter=>`<button class="period-btn${inactiveFilter===filter?' active':''}" onclick="setInactiveFilter('${filter}')">${statusReasonLabel(filter)}</button>`).join('')}
     </div><input class="form-input" style="max-width:320px" value="${inactiveSearch}" oninput="setInactiveSearch(this.value)" placeholder="Buscar paciente inactivo..."><div style="font-size:12px;color:var(--ink-light)">${inactivos.length} paciente${inactivos.length!==1?'s':''}</div></div>`;
-  if(!inactivos.length){el.innerHTML=`<div class="empty"><img src="${AXO.pensando1}"><p>No hay pacientes inactivos con ese motivo.</p></div>`;return;}
+  if(!inactivos.length){el.innerHTML=`<div class="empty"><img src="Assets/Axolotl/Pensando-2.svg"><p>No hay pacientes inactivos con ese motivo.</p></div>`;return;}
   el.innerHTML=inactivos.map(p=>`<div class="patient-card" onclick="showDetalle(${p.id})">
     <div class="person-avatar"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
     <div class="p-info">
@@ -1612,7 +1613,7 @@ function renderTherapistProfileView(){
       <div class="dsec">
         <div class="sec-title">Perfil visible</div>
         <div style="display:flex;gap:12px;align-items:center;margin-top:.5rem">
-          <div class="person-avatar"><img src="${escAttr(p.logoUrl||'Assets/Branding/LogoClaim-Color-.svg')}" alt="Logo"></div>
+          <div class="person-avatar"><img src="${escAttr(p.logoUrl||'Assets/Branding/Logo-Reducido-Alt.svg')}" alt="Logo"></div>
           <div>
             <div style="font-family:'Lora',serif;font-size:20px;color:var(--ink)">${escAttr(displayName)}</div>
             <div style="font-size:12px;color:var(--ink-light)">${escAttr(summaryLabel)}</div>
@@ -1648,7 +1649,7 @@ function renderTherapistProfileView(){
           <option value="quincenal"${p.defaultPaymentMode==='quincenal'?' selected':''}>Quincenal</option>
           <option value="inicio"${p.defaultPaymentMode==='inicio'?' selected':''}>Inicio de mes</option>
         </select></div>
-        <div class="form-group"><label class="form-label">Logo URL (opcional)</label><input class="form-input" id="tp-logo-url" value="${escAttr(p.logoUrl)}" placeholder="Assets/Branding/LogoClaim-Color-.svg"></div>
+        <div class="form-group"><label class="form-label">Logo (imagen)</label><input class="form-input" id="tp-logo-file" type="file" accept="image/*" onchange="handleLogoUpload()"></div>
         <div class="form-group form-full" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" id="tp-first-free" ${p.firstSessionNoChargeDefault?'checked':''}>
           <label class="form-label" for="tp-first-free" style="margin:0">Primera sesión sin costo por default</label>
@@ -1657,6 +1658,17 @@ function renderTherapistProfileView(){
       </div>
       <div class="modal-footer" style="margin-top:1rem"><button class="btn-primary" onclick="saveTherapistProfile()">Guardar perfil</button></div>
     </div>`;
+}
+
+function handleLogoUpload(){
+  const fileInput=document.getElementById('tp-logo-file');
+  const file=fileInput?.files?.[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    window.__logoUrlData=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function saveTherapistProfile(){
@@ -1677,11 +1689,12 @@ function saveTherapistProfile(){
     defaultSessionRate:parseInt(document.getElementById('tp-rate').value)||0,
     defaultPaymentMode:document.getElementById('tp-payment').value,
     firstSessionNoChargeDefault:document.getElementById('tp-first-free').checked,
-    logoUrl:document.getElementById('tp-logo-url').value.trim(),
+    logoUrl:window.__logoUrlData||p.logoUrl||'',
     bio:document.getElementById('tp-bio').value.trim()
   });
   applyTherapistProfileDisplay();
   saveState();
+  window.__logoUrlData=null;
   renderTherapistProfileView();
   alert('Perfil del terapeuta guardado.');
 }
@@ -1710,11 +1723,11 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="dsec"><div class="sec-title">Sin sesiones en agenda para hoy</div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.5rem">No hay sesiones de horario fijo registradas hoy. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p></div>`;
+    el.innerHTML=`<div class="dsec"><div class="sec-title">Sin sesiones en agenda para hoy</div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.5rem">No hay sesiones de horario fijo registradas hoy. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p><button class="btn-primary" style="margin-top:1rem" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div>`;
     return;
   }
 
-  el.innerHTML=`<div class="dsec" style="margin-bottom:10px"><div class="sec-title">${new Date(todayStr+'T12:00').toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'long'})}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Registra asistencia y pago por sesión. Esto se refleja en el calendario del paciente.</p></div>
+  el.innerHTML=`<div class="dsec" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start"><div><div class="sec-title">${new Date(todayStr+'T12:00').toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'long'})}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Registra asistencia y pago por sesión. Esto se refleja en el calendario del paciente.</p></div><button class="btn-ghost" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
     const tipoActual=r.ses?.tipo&&['asistio','falta','cancelada','reposicion'].includes(r.ses.tipo)?r.ses.tipo:'asistio';
@@ -3219,6 +3232,63 @@ function guardarNuevo(){
   saveState();
   closeModal();renderPatients();
 }
+
+function openUnplannedSessionModal(){
+  const todayStr=today();
+  const activos=activePatients();
+  if(!activos.length){
+    alert('No hay pacientes activos para agregar sesión.');
+    return;
+  }
+  document.getElementById('modal-title').textContent='Agregar sesión no prevista';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label class="form-label">Paciente</label>
+        <select class="form-input" id="unplanned-patient">
+          <option value="">—  Selecciona un paciente  —</option>
+          ${activos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group form-full">
+        <label class="form-label">Hora</label>
+        <input class="form-input" id="unplanned-hora" type="time" value="10:00">
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:1rem">
+      <button class="btn-sec" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveUnplannedSession()">Agregar sesión</button>
+    </div>
+  `;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function saveUnplannedSession(){
+  const pid=document.getElementById('unplanned-patient').value;
+  const hora=document.getElementById('unplanned-hora').value;
+  if(!pid){alert('Selecciona un paciente.');return;}
+  if(!hora){alert('Ingresa una hora.');return;}
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const todayStr=today();
+  if(isBeforeTreatmentStart(p,todayStr)){
+    alert('No puedes registrar sesiones antes del inicio de tratamiento.');
+    return;
+  }
+  p.sesiones.push({
+    id:'s'+(nextSesId++),
+    num:Math.max(...p.sesiones.map(s=>s.num||0))+1,
+    fecha:todayStr,
+    hora:hora,
+    tipo:'asistio'
+  });
+  addLog(p,'sesiones',`Sesión no prevista registrada a las ${hora}`);
+  saveState();
+  closeModal();
+  renderHoy();
+  alert('Sesión no prevista agregada.');
+}
+
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
 function closeModalOut(e){ /* overlay click no cierra modal */ }
 
