@@ -525,7 +525,15 @@ body.auth-locked .auth-screen{display:flex}
         return;
       }
       tries++;
-      if(tries<maxTries) setTimeout(tick,100);
+      if(tries<maxTries){
+        setTimeout(tick,100);
+        return;
+      }
+      const msg=document.getElementById('auth-message');
+      if(msg){
+        msg.className='auth-msg show error';
+        msg.textContent='No pude iniciar el módulo de acceso. Recarga con Ctrl+F5 e intenta de nuevo.';
+      }
     };
     tick();
   }
@@ -1159,7 +1167,10 @@ function unlockApp(){
 
 async function submitAuth(){
   if(!firebaseReady||!auth){
-    showAuthMessage('Falta configurar Firebase. Necesito apiKey, authDomain, projectId y appId del proyecto.', 'error');
+    try { await initFirebase(); } catch(err){ console.error(err); }
+  }
+  if(!firebaseReady||!auth){
+    showAuthMessage('No pude inicializar Firebase. Revisa conexión y dominio autorizado.', 'error');
     return;
   }
   const email=document.getElementById('auth-email').value.trim();
@@ -1182,7 +1193,10 @@ async function submitAuth(){
 }
 
 async function sendPasswordReset(){
-  if(!firebaseReady||!auth){showAuthMessage('Falta configurar Firebase para recuperar contraseña.', 'error');return;}
+  if(!firebaseReady||!auth){
+    try { await initFirebase(); } catch(err){ console.error(err); }
+  }
+  if(!firebaseReady||!auth){showAuthMessage('No pude inicializar Firebase para recuperar contraseña.', 'error');return;}
   const email=document.getElementById('auth-email').value.trim();
   if(!email){showAuthMessage('Escribe tu correo para enviarte un enlace de recuperación.', 'error');return;}
   try {
@@ -1203,12 +1217,18 @@ function mapFirebaseError(err){
   return {
     'auth/invalid-credential':'Correo o contraseña incorrectos.',
     'auth/email-already-in-use':'Ese correo ya tiene una cuenta.',
+    'auth/operation-not-allowed':'El acceso con correo/contraseña no está habilitado en Firebase.',
+    'auth/user-disabled':'Esta cuenta está deshabilitada.',
+    'auth/user-not-found':'No existe una cuenta con ese correo.',
+    'auth/wrong-password':'La contraseña es incorrecta.',
+    'auth/invalid-api-key':'La API key de Firebase es inválida.',
+    'auth/app-not-authorized':'Este dominio no está autorizado en Firebase Authentication.',
     'auth/invalid-email':'El correo no es válido.',
     'auth/weak-password':'La contraseña debe tener al menos 6 caracteres.',
     'auth/missing-password':'Escribe una contraseña.',
     'auth/network-request-failed':'No hubo conexión con Firebase.',
     'auth/too-many-requests':'Demasiados intentos. Intenta más tarde.'
-  }[code]||'No pude completar la autenticación. Revisa la configuración de Firebase.';
+  }[code]||(`No pude completar la autenticación. Código: ${code||'desconocido'}`);
 }
 
 async function handleAuthStateChanged(user){
@@ -1229,6 +1249,12 @@ async function handleAuthStateChanged(user){
 async function initFirebase(){
   bindAuthTabs();
   switchAuthMode('login');
+  if(typeof firebase==='undefined'){
+    firebaseReady=false;
+    showAuthMessage('No cargaron las librerías de Firebase. Revisa conexión a Internet o bloqueo del navegador.', 'error');
+    setSyncStatus('Firebase no disponible');
+    return;
+  }
   const config=requiredFirebaseConfig(window.FIREBASE_CONFIG)?window.FIREBASE_CONFIG:FIREBASE_CONFIG_FALLBACK;
   if(!requiredFirebaseConfig(config)){
     firebaseConfigMissing=true;
