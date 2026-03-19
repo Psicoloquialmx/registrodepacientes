@@ -587,8 +587,6 @@ body.auth-locked .auth-screen{display:flex}
       nameInput.addEventListener('keydown',submitOnEnter);
       nameInput.dataset.authFallbackBound='1';
     }
-    window.__authActionsBound=true;
-    window.__authTabsBound=true;
     setMode('login');
   }
   if(document.readyState==='loading'){
@@ -1026,28 +1024,32 @@ function bindAuthTabs(){
   const resetBtn=document.getElementById('auth-reset');
   const pwdInput=document.getElementById('auth-password');
   const nameInput=document.getElementById('auth-name');
-  if(!window.__authTabsBound){
-    if(loginTab){
-      loginTab.addEventListener('click',()=>switchAuthMode('login'));
-    }
-    if(registerTab){
-      registerTab.addEventListener('click',()=>switchAuthMode('register'));
-    }
-    window.__authTabsBound=true;
+  if(loginTab && !loginTab.dataset.authMainBound){
+    loginTab.addEventListener('click',()=>switchAuthMode('login'));
+    loginTab.dataset.authMainBound='1';
   }
-  if(!window.__authActionsBound){
-    if(submitBtn){
-      submitBtn.addEventListener('click',submitAuth);
-    }
-    if(resetBtn){
-      resetBtn.addEventListener('click',sendPasswordReset);
-    }
-    const submitOnEnter=e=>{
-      if(e.key==='Enter') submitAuth();
-    };
-    if(pwdInput) pwdInput.addEventListener('keydown',submitOnEnter);
-    if(nameInput) nameInput.addEventListener('keydown',submitOnEnter);
-    window.__authActionsBound=true;
+  if(registerTab && !registerTab.dataset.authMainBound){
+    registerTab.addEventListener('click',()=>switchAuthMode('register'));
+    registerTab.dataset.authMainBound='1';
+  }
+  if(submitBtn && !submitBtn.dataset.authMainBound){
+    submitBtn.addEventListener('click',submitAuth);
+    submitBtn.dataset.authMainBound='1';
+  }
+  if(resetBtn && !resetBtn.dataset.authMainBound){
+    resetBtn.addEventListener('click',sendPasswordReset);
+    resetBtn.dataset.authMainBound='1';
+  }
+  const submitOnEnter=e=>{
+    if(e.key==='Enter') submitAuth();
+  };
+  if(pwdInput && !pwdInput.dataset.authMainBound){
+    pwdInput.addEventListener('keydown',submitOnEnter);
+    pwdInput.dataset.authMainBound='1';
+  }
+  if(nameInput && !nameInput.dataset.authMainBound){
+    nameInput.addEventListener('keydown',submitOnEnter);
+    nameInput.dataset.authMainBound='1';
   }
 }
 
