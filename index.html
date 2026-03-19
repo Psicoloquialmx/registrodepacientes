@@ -65,6 +65,7 @@ body.auth-locked .auth-screen{display:flex}
 /* ── MAIN ── */
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
 .topbar{background:white;padding:1rem 1.75rem;border-bottom:1px solid #ede9e6;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.topbar-left{display:flex;align-items:center;gap:1rem}
 .topbar-left{display:flex;flex-direction:column;min-width:0}
 .page-title{font-family:'Lora',serif;font-size:18px;font-weight:600;color:var(--ink)}
 .page-sub{font-size:12px;color:var(--ink-light);margin-top:1px}
@@ -375,8 +376,37 @@ body.auth-locked .auth-screen{display:flex}
   .profile-grid{grid-template-columns:1fr}
 }
 
+/* ── MOBILE MENU ── */
+@media (max-width:768px){
+  .app{position:relative}
+  .sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform .3s ease;box-shadow:2px 0 8px rgba(0,0,0,.15)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.4);display:none}
+  .sidebar-overlay.open{display:block}
+  .main{width:100%}
+  .topbar .menu-toggle{display:flex !important;align-items:center;justify-content:center;width:40px;height:40px;background:rgba(0,0,0,.05);border:1px solid #ede9e6;border-radius:8px;color:var(--ink);cursor:pointer;font-size:18px;margin-right:8px;margin-left:auto;border:none;font-family:inherit}
+  .topbar .menu-toggle:hover{background:rgba(0,0,0,.08)}
+}
+
+@media (min-width:769px){
+  .topbar .menu-toggle{display:none !important}
+}
+
+/* ── MOBILE MENU ── */
+@media (max-width:768px){
+  .app{position:relative}
+  .sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform .3s ease;box-shadow:2px 0 8px rgba(0,0,0,.15)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.4);display:none}
+  .sidebar-overlay.open{display:block}
+  .main{width:100%}
+  .topbar .menu-toggle{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:rgba(0,0,0,.05);border:1px solid #ede9e6;border-radius:8px;color:var(--ink);cursor:pointer;font-size:18px;margin-right:8px}
+  .topbar .menu-toggle:hover{background:rgba(0,0,0,.08)}
+}
+
 </style>
 </head>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
 <body class="auth-locked">
 <div class="auth-screen" id="auth-screen">
   <div class="auth-shell">
@@ -411,7 +441,7 @@ body.auth-locked .auth-screen{display:flex}
     <div class="sidebar-header">
       <div class="brand">
         <div class="brand-dot"><img class="brand-logo" id="brand-logo" src="Assets/Branding/LogoClaim-Color-.svg" alt="Psicoloquial"></div>
-        <div><div class="brand-name" id="brand-name">Sebastián</div><div class="brand-role" id="brand-role">Psicoanalista</div></div>
+        <div><div class="brand-name" id="brand-name"></div><div class="brand-role" id="brand-role"></div></div>
       </div>
       <div class="sidebar-auth">
         <div class="sidebar-auth-email" id="sidebar-user-email">Sin sesión</div>
@@ -441,7 +471,7 @@ body.auth-locked .auth-screen{display:flex}
   <div class="main">
     <div id="view-hoy" class="view active">
       <div class="topbar">
-        <div class="topbar-left"><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
+        <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()" style="margin-right:auto">☰</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
       </div>
       <div class="content" id="hoy-content"></div>
     </div>
@@ -941,6 +971,7 @@ let therapistProfile={};
 let saveTimer=null;
 let isHydrating=false;
 let firebaseConfigMissing=false;
+let forceProfileSetupOnNextAuth=false;
 const FIREBASE_CONFIG_FALLBACK={
   apiKey:'AIzaSyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI',
   authDomain:'registro-de-pacientes-f729f.firebaseapp.com',
@@ -952,8 +983,8 @@ const FIREBASE_CONFIG_FALLBACK={
 
 function getDefaultTherapistProfile(){
   return {
-    displayName:'Sebastián',
-    profession:'Psicoanalista',
+    displayName:'',
+    profession:'',
     pronouns:'',
     specialty:'',
     bio:'',
@@ -975,8 +1006,8 @@ function normalizeTherapistProfile(raw){
   return {
     ...base,
     ...data,
-    displayName:(data.displayName||base.displayName).toString().trim()||base.displayName,
-    profession:(data.profession||base.profession).toString().trim()||base.profession,
+    displayName:(data.displayName||'').toString().trim(),
+    profession:(data.profession||'').toString().trim(),
     pronouns:(data.pronouns||'').toString().trim(),
     specialty:(data.specialty||'').toString().trim(),
     bio:(data.bio||'').toString().trim(),
@@ -992,6 +1023,11 @@ function normalizeTherapistProfile(raw){
   };
 }
 
+function therapistProfileNeedsSetup(){
+  const p=normalizeTherapistProfile(therapistProfile);
+  return !p.displayName||!p.profession;
+}
+
 function escAttr(v){
   return String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -1001,8 +1037,8 @@ function applyTherapistProfileDisplay(){
   therapistProfile=p;
   const nameEl=document.getElementById('brand-name');
   const roleEl=document.getElementById('brand-role');
-  if(nameEl) nameEl.textContent=p.displayName;
-  if(roleEl) roleEl.textContent=p.profession;
+  if(nameEl) nameEl.textContent=p.displayName||'Completa tu perfil';
+  if(roleEl) roleEl.textContent=p.profession||'Sin profesión configurada';
   const logoEl=document.getElementById('brand-logo');
   if(logoEl){
     logoEl.src=p.logoUrl||'Assets/Branding/LogoClaim-Color-.svg';
@@ -1202,6 +1238,7 @@ async function submitAuth(){
       await auth.signInWithEmailAndPassword(email,password);
     } else {
       const cred=await auth.createUserWithEmailAndPassword(email,password);
+      forceProfileSetupOnNextAuth=true;
       if(name) await cred.user.updateProfile({displayName:name});
     }
     showAuthMessage('');
@@ -1280,6 +1317,14 @@ async function handleAuthStateChanged(user){
   }
   unlockApp();
   await hydrateUserStore(user.uid);
+  if(forceProfileSetupOnNextAuth||therapistProfileNeedsSetup()){
+    forceProfileSetupOnNextAuth=false;
+    showView('perfil');
+    if(therapistProfileNeedsSetup()){
+      alert('Antes de continuar, completa tu perfil profesional (nombre y profesión).');
+    }
+    return;
+  }
   showView('hoy');
 }
 
@@ -1465,6 +1510,22 @@ function textoPeriodo(period){
 }
 
 // ── SIDEBAR BADGE ────────────────────────────────────────────
+function toggleSidebarMobile(){
+  const sidebar=document.querySelector('.sidebar');
+  const overlay=document.getElementById('sidebar-overlay');
+  if(!sidebar) return;
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+}
+
+function closeSidebarMobile(){
+  const sidebar=document.querySelector('.sidebar');
+  const overlay=document.getElementById('sidebar-overlay');
+  if(!sidebar) return;
+  sidebar.classList.remove('open');
+  overlay.classList.remove('open');
+}
+
 function updateSidebarBadge(){
   const total=totalPendientesHoy();
   const existing=document.querySelector('#nav-pacientes .nav-badge');
@@ -1544,6 +1605,8 @@ function renderTherapistProfileView(){
   const p=normalizeTherapistProfile(therapistProfile);
   const clinicLabel=p.clinicName||'Consultorio';
   const summaryParts=[p.profession,p.specialty,p.pronouns].filter(Boolean).join(' · ');
+  const displayName=p.displayName||'Completa tu perfil';
+  const summaryLabel=summaryParts||'Nombre y profesión pendientes';
   document.getElementById('profile-content').innerHTML=`
     <div class="profile-grid">
       <div class="dsec">
@@ -1551,8 +1614,8 @@ function renderTherapistProfileView(){
         <div style="display:flex;gap:12px;align-items:center;margin-top:.5rem">
           <div class="person-avatar"><img src="${escAttr(p.logoUrl||'Assets/Branding/LogoClaim-Color-.svg')}" alt="Logo"></div>
           <div>
-            <div style="font-family:'Lora',serif;font-size:20px;color:var(--ink)">${escAttr(p.displayName)}</div>
-            <div style="font-size:12px;color:var(--ink-light)">${escAttr(summaryParts||p.profession)}</div>
+            <div style="font-family:'Lora',serif;font-size:20px;color:var(--ink)">${escAttr(displayName)}</div>
+            <div style="font-size:12px;color:var(--ink-light)">${escAttr(summaryLabel)}</div>
             <div style="font-size:11px;color:var(--ink-light);margin-top:2px">${escAttr(clinicLabel)} · ${escAttr(p.currency)} · ${escAttr(p.timezone)}</div>
           </div>
         </div>
@@ -1753,6 +1816,20 @@ function showView(v){
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   const n=document.getElementById('nav-'+v);if(n) n.classList.add('active');
+  closeSidebarMobile();
+  
+  // Asegurar que todos los topbar-left tengan el botón hamburguesa
+  document.querySelectorAll('.view.active .topbar-left').forEach(tl=>{
+    if(!tl.querySelector('.menu-toggle')){
+      const btn=document.createElement('button');
+      btn.className='menu-toggle';
+      btn.textContent='☰';
+      btn.style.marginRight='auto';
+      btn.onclick=toggleSidebarMobile;
+      tl.insertBefore(btn, tl.firstChild);
+    }
+  });
+  
   if(v==='pacientes'||v==='inactivos') lastPatientListView=v;
   if(v==='hoy') renderHoy();
   if(v==='pacientes') renderPatients();
