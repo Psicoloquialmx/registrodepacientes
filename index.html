@@ -515,10 +515,39 @@ body.auth-locked .auth-screen{display:flex}
     if(resetBtn) resetBtn.style.display=mode==='login'?'inline-flex':'none';
   }
   window.__authUiSetMode=setMode;
+  function callWhenReady(fnName){
+    const maxTries=30;
+    let tries=0;
+    const tick=()=>{
+      const fn=window[fnName];
+      if(typeof fn==='function'){
+        fn();
+        return;
+      }
+      tries++;
+      if(tries<maxTries) setTimeout(tick,100);
+    };
+    tick();
+  }
   function bind(){
     const tabs=document.getElementById('auth-tabs');
     const loginTab=document.getElementById('auth-tab-login');
     const registerTab=document.getElementById('auth-tab-register');
+    const submitBtn=document.getElementById('auth-submit');
+    const resetBtn=document.getElementById('auth-reset');
+    const pwdInput=document.getElementById('auth-password');
+    const nameInput=document.getElementById('auth-name');
+    const doSubmit=e=>{
+      if(e) e.preventDefault();
+      callWhenReady('submitAuth');
+    };
+    const doReset=e=>{
+      if(e) e.preventDefault();
+      callWhenReady('sendPasswordReset');
+    };
+    const submitOnEnter=e=>{
+      if(e.key==='Enter') doSubmit(e);
+    };
     if(tabs){
       tabs.addEventListener('click',e=>{
         const btn=e.target.closest('[data-auth-mode]');
@@ -526,8 +555,32 @@ body.auth-locked .auth-screen{display:flex}
         setMode(btn.getAttribute('data-auth-mode'));
       });
     }
-    if(loginTab) loginTab.addEventListener('click',()=>setMode('login'));
-    if(registerTab) registerTab.addEventListener('click',()=>setMode('register'));
+    if(loginTab && !loginTab.dataset.authFallbackBound){
+      loginTab.addEventListener('click',()=>setMode('login'));
+      loginTab.dataset.authFallbackBound='1';
+    }
+    if(registerTab && !registerTab.dataset.authFallbackBound){
+      registerTab.addEventListener('click',()=>setMode('register'));
+      registerTab.dataset.authFallbackBound='1';
+    }
+    if(submitBtn && !submitBtn.dataset.authFallbackBound){
+      submitBtn.addEventListener('click',doSubmit);
+      submitBtn.dataset.authFallbackBound='1';
+    }
+    if(resetBtn && !resetBtn.dataset.authFallbackBound){
+      resetBtn.addEventListener('click',doReset);
+      resetBtn.dataset.authFallbackBound='1';
+    }
+    if(pwdInput && !pwdInput.dataset.authFallbackBound){
+      pwdInput.addEventListener('keydown',submitOnEnter);
+      pwdInput.dataset.authFallbackBound='1';
+    }
+    if(nameInput && !nameInput.dataset.authFallbackBound){
+      nameInput.addEventListener('keydown',submitOnEnter);
+      nameInput.dataset.authFallbackBound='1';
+    }
+    window.__authActionsBound=true;
+    window.__authTabsBound=true;
     setMode('login');
   }
   if(document.readyState==='loading'){
@@ -957,23 +1010,29 @@ function bindAuthTabs(){
   const resetBtn=document.getElementById('auth-reset');
   const pwdInput=document.getElementById('auth-password');
   const nameInput=document.getElementById('auth-name');
-  if(loginTab){
-    loginTab.addEventListener('click',()=>switchAuthMode('login'));
+  if(!window.__authTabsBound){
+    if(loginTab){
+      loginTab.addEventListener('click',()=>switchAuthMode('login'));
+    }
+    if(registerTab){
+      registerTab.addEventListener('click',()=>switchAuthMode('register'));
+    }
+    window.__authTabsBound=true;
   }
-  if(registerTab){
-    registerTab.addEventListener('click',()=>switchAuthMode('register'));
+  if(!window.__authActionsBound){
+    if(submitBtn){
+      submitBtn.addEventListener('click',submitAuth);
+    }
+    if(resetBtn){
+      resetBtn.addEventListener('click',sendPasswordReset);
+    }
+    const submitOnEnter=e=>{
+      if(e.key==='Enter') submitAuth();
+    };
+    if(pwdInput) pwdInput.addEventListener('keydown',submitOnEnter);
+    if(nameInput) nameInput.addEventListener('keydown',submitOnEnter);
+    window.__authActionsBound=true;
   }
-  if(submitBtn){
-    submitBtn.addEventListener('click',submitAuth);
-  }
-  if(resetBtn){
-    resetBtn.addEventListener('click',sendPasswordReset);
-  }
-  const submitOnEnter=e=>{
-    if(e.key==='Enter') submitAuth();
-  };
-  if(pwdInput) pwdInput.addEventListener('keydown',submitOnEnter);
-  if(nameInput) nameInput.addEventListener('keydown',submitOnEnter);
 }
 
 function showAuthMessage(text,type='info'){
