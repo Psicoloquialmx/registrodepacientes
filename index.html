@@ -1253,11 +1253,19 @@ function mapFirebaseError(err){
     'auth/invalid-api-key':'La API key de Firebase es inválida.',
     'auth/app-not-authorized':'Este dominio no está autorizado en Firebase Authentication.',
     'auth/invalid-email':'El correo no es válido.',
+    'auth/invalid-user-token':'La sesión guardada no es válida. Inicia sesión de nuevo.',
+    'auth/user-token-expired':'Tu sesión expiró. Inicia sesión de nuevo.',
     'auth/weak-password':'La contraseña debe tener al menos 6 caracteres.',
     'auth/missing-password':'Escribe una contraseña.',
     'auth/network-request-failed':'No hubo conexión con Firebase.',
     'auth/too-many-requests':'Demasiados intentos. Intenta más tarde.'
   }[code]||(`No pude completar la autenticación. Código: ${code||'desconocido'}`);
+}
+
+function isRecoverableAuthBootError(err){
+  const msg=String(err?.message||'');
+  const code=String(err?.code||'');
+  return /invalid_grant|INVALID_REFRESH_TOKEN|TOKEN_EXPIRED|user-token-expired|invalid-user-token/i.test(`${code} ${msg}`);
 }
 
 async function handleAuthStateChanged(user){
@@ -1307,7 +1315,23 @@ async function initFirebase(){
   db=firebase.firestore();
   firebaseReady=true;
   await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-  auth.onAuthStateChanged(user=>{handleAuthStateChanged(user).catch(err=>{console.error(err);showAuthMessage('No pude cargar la sesión.', 'error');});});
+  auth.onAuthStateChanged(async user=>{
+    try {
+      if(user){
+        await user.getIdToken();
+      }
+      await handleAuthStateChanged(user);
+    } catch(err){
+      console.error(err);
+      if(isRecoverableAuthBootError(err)){
+        try { await auth.signOut(); } catch(_e) {}
+        showAuthMessage('Tu sesión anterior expiró. Inicia sesión de nuevo.', 'info');
+        setSyncStatus('Esperando inicio de sesión');
+        return;
+      }
+      showAuthMessage('No pude cargar la sesión.', 'error');
+    }
+  });
 }
 
 function activePatients(){return patients.filter(p=>p.status!=='inactive');}
