@@ -2617,7 +2617,6 @@ function buildEditPanel(p){
   normalizePatient(p);
   const tv=tarifaVigente(p);
   const diasBtns=DIAS.map((d,i)=>`<button class="day-btn${p.dias.includes(i)?' sel':''}" onclick="toggleDayEdit(this,${i})" data-d="${i}">${d}</button>`).join('');
-    const diasBtns=DIAS.map((d,i)=>`<button class="day-btn${p.dias.includes(i)?' sel':''}" onclick="toggleDayEdit(this,${i})" data-d="${i}">${d}</button>`).join('');
   const horasRows=p.dias.map(i=>`<div class="hora-dia-row" id="hora-row-${i}"><span class="hora-dia-label">${DIAS_FULL[i]}</span><input class="hora-dia-input" id="hora-${i}" type="time" value="${horaDia(p,i)}"></div>`).join('');
   const freqActual=frecuenciaVigenteEnFecha(p,today());
   const frecuenciasHtml=p.frecuencias.map((f,index)=>`<div class="freq-item"><div><div>${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana</div><div class="freq-meta">Desde ${f.desde}</div></div>${index===0?'':`<button class="btn-ghost" onclick="deleteFrecuencia(${p.id},'${f.desde}')">Eliminar</button>`}</div>`).join('');
