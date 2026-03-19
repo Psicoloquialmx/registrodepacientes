@@ -386,24 +386,36 @@ input[type="file"].form-input{cursor:pointer}
   .sidebar-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.4);display:none}
   .sidebar-overlay.open{display:block}
   .main{width:100%}
-  .topbar .menu-toggle{display:flex !important;align-items:center;justify-content:center;width:40px;height:40px;background:rgba(0,0,0,.05);border:1px solid #ede9e6;border-radius:8px;color:var(--ink);cursor:pointer;font-size:18px;margin-right:8px;margin-left:auto;border:none;font-family:inherit}
+  .topbar{padding:.75rem 1rem}
+  .topbar-left{flex-direction:row;align-items:center;gap:.6rem}
+  .topbar-left .page-sub{display:none}
+  .topbar-left .page-title{font-size:16px;line-height:1.2}
+  .topbar .menu-toggle{display:flex !important;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(0,0,0,.05);border:1px solid #ede9e6;border-radius:8px;color:var(--ink);cursor:pointer;font-size:18px;margin-right:6px;border:none;font-family:inherit;flex-shrink:0}
   .topbar .menu-toggle:hover{background:rgba(0,0,0,.08)}
+
+  /* Perfil de paciente en móvil: evitar layout roto y scroll horizontal */
+  #view-detalle .topbar{flex-wrap:wrap;align-items:flex-start;gap:.5rem}
+  #view-detalle .back-btn{order:1}
+  #view-detalle .topbar-left{order:2;width:100%;flex-direction:column;align-items:flex-start;gap:.2rem;text-align:left !important}
+  #view-detalle .topbar-left .page-sub{display:block}
+  #view-detalle .page-title{font-size:17px;line-height:1.2;word-break:break-word}
+  #view-detalle .page-sub{font-size:12px;line-height:1.35;word-break:break-word}
+  #view-detalle .content{padding:1rem;overflow-x:hidden}
+
+  .detail-hero{padding:1rem;flex-direction:column;align-items:flex-start;gap:.75rem}
+  .hero-name,.hero-sub{word-break:break-word}
+  .detail-grid{grid-template-columns:1fr}
+  .dsec{padding:.95rem}
+  .drow{align-items:flex-start;gap:10px}
+  .dkey,.dval{font-size:12px}
+  .dval{text-align:left;word-break:break-word}
+  .form-grid{grid-template-columns:1fr}
+  .hora-dia-row{flex-wrap:wrap}
+  .hora-dia-label{min-width:0}
 }
 
 @media (min-width:769px){
   .topbar .menu-toggle{display:none !important}
-}
-
-/* ── MOBILE MENU ── */
-@media (max-width:768px){
-  .app{position:relative}
-  .sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform .3s ease;box-shadow:2px 0 8px rgba(0,0,0,.15)}
-  .sidebar.open{transform:translateX(0)}
-  .sidebar-overlay{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.4);display:none}
-  .sidebar-overlay.open{display:block}
-  .main{width:100%}
-  .topbar .menu-toggle{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:rgba(0,0,0,.05);border:1px solid #ede9e6;border-radius:8px;color:var(--ink);cursor:pointer;font-size:18px;margin-right:8px}
-  .topbar .menu-toggle:hover{background:rgba(0,0,0,.08)}
 }
 
 </style>
@@ -473,7 +485,7 @@ input[type="file"].form-input{cursor:pointer}
   <div class="main">
     <div id="view-hoy" class="view active">
       <div class="topbar">
-        <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()" style="margin-right:auto">☰</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
+        <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()">☰</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
       </div>
       <div class="content" id="hoy-content"></div>
     </div>
@@ -1754,7 +1766,7 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="dsec"><div class="sec-title">Sin sesiones en agenda para hoy</div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.5rem">No hay sesiones de horario fijo registradas hoy. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p><button class="btn-primary" style="margin-top:1rem" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div>`;
+    el.innerHTML=`<div class="dsec"><div class="sec-title">Sin sesiones en agenda para hoy</div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones hoy"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas hoy. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p><button class="btn-primary" style="margin-top:1rem" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div>`;
     return;
   }
 
@@ -1868,7 +1880,7 @@ function showView(v){
       const btn=document.createElement('button');
       btn.className='menu-toggle';
       btn.textContent='☰';
-      btn.style.marginRight='auto';
+      btn.style.marginRight='0';
       btn.onclick=toggleSidebarMobile;
       tl.insertBefore(btn, tl.firstChild);
     }
