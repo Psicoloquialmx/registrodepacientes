@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Registro de Sesiones</title>
+<link rel="icon" type="image/png" href="Assets/Branding/Redes-PNG/Redes-Color1.png">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -23,6 +24,7 @@
   --sage-soft:rgba(165,196,188,.24);
   --blush-soft:rgba(247,204,232,.34);
 }
+html,body{max-width:100%;overflow-x:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .app{display:flex;min-height:100vh}
 body.auth-locked .app{display:none}
@@ -80,7 +82,7 @@ body.auth-locked .auth-screen{display:flex}
 .topbar-left{display:flex;flex-direction:column;min-width:0}
 .page-title{font-family:'Lora',serif;font-size:18px;font-weight:600;color:var(--ink)}
 .page-sub{font-size:12px;color:var(--ink-light);margin-top:1px}
-.content{padding:1.5rem 1.75rem;flex:1;overflow-y:auto;background:var(--bg);padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))}
+.content{padding:1.5rem 1.75rem;flex:1;overflow-y:auto;background:var(--bg);padding-left:calc(1.75rem + env(safe-area-inset-left,0px));padding-right:calc(1.75rem + env(safe-area-inset-right,0px));padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))}
 .view{display:none}.view.active{display:block}
 
 /* ── BUTTONS ── */
@@ -176,6 +178,8 @@ input[type="file"].form-input{cursor:pointer}
 .detail-hero{background:white;border:1px solid #ede9e6;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:16px}
 /* Hero usa axolote feliz/pensativo — NUNCA triste */
 .hero-axo{width:80px;height:80px;object-fit:contain;flex-shrink:0}
+.detail-hero-main{flex:1;min-width:0}
+.detail-hero-actions{display:flex;align-items:flex-start;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
 .hero-name{font-family:'Lora',serif;font-size:20px;font-weight:600;color:var(--ink)}
 .hero-sub{font-size:13px;color:var(--ink-light);margin-top:3px}
 
@@ -456,9 +460,13 @@ input[type="file"].form-input{cursor:pointer}
   #view-detalle .topbar-left .page-sub{display:block}
   #view-detalle .page-title{font-size:17px;line-height:1.2;word-break:break-word}
   #view-detalle .page-sub{font-size:12px;line-height:1.35;word-break:break-word}
-  #view-detalle .content{padding:1rem;overflow-x:hidden}
+  #view-detalle .content{padding:1rem;padding-left:calc(1rem + env(safe-area-inset-left,0px));padding-right:calc(1rem + env(safe-area-inset-right,0px));overflow-x:hidden}
 
-  .detail-hero{padding:1rem;flex-direction:column;align-items:flex-start;gap:.75rem}
+  .detail-hero{padding:1rem;display:grid;grid-template-columns:56px 1fr;align-items:start;column-gap:.75rem;row-gap:.65rem}
+  .hero-axo{width:56px;height:56px}
+  .detail-hero-main{align-self:center}
+  .detail-hero-actions{grid-column:1/-1;width:100%;justify-content:flex-start}
+  .detail-hero-actions .btn-sm{flex:1;min-width:140px}
   .hero-name,.hero-sub{word-break:break-word}
   .detail-grid{grid-template-columns:1fr}
   .dsec{padding:.95rem}
@@ -767,7 +775,7 @@ function axoProsp(r){ return 'Assets/Axolotl/Pensando-3.svg'; }
 
 // Silueta SVG — TODAS las listas, NUNCA axolote
 const PERSON_SVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>`;
-const PATIENT_PROFILE_IMG='Assets/Axolotl/Normal-3.svg';
+const PATIENT_PROFILE_IMG='Assets/Axolotl/Normal-2.svg';
 
 // ── Helpers ─────────────────────────────────────────────────
 function pagoLabel(p){return{sesion:'Por sesión',mensual:'Mensual',quincenal:'Quincenal',inicio:'Inicio de mes'}[p]||p}
@@ -3083,12 +3091,12 @@ function renderDetalle(p){
   document.getElementById('det-content').innerHTML=`
     ${alertaHtml}
     <div class="detail-hero">
-      <img src="${axoHero(p)}" class="hero-axo" alt="Axo-lotl">
-      <div style="flex:1;min-width:0">
+      <img src="Assets/Axolotl/Normal-2.svg" class="hero-axo" alt="Axo-lotl">
+      <div class="detail-hero-main">
         <div class="hero-name">${p.nombre}</div>
         <div class="hero-sub">${diasHoras} · Sesión #${n} · $${tv.toLocaleString('es-MX')}/sesión · ${p.status==='inactive'?'Inactivo':'Activo'}</div>
       </div>
-      <div style="display:flex;align-items:flex-start;gap:8px;flex-shrink:0">
+      <div class="detail-hero-actions">
         <button class="btn-sec btn-sm" onclick="exportPatientSummary(${p.id})">Exportar resumen</button>
         <button class="btn-danger btn-sm" onclick="deletePatient(${p.id})">Eliminar paciente</button>
       </div>
