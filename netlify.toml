@@ -2,3 +2,18 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/Assets/Branding/Logo-Reducido-Alt.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/Assets/Branding/Redes-PNG/Redes-Color1.png"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
