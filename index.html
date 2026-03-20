@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Registro de Sesiones</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -80,7 +80,7 @@ body.auth-locked .auth-screen{display:flex}
 .topbar-left{display:flex;flex-direction:column;min-width:0}
 .page-title{font-family:'Lora',serif;font-size:18px;font-weight:600;color:var(--ink)}
 .page-sub{font-size:12px;color:var(--ink-light);margin-top:1px}
-.content{padding:1.5rem 1.75rem;flex:1;overflow-y:auto;background:var(--bg)}
+.content{padding:1.5rem 1.75rem;flex:1;overflow-y:auto;background:var(--bg);padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))}
 .view{display:none}.view.active{display:block}
 
 /* ── BUTTONS ── */
@@ -202,7 +202,8 @@ input[type="file"].form-input{cursor:pointer}
 .cal-nav-title{font-family:'Lora',serif;font-size:15px;font-weight:600;color:var(--ink);text-transform:capitalize}
 .cal-nav-btn{background:none;border:1px solid #ddd;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:15px;color:var(--ink-light)}
 .cal-nav-btn:hover{background:var(--bg)}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-grid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(36px,1fr));gap:3px;min-width:280px}
 .cal-dow{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;padding:4px 0;text-transform:uppercase;letter-spacing:.04em}
 .cal-day{min-height:52px;border-radius:8px;padding:4px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
 .cal-day.other-month{opacity:.25}
@@ -284,6 +285,7 @@ input[type="file"].form-input{cursor:pointer}
 .pdate{color:var(--ink-light)}.pamt{font-weight:500;color:#2d7a6e}
 .pdel{background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;padding:0 2px;line-height:1}
 .pdel:hover{color:#c0392b}
+.deuda-desde-row{margin-bottom:.75rem}
 .reg-row{display:flex;gap:8px;align-items:flex-end;margin-top:.75rem}
 .inp-sm{padding:7px 10px;font-size:13px;border:1px solid #ddd;border-radius:8px;background:white;color:var(--ink);width:110px;font-family:'DM Sans',sans-serif}
 .inp-sm:focus{outline:none;border-color:var(--sage-dark)}
@@ -778,6 +780,19 @@ function isBeforeTreatmentStart(p,dateStr){
 function tarifaVigente(p){
   if(!p.tarifas||!p.tarifas.length) return p.tarifa;
   return [...p.tarifas].sort((a,b)=>b.desde.localeCompare(a.desde))[0].monto;
+}
+function tarifaEnFecha(p,fechaStr){
+  if(!p.tarifas||!p.tarifas.length) return p.tarifa||0;
+  const sorted=[...p.tarifas].sort((a,b)=>b.desde.localeCompare(a.desde));
+  const match=sorted.find(t=>t.desde<=fechaStr);
+  return match?match.monto:sorted[sorted.length-1].monto;
+}
+function calcBalanceDesde(p,fechaIso){
+  if(!fechaIso) return{cargos:p.adeudo+p.pagado,pagos:p.pagado,saldo:p.adeudo};
+  const billable=s=>!s.skipped&&!s.noCharge&&(s.tipo==='asistio'||s.tipo==='falta'||s.tipo==='reposicion'||s.tipo==='extra');
+  const cargos=p.sesiones.filter(s=>s.fecha>=fechaIso&&billable(s)).reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
+  const pagos=p.pagos.filter(py=>py.fecha>=fechaIso).reduce((sum,py)=>sum+py.monto,0);
+  return{cargos,pagos,saldo:Math.max(0,cargos-pagos)};
 }
 function shortName(nombre){
   if(!nombre) return '';
@@ -1447,7 +1462,7 @@ function bindInactivityHandlers(){
   const touch=()=>{
     if(currentUser) scheduleInactivityLogout();
   };
-  ['mousedown','keydown','touchstart','pointerdown','scroll'].forEach(evt=>{
+  ['mousedown','keydown','keyup','input','touchstart','touchend','pointerdown','scroll','change'].forEach(evt=>{
     document.addEventListener(evt,touch,{passive:true});
   });
   window.addEventListener('focus',touch);
@@ -1477,7 +1492,9 @@ async function handleAuthStateChanged(user){
     }
     return;
   }
-  showView('hoy');
+  let lastView='hoy';
+  try{const sv=sessionStorage.getItem('axo_last_view');if(sv&&document.getElementById('view-'+sv)) lastView=sv;}catch(e){}
+  showView(lastView);
 }
 
 async function initFirebase(){
@@ -1719,8 +1736,8 @@ function renderPatients(){
     const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
     const tv=tarifaVigente(p);
     const pend=sesionesPendientes(p).length;
-    const badge=p.adeudo>0?`<span class="badge b-debt">Debe $${p.adeudo.toLocaleString('es-MX')}</span>`:`<span class="badge b-ok">Al corriente</span>`;
-    const pendBadge=pend>0?`<span class="badge b-warn">${pend} sin registrar</span>`:'';
+    const badge=p.adeudo>0?`<span class="badge b-debt">Debe $${p.adeudo.toLocaleString('es-MX')}</span>`:`<span class="badge b-ok">Al corriente con los pagos</span>`;
+    const pendBadge=pend>0?`<span class="badge b-warn">${pend} asistencia${pend!==1?'s':''} sin registrar</span>`:'';
     const diasHoras=scheduleSummary(p,false);
     return `<div class="patient-card" onclick="showDetalle(${p.id})">
       <div class="person-avatar"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
@@ -1930,10 +1947,11 @@ function renderHoy(){
     const attendedYes=tipoActual==='asistio'||tipoActual==='reposicion'||tipoActual==='extra';
     const chargeOnMiss=attendedYes?true:tipoActual==='falta'?!r.ses?.noCharge:false;
     const paidYes=!!r.autoPay;
+    const esReposicion=tipoActual==='reposicion';
     return `<div class="today-card">
       <div class="today-head">
         <div>
-          <div class="today-name">${p.nombre}</div>
+          <div class="today-name">${p.nombre}${esReposicion?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
           <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} · ${pagoLabel(p.pago)}</div>
         </div>
         <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
@@ -2288,6 +2306,7 @@ function showView(v){
   document.getElementById('view-'+v).classList.add('active');
   const n=document.getElementById('nav-'+v);if(n) n.classList.add('active');
   closeSidebarMobile();
+  try{sessionStorage.setItem('axo_last_view',v);}catch(e){}
   
   // Asegurar que todos los topbar-left tengan el botón hamburguesa
   document.querySelectorAll('.view.active .topbar-left').forEach(tl=>{
@@ -2344,6 +2363,35 @@ function setDetallePeriod(period){
   detallePeriod=period;
   const p=patients.find(x=>x.id===curId);
   if(p) renderDetalle(p);
+}
+function updateDeudaDesdeDisplay(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  normalizePatient(p);
+  const fecha=document.getElementById('deuda-desde-in')?.value||p.inicio;
+  const bal=calcBalanceDesde(p,fecha);
+  const s=document.getElementById('pa-saldo-'+pid);
+  const pg=document.getElementById('pa-pagos-'+pid);
+  if(s) s.textContent='$'+bal.saldo.toLocaleString('es-MX');
+  if(pg) pg.textContent='$'+bal.pagos.toLocaleString('es-MX');
+}
+function guardarDeudaDesde(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const fecha=document.getElementById('deuda-desde-in')?.value;
+  if(!fecha) return;
+  p.deudaDesde=fecha;
+  addLog(p,'datos',`Fecha inicio cálculo de deuda: ${fecha}`);
+  saveState();
+  renderDetalle(p);
+}
+function resetDeudaDesde(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  delete p.deudaDesde;
+  addLog(p,'datos','Fecha de cálculo de deuda restablecida al inicio de tratamiento');
+  saveState();
+  renderDetalle(p);
 }
 
 function onEstDateChange(pid){
@@ -2909,7 +2957,7 @@ function buildCalendar(p){
     ${inactiveAlert}
     ${flexibleAlert}
     ${alertaCal}
-    <div class="cal-grid">${cells}</div>
+    <div class="cal-grid-wrap"><div class="cal-grid">${cells}</div></div>
     <div class="cal-legend">
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#d4ede8"></div>Asistió</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fde0cc"></div>Faltó paciente</div>
@@ -2941,6 +2989,7 @@ function renderDetalle(p){
   const cancels=p.sesiones.filter(s=>s.tipo==='cancelada').length;
   const repos=p.sesiones.filter(s=>s.tipo==='reposicion').length;
   const tv=tarifaVigente(p);
+  const balDesde=calcBalanceDesde(p,p.deudaDesde||null);
   const diasHoras=scheduleSummary(p,true);
   const pend=sesionesPendientes(p);
   const now=new Date();
@@ -3074,9 +3123,17 @@ function renderDetalle(p){
         </div>
         <div class="dsec">
           <div class="sec-title">Estado de cuenta</div>
+          <div class="deuda-desde-row">
+            <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Calcular desde</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <input class="inp-sm" type="date" id="deuda-desde-in" value="${p.deudaDesde||p.inicio}" onchange="updateDeudaDesdeDisplay(${p.id})">
+              <button class="btn-sec btn-sm" onclick="guardarDeudaDesde(${p.id})">Guardar fecha</button>
+              ${p.deudaDesde?`<button class="btn-ghost" style="font-size:11px" onclick="resetDeudaDesde(${p.id})">Restablecer inicio</button>`:''}
+            </div>
+          </div>
           <div class="pay-amounts">
-            <div><div class="pa-label">Adeudo</div><div class="pa-num pa-debt">$${p.adeudo.toLocaleString('es-MX')}</div></div>
-            <div><div class="pa-label">Pagado</div><div class="pa-num pa-paid">$${p.pagado.toLocaleString('es-MX')}</div></div>
+            <div><div class="pa-label">Adeudo</div><div class="pa-num pa-debt" id="pa-saldo-${p.id}">$${balDesde.saldo.toLocaleString('es-MX')}</div></div>
+            <div><div class="pa-label">Pagado</div><div class="pa-num pa-paid" id="pa-pagos-${p.id}">$${balDesde.pagos.toLocaleString('es-MX')}</div></div>
             <div><div class="pa-label">Tarifa</div><div class="pa-num pa-rate">$${tv.toLocaleString('es-MX')}</div></div>
           </div>
           <div class="reg-row">
