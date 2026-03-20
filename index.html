@@ -316,12 +316,14 @@ input[type="file"].form-input{cursor:pointer}
 .week-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
 .week-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .week-period{font-size:13px;color:var(--ink-light)}
-.month-grid{display:grid;grid-template-columns:repeat(7,minmax(140px,1fr));gap:6px;margin-top:.75rem;overflow-x:auto}
+.month-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.month-calendar{width:max(100%,980px)}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:.75rem}
 .month-cell{background:white;border:1px solid #ede9e6;border-radius:10px;padding:.55rem .45rem;min-height:120px}
 .month-cell.muted{background:#faf9f8;opacity:.75}
 .month-day{font-size:11px;font-weight:600;color:var(--ink);margin-bottom:6px}
 .month-day.muted{color:var(--ink-light)}
-.month-dow{display:grid;grid-template-columns:repeat(7,minmax(140px,1fr));gap:6px;color:var(--ink-light);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.month-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;color:var(--ink-light);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
 .month-dow div{text-align:center}
 
 /* ── RESUMEN ── */
@@ -466,8 +468,7 @@ input[type="file"].form-input{cursor:pointer}
   .form-grid{grid-template-columns:1fr}
   .hora-dia-row{flex-wrap:wrap}
   .hora-dia-label{min-width:0}
-  .month-grid{grid-template-columns:repeat(7,minmax(120px,1fr))}
-  .month-dow{grid-template-columns:repeat(7,minmax(120px,1fr))}
+  .month-calendar{width:840px}
 }
 
 @media (min-width:769px){
@@ -1961,6 +1962,7 @@ function renderHoy(){
     const attendedYes=tipoActual==='asistio'||tipoActual==='reposicion'||tipoActual==='extra';
     const chargeOnMiss=attendedYes?true:tipoActual==='falta'?!r.ses?.noCharge:false;
     const paidYes=!!r.autoPay;
+    const paidMethod=r.autoPay?.metodo||'efectivo';
     const esReposicion=tipoActual==='reposicion';
     return `<div class="today-card">
       <div class="today-head">
@@ -2000,6 +2002,15 @@ function renderHoy(){
           <div class="today-pay-row" id="today-amount-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
             <label for="today-amt-${p.id}" style="font-size:12px;color:var(--ink-light)">Monto</label>
             <input class="inp-sm" style="width:92px" id="today-amt-${p.id}" type="number" value="${r.autoPay?r.autoPay.monto:tv}">
+          </div>
+          <div class="today-pay-row" id="today-method-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
+            <label for="today-method-${p.id}" style="font-size:12px;color:var(--ink-light)">Forma de pago</label>
+            <select class="inp-sm" style="width:140px" id="today-method-${p.id}">
+              <option value="efectivo"${paidMethod==='efectivo'?' selected':''}>Efectivo</option>
+              <option value="transferencia"${paidMethod==='transferencia'?' selected':''}>Transferencia</option>
+              <option value="tarjeta"${paidMethod==='tarjeta'?' selected':''}>Tarjeta</option>
+              <option value="otro"${paidMethod==='otro'?' selected':''}>Otro</option>
+            </select>
           </div>
         </div>
 
@@ -2085,6 +2096,7 @@ function refreshTodayCardLogic(pid){
   const chargeWrap=document.getElementById(`today-charge-wrap-${pid}`);
   const paidWrap=document.getElementById(`today-paid-wrap-${pid}`);
   const amountWrap=document.getElementById(`today-amount-wrap-${pid}`);
+  const methodWrap=document.getElementById(`today-method-wrap-${pid}`);
 
   if(chargeWrap) chargeWrap.style.display=attended?'none':'block';
 
@@ -2103,6 +2115,7 @@ function refreshTodayCardLogic(pid){
   }
   if(paidWrap) paidWrap.style.display=shouldAskPaid?'block':'none';
   if(amountWrap) amountWrap.style.display=(shouldAskPaid&&paid)?'flex':'none';
+  if(methodWrap) methodWrap.style.display=(shouldAskPaid&&paid)?'flex':'none';
 }
 
 function saveTodaySession(pid){
@@ -2117,6 +2130,7 @@ function saveTodaySession(pid){
   const attended=(document.getElementById(`today-attended-${pid}`)?.value||'si')==='si';
   const charge=(document.getElementById(`today-charge-${pid}`)?.value||'si')==='si';
   const paid=(document.getElementById(`today-paid-${pid}`)?.value||'no')==='si';
+  const paidMethod=document.getElementById(`today-method-${pid}`)?.value||'efectivo';
   const noCharge=!attended&&!charge;
   const tipo=attended?'asistio':'falta';
   const amount=Math.max(0,parseInt(document.getElementById(`today-amt-${pid}`)?.value)||tarifaVigente(p));
@@ -2157,14 +2171,15 @@ function saveTodaySession(pid){
     if(autoPay){
       const diff=amount-autoPay.monto;
       autoPay.monto=amount;
+      autoPay.metodo=paidMethod;
       p.pagado+=diff;
       p.adeudo=Math.max(0,p.adeudo-diff);
     } else {
-      p.pagos.push({id:'p'+(nextPayId++),fecha:dateStr,monto:amount,metodo:'sesion-hoy',autoToday:true,sessionDate:dateStr});
+      p.pagos.push({id:'p'+(nextPayId++),fecha:dateStr,monto:amount,metodo:paidMethod,autoToday:true,sessionDate:dateStr});
       p.pagado+=amount;
       p.adeudo=Math.max(0,p.adeudo-amount);
     }
-    addLog(p,'datos',`Pago registrado hoy: $${amount.toLocaleString('es-MX')}`);
+    addLog(p,'datos',`Pago registrado hoy: $${amount.toLocaleString('es-MX')} (${paidMethod})`);
   } else if(autoPay){
     p.pagado-=autoPay.monto;
     p.adeudo+=autoPay.monto;
@@ -3600,12 +3615,18 @@ function renderSemana(){
           <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente →</button>
         </div>
       </div>
-      <div class="month-dow">${DIAS.map(d=>`<div>${d}</div>`).join('')}</div>
-      <div class="month-grid">${cells.join('')}</div>`;
+      <div class="month-scroll">
+        <div class="month-calendar">
+          <div class="month-dow">${DIAS.map(d=>`<div>${d}</div>`).join('')}</div>
+          <div class="month-grid">${cells.join('')}</div>
+        </div>
+      </div>`;
     return;
   }
 
   const lun=new Date(base);lun.setDate(base.getDate()-((base.getDay()+6)%7));
+  const dom=new Date(lun);dom.setDate(lun.getDate()+6);
+  const weekLabel=`Semana del ${lun.getDate()} al ${dom.getDate()} de ${MESES[lun.getMonth()]} de ${lun.getFullYear()}`;
   const cols=DIAS.map((dia,i)=>{
     const fecha=new Date(lun);fecha.setDate(lun.getDate()+i);
     const fechaStr=fecha.toISOString().split('T')[0];
@@ -3619,7 +3640,7 @@ function renderSemana(){
       </div>
       <div class="week-nav">
         <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">← Anterior</button>
-        <span class="week-period">Semana del ${lun.toISOString().split('T')[0]}</span>
+        <span class="week-period">${weekLabel}</span>
         <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente →</button>
       </div>
     </div>
