@@ -76,7 +76,7 @@ body.auth-locked .auth-screen{display:flex}
 .sidebar-axo-wrap img{width:140px;position:absolute;bottom:-8px;right:-12px;object-fit:contain;opacity:.98;mix-blend-mode:normal;filter:drop-shadow(0 4px 10px rgba(20,28,34,.32))}
 
 /* ── MAIN ── */
-.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow-x:hidden}
 .topbar{background:white;padding:1rem 1.75rem;border-bottom:1px solid #ede9e6;display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .topbar-left{display:flex;align-items:center;gap:1rem}
 .topbar-left{display:flex;flex-direction:column;min-width:0}
@@ -144,9 +144,12 @@ body.auth-locked .auth-screen{display:flex}
 .quick-pay-actions{display:flex;justify-content:flex-end;margin-top:10px}
 .quick-pay-note{font-size:11px;color:var(--ink-light);margin-top:8px}
 .p-info{flex:1;min-width:0}
+.p-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .p-name{font-size:14px;font-weight:500;color:var(--ink);font-family:'Lora',serif}
 .p-meta{font-size:12px;color:var(--ink-light);margin-top:2px}
+.p-meta-inline{margin-top:0;text-align:right;white-space:nowrap}
 .p-badges{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.p-badges-bottom{margin-top:6px;justify-content:flex-start}
 .badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap}
 .b-ok{background:var(--sage-soft);color:var(--ink)}
 .b-day{background:var(--cream);color:var(--ink-light)}
@@ -368,7 +371,7 @@ input[type="file"].form-input{cursor:pointer}
 .dtab{background:none;border:none;padding:.625rem 1rem;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
 .dtab:hover{color:var(--ink)}
 .dtab.active{color:var(--terra);border-bottom-color:var(--terra);font-weight:500}
-.dtab-panel{display:none}.dtab-panel.active{display:block}
+.dtab-panel{display:none;min-width:0}.dtab-panel.active{display:block;min-width:0}
 
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--ink-light);font-size:13px}
 .empty img{width:80px;opacity:.8;margin-bottom:.75rem;display:block;margin-left:auto;margin-right:auto}
@@ -461,6 +464,8 @@ input[type="file"].form-input{cursor:pointer}
   #view-detalle .page-title{font-size:17px;line-height:1.2;word-break:break-word}
   #view-detalle .page-sub{font-size:12px;line-height:1.35;word-break:break-word}
   #view-detalle .content{padding:1rem;padding-left:calc(1rem + env(safe-area-inset-left,0px));padding-right:calc(1rem + env(safe-area-inset-right,0px));overflow-x:hidden}
+  #view-detalle,.dtab-panel,#view-detalle .detail-grid,#view-detalle .dsec{max-width:100%;min-width:0}
+  #view-detalle .dtabs{max-width:100%}
 
   .detail-hero{padding:1rem;display:grid;grid-template-columns:56px 1fr;align-items:start;column-gap:.75rem;row-gap:.65rem}
   .hero-axo{width:56px;height:56px}
@@ -474,6 +479,11 @@ input[type="file"].form-input{cursor:pointer}
   .dkey,.dval{font-size:12px}
   .dval{text-align:left;word-break:break-word}
   .form-grid{grid-template-columns:1fr}
+  .reg-row{flex-wrap:wrap}
+  .reg-row>div{flex:1 1 120px;min-width:0}
+  .reg-row .inp-sm{width:100%}
+  .p-head{flex-direction:column;gap:4px}
+  .p-meta-inline{text-align:left;white-space:normal}
   .hora-dia-row{flex-wrap:wrap}
   .hora-dia-label{min-width:0}
   .month-calendar{width:840px}
@@ -832,23 +842,61 @@ function horaDia(p,dow){
   if(p.horas&&p.horas[dow]!==undefined) return p.horas[dow];
   return p.hora||'00:00';
 }
+function getScheduleAtDate(p,dateStr){
+  const ref=dateStr||today();
+  const fallback={
+    desde:p.inicio||ref,
+    dias:Array.isArray(p.dias)?[...p.dias]:[],
+    horas:(p.horas&&typeof p.horas==='object')?{...p.horas}:{},
+    noFixedSchedule:!!p.noFixedSchedule
+  };
+  const list=Array.isArray(p.scheduleHistory)?p.scheduleHistory:[];
+  if(!list.length) return fallback;
+  const sorted=[...list].sort((a,b)=>a.desde.localeCompare(b.desde));
+  let current=sorted[0];
+  sorted.forEach(item=>{if(item.desde<=ref) current=item;});
+  return current||fallback;
+}
+function isFixedScheduledOnDate(p,dateStr){
+  if(isBeforeTreatmentStart(p,dateStr)) return false;
+  const sch=getScheduleAtDate(p,dateStr);
+  if(!sch||sch.noFixedSchedule) return false;
+  const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
+  return (sch.dias||[]).includes(dow);
+}
+function horaDiaFecha(p,dateStr){
+  const sch=getScheduleAtDate(p,dateStr);
+  const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
+  if(sch.horas&&sch.horas[dow]!==undefined) return sch.horas[dow];
+  return p.hora||'00:00';
+}
+function timeRangeLabel(startTime,durationMin=45){
+  if(!startTime||!/^[0-2]\d:[0-5]\d$/.test(startTime)) return startTime||'--:--';
+  const [hh,mm]=startTime.split(':').map(Number);
+  const startTotal=(hh*60)+mm;
+  const endTotal=startTotal+Math.max(1,parseInt(durationMin,10)||45);
+  const endH=Math.floor((endTotal/60)%24);
+  const endM=endTotal%60;
+  const end=`${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+  return `${startTime}-${end}`;
+}
+function displayDate(isoDate){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(isoDate||'')) return 'dd-mm-aaaa';
+  const [year,month,day]=isoDate.split('-');
+  return `${day}-${month}-${year}`;
+}
 function scheduleSummary(p,useFull=false){
-  if(p?.noFixedSchedule) return 'Sin horario fijo';
+  const sch=getScheduleAtDate(p,today());
+  if(sch?.noFixedSchedule) return 'Sin horario fijo';
   const labels=useFull?DIAS_FULL:DIAS;
-  return (p?.dias||[]).map(d=>`${labels[d]} ${horaDia(p,d)}`).join(' · ');
+  return (sch?.dias||[]).map(d=>`${labels[d]} ${sch.horas&&sch.horas[d]!==undefined?sch.horas[d]:horaDia(p,d)}`).join(' · ');
 }
 function sesionesEnMes(p,year,month){
-  if(p.noFixedSchedule){
-    return p.sesiones.filter(s=>{
-      const d=new Date(s.fecha+'T12:00');
-      return (s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra')&&d.getFullYear()===year&&d.getMonth()===month;
-    }).length;
-  }
   const daysInMonth=new Date(year,month+1,0).getDate();
   let scheduled=0;
   for(let d=1;d<=daysInMonth;d++){
-    const dow=(new Date(year,month,d).getDay()+6)%7;
-    if(p.dias.includes(dow)) scheduled++;
+    const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(isFixedScheduledOnDate(p,dateStr)) scheduled++;
   }
   const monthDates=n=>{
     const d=new Date(n.fecha+'T12:00');
@@ -865,16 +913,14 @@ function ingresoProspMes(p,year,month){
   return sesionesEnMes(p,year??hoy.getFullYear(),month??hoy.getMonth())*tarifaVigente(p);
 }
 function sesionesPendientes(p){
-  if(p.noFixedSchedule) return [];
   const hoy=new Date();
   const year=hoy.getFullYear(),month=hoy.getMonth();
   const daysInMonth=new Date(year,month+1,0).getDate();
   const todayNum=hoy.getDate();
   const pending=[];
   for(let d=1;d<=Math.min(todayNum,daysInMonth);d++){
-    const dow=(new Date(year,month,d).getDay()+6)%7;
-    if(!p.dias.includes(dow)) continue;
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(!isFixedScheduledOnDate(p,dateStr)) continue;
     if(p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr && s.skipped)) continue;
     if(!p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
   }
@@ -920,6 +966,26 @@ function normalizarPausas(p){
     .sort((a,b)=>a.desde.localeCompare(b.desde));
 }
 
+function normalizarHistorialHorario(p){
+  const base={
+    desde:p.inicio,
+    dias:Array.isArray(p.dias)?[...p.dias]:[],
+    horas:(p.horas&&typeof p.horas==='object')?{...p.horas}:{},
+    noFixedSchedule:!!p.noFixedSchedule
+  };
+  const raw=Array.isArray(p.scheduleHistory)&&p.scheduleHistory.length?p.scheduleHistory:[base];
+  const mapByDate=new Map();
+  raw.forEach(item=>{
+    if(!item||!item.desde) return;
+    const dias=[...new Set((Array.isArray(item.dias)?item.dias:[]).map(x=>parseInt(x,10)).filter(x=>x>=0&&x<=6))].sort((a,b)=>a-b);
+    const horas=(item.horas&&typeof item.horas==='object')?{...item.horas}:{};
+    mapByDate.set(item.desde,{desde:item.desde,dias,horas,noFixedSchedule:!!item.noFixedSchedule});
+  });
+  if(!mapByDate.size) mapByDate.set(base.desde,base);
+  if(!mapByDate.has(p.inicio)) mapByDate.set(p.inicio,{...base});
+  p.scheduleHistory=[...mapByDate.values()].sort((a,b)=>a.desde.localeCompare(b.desde));
+}
+
 function inferStatusReason(p){
   const note=(p.statusNote||'').toLowerCase();
   if(note.includes('alta')) return 'alta';
@@ -960,6 +1026,12 @@ function normalizePatient(p){
   normalizarStatusHistory(p);
   normalizarFrecuencias(p);
   normalizarPausas(p);
+  normalizarHistorialHorario(p);
+  const vig=getScheduleAtDate(p,today());
+  p.noFixedSchedule=!!vig.noFixedSchedule;
+  p.dias=[...(vig.dias||[])];
+  p.horas=(vig.horas&&typeof vig.horas==='object')?{...vig.horas}:{};
+  p.hora=p.noFixedSchedule?(p.hora||'00:00'):(p.horas[p.dias[0]]||p.hora||'00:00');
   return p;
 }
 
@@ -1083,6 +1155,7 @@ let resumenPeriod='mes';
 let detallePeriod='mes';
 let semanaViewMode='semana';
 let semanaBaseDate=today();
+let pendingGeneralSave=null;
 let lastPatientListView='pacientes';
 let inactiveFilter='all';
 let activeSearch='';
@@ -1609,15 +1682,14 @@ function sesionesDadasEnRango(p,start,end){
 }
 
 function sesionesProgramadasEntreFechas(p,startDate,endDate){
-  if(!p.dias || !p.dias.length) return 0;
   const start=new Date(startDate+'T12:00');
   const end=new Date(endDate+'T12:00');
   if(isNaN(start.getTime())||isNaN(end.getTime())||end<start) return 0;
   let total=0;
   const cursor=new Date(start);
   while(cursor<=end){
-    const dow=(cursor.getDay()+6)%7;
-    if(p.dias.includes(dow)) total++;
+    const dateStr=cursor.toISOString().split('T')[0];
+    if(isFixedScheduledOnDate(p,dateStr)) total++;
     cursor.setDate(cursor.getDate()+1);
   }
   return total;
@@ -1759,16 +1831,19 @@ function renderPatients(){
     const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
     const tv=tarifaVigente(p);
     const pend=sesionesPendientes(p).length;
+    const ultimaSesion=[...p.sesiones].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+    const fechaDetalle=ultimaSesion?ultimaSesion.fecha.split(' ')[0]:'Sin fecha';
     const badge=p.adeudo>0?`<span class="badge b-debt">Debe $${p.adeudo.toLocaleString('es-MX')}</span>`:`<span class="badge b-ok">Al corriente con los pagos</span>`;
     const pendBadge=pend>0?`<span class="badge b-warn">${pend} asistencia${pend!==1?'s':''} sin registrar</span>`:'';
-    const diasHoras=scheduleSummary(p,false);
     return `<div class="patient-card" onclick="showDetalle(${p.id})">
       <div class="person-avatar"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
       <div class="p-info">
-        <div class="p-name">${shortName(p.nombre)}</div>
-        <div class="p-meta">Sesión #${n} · ${diasHoras} · ${pagoLabel(p.pago)} · $${tv.toLocaleString('es-MX')}/ses</div>
+        <div class="p-head">
+          <div class="p-name">${shortName(p.nombre)}</div>
+          <div class="p-meta p-meta-inline">Sesión #${n} · Fecha: ${fechaDetalle} · ${pagoLabel(p.pago)} · $${tv.toLocaleString('es-MX')}/ses</div>
+        </div>
+        <div class="p-badges p-badges-bottom">${pendBadge}${badge}</div>
       </div>
-      <div class="p-badges">${pendBadge}${badge}</div>
     </div>`;
   }).join('');
 }
@@ -1905,10 +1980,10 @@ function renderHoy(){
     normalizePatient(p);
     const skippedSes=p.sesiones.find(s=>s.fecha.split(' ')[0]===todayStr&&s.skipped);
     const movedFrom=!!skippedSes;
-    const fixedToday=!p.noFixedSchedule&&p.dias.includes(nowDow)&&!movedFrom;
+    const fixedToday=isFixedScheduledOnDate(p,todayStr)&&!movedFrom;
     const ses=p.sesiones.find(s=>s.fecha.split(' ')[0]===todayStr&&!s.skipped);
     if(!fixedToday&&!ses&&!movedFrom) return;
-    const hora=ses?.hora||skippedSes?.hora||(fixedToday?horaDia(p,nowDow):'--:--');
+    const hora=ses?.hora||skippedSes?.hora||(fixedToday?horaDiaFecha(p,todayStr):'--:--');
     const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===todayStr);
     rows.push({p,ses,hora,fixedToday,autoPay,movedFrom,skippedSes});
   });
@@ -2151,8 +2226,7 @@ function saveTodaySession(pid){
     alert('Solo puedes registrar pago cuando la sesión es cobrable.');
     return;
   }
-  const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
-  const defaultHora=horaDia(p,dow);
+  const defaultHora=horaDiaFecha(p,dateStr);
   let ses=p.sesiones.find(s=>s.fecha===dateStr&&!s.skipped);
   if(ses){
     const ant=ses.tipo;
@@ -2227,8 +2301,7 @@ function saveTerapeutaCancel(pid){
     ses.noCharge=true;
     ses.therapistCancel=true;
   } else {
-    const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
-    p.sesiones.push({id:'s'+(nextSesId++),num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,fecha:dateStr,tipo:'cancelada',noCharge:true,therapistCancel:true,hora:horaDia(p,dow)});
+    p.sesiones.push({id:'s'+(nextSesId++),num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,fecha:dateStr,tipo:'cancelada',noCharge:true,therapistCancel:true,hora:horaDiaFecha(p,dateStr)});
   }
   const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===dateStr);
   if(autoPay){
@@ -2257,8 +2330,7 @@ function openTodayReposicionModal(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   const todayStr=today();
-  const dow=(new Date(todayStr+'T12:00').getDay()+6)%7;
-  const defaultHora=horaDia(p,dow);
+  const defaultHora=horaDiaFecha(p,todayStr);
   document.getElementById('modal-title').textContent='Reposición de sesión';
   document.getElementById('modal-body').innerHTML=`
     <p style="font-size:13px;color:var(--ink-light);margin-bottom:12px">¿A qué fecha y hora se repone la sesión de hoy?</p>
@@ -2282,7 +2354,7 @@ function confirmarTodayReposicion(pid){
   let source=p.sesiones.find(s=>s.fecha===todayStr&&!s.skipped);
   if(!source){
     const dow=(new Date(todayStr+'T12:00').getDay()+6)%7;
-    source={id:'s'+(nextSesId++),num:p.sesiones.length+1,fecha:todayStr,tipo:null,hora:horaDia(p,dow)};
+    source={id:'s'+(nextSesId++),num:p.sesiones.length+1,fecha:todayStr,tipo:null,hora:horaDiaFecha(p,todayStr)};
     p.sesiones.push(source);
   }
   const billable=t=>t==='asistio'||t==='falta'||t==='extra';
@@ -2562,8 +2634,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
     return;
   }
   if(!ensurePatientActiveForScheduling(p)) return;
-  const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
-  const hora=horaDia(p,dow);
+  const hora=horaDiaFecha(p,dateStr);
   const tipoActual=ses?ses.tipo:null;
 
   // ¿Esta sesión tiene reposición vinculada (o es una reposición)?
@@ -2663,8 +2734,7 @@ function showReposicionPicker(pid,dateStr){
   closePopover();
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!ensurePatientActiveForScheduling(p)) return;
-  const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
-  const defaultHora=horaDia(p,dow);
+  const defaultHora=horaDiaFecha(p,dateStr);
   document.getElementById('modal-title').textContent='Reposición de sesión';
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
@@ -2802,8 +2872,8 @@ function registrarDesdePop(pid,dateStr,tipo){
     }
 
     const source=existing;
-    const sourceHora=horaDia(p, (new Date(`${dateStr}T12:00`).getDay()+6)%7);
-    const nuevaHora=horaDia(p, (new Date(`${nuevaIso}T12:00`).getDay()+6)%7);
+    const sourceHora=horaDiaFecha(p,dateStr);
+    const nuevaHora=horaDiaFecha(p,nuevaIso);
     if(source){
       if(p.pago==='sesion' && (source.tipo==='asistio'||source.tipo==='falta'||source.tipo==='extra')){
         p.adeudo=Math.max(0,p.adeudo-tv); // descontar carga previa
@@ -2928,7 +2998,7 @@ function exposeSesMap(p){
 
 function buildCalendar(p){
   const isInactive=p.status==='inactive';
-  const isFlexible=!!p.noFixedSchedule;
+  const isFlexible=!!getScheduleAtDate(p,today()).noFixedSchedule;
   const firstDay=new Date(calYear,calMonth,1);
   const lastDay=new Date(calYear,calMonth+1,0);
   const startDow=(firstDay.getDay()+6)%7;
@@ -2945,15 +3015,17 @@ function buildCalendar(p){
 
   for(let d=1;d<=totalDays;d++){
     const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dow=(new Date(calYear,calMonth,d).getDay()+6)%7;
     const beforeStart=isBeforeTreatmentStart(p,dateStr);
     const isMovedFrom=p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr&&s.skipped);
-    const isProg=!isFlexible && p.dias.includes(dow) && !isMovedFrom && !beforeStart;
+    const isFlexibleDate=!!getScheduleAtDate(p,dateStr).noFixedSchedule;
+    const isProg=isFixedScheduledOnDate(p,dateStr) && !isMovedFrom && !beforeStart;
     const isToday=dateStr===todayStr;
     const isFuture=new Date(dateStr+'T23:59:00')>hoy;
     let ses=sesMap[dateStr];
     if(ses && ses.skipped) ses=null;
-    const hora=isProg?horaDia(p,dow):null;
+    const horaBase=isProg?horaDiaFecha(p,dateStr):null;
+    const horaSesion=ses?.hora||horaBase;
+    const horaRango=horaSesion?timeRangeLabel(horaSesion,p.duracion||45):null;
     const isPend=pendientes.has(dateStr);
 
     let classes='cal-day';
@@ -2967,14 +3039,14 @@ function buildCalendar(p){
       // Mostrar indicador de reposición movible
       const hasRepo=ses.tipo==='reposicion'||(ses.tipo==='falta'&&ses.repoId);
       pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' ✦':''}</div>`;
-    } else if((isProg||isFlexible)&&!isFuture&&!beforeStart){
+    } else if((isProg||isFlexibleDate)&&!isFuture&&!beforeStart){
       pip=isInactive?`<div class="cal-pip sin-registro" title="Paciente inactivo">Sin reg.</div>`:`<div class="cal-pip sin-registro" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sin registrar">? Sin reg.</div>`;
-    } else if(!isFlexible&&!isProg&&!isFuture&&!beforeStart){
+    } else if(!isFlexibleDate&&!isProg&&!isFuture&&!beforeStart){
       pip=isInactive?'':`<div class="cal-pip nueva" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Agregar nueva sesión">＋ Nueva</div>`;
     } else if(isProg&&isFuture){
-      pip=`<div class="cal-prog-dot" title="${hora}"></div>`;
+      pip=`<div class="cal-prog-dot" title="${horaRango||''}"></div>`;
     }
-    const horaLabel=isProg?`<div class="cal-hora">${hora}</div>`:'';
+    const horaLabel=(isProg||ses)?`<div class="cal-hora">${horaRango||''}</div>`:'';
     cells+=`<div class="${classes}${isToday?' today':''}">
       <div class="cal-day-num">${d}</div>${horaLabel}${pip}
     </div>`;
@@ -3282,8 +3354,12 @@ function deleteNota(pid,nid){
 function buildEditPanel(p){
   normalizePatient(p);
   const tv=tarifaVigente(p);
-  const diasBtns=DIAS.map((d,i)=>`<button class="day-btn${p.dias.includes(i)?' sel':''}" onclick="toggleDayEdit(this,${i})" data-d="${i}">${d}</button>`).join('');
-  const horasRows=p.dias.map(i=>`<div class="hora-dia-row" id="hora-row-${i}"><span class="hora-dia-label">${DIAS_FULL[i]}</span><input class="hora-dia-input" id="hora-${i}" type="time" value="${horaDia(p,i)}"></div>`).join('');
+  const scheduleBase=getScheduleAtDate(p,today());
+  const baseNoFixed=!!scheduleBase.noFixedSchedule;
+  const baseDias=[...(scheduleBase.dias||[])];
+  const baseHoras=(scheduleBase.horas&&typeof scheduleBase.horas==='object')?scheduleBase.horas:{};
+  const diasBtns=DIAS.map((d,i)=>`<button class="day-btn${baseDias.includes(i)?' sel':''}" onclick="toggleDayEdit(this,${i})" data-d="${i}">${d}</button>`).join('');
+  const horasRows=baseDias.map(i=>`<div class="hora-dia-row" id="hora-row-${i}"><span class="hora-dia-label">${DIAS_FULL[i]}</span><input class="hora-dia-input" id="hora-${i}" type="time" value="${baseHoras[i]!==undefined?baseHoras[i]:horaDia(p,i)}"></div>`).join('');
   const freqActual=frecuenciaVigenteEnFecha(p,today());
   const frecuenciasHtml=p.frecuencias.map((f,index)=>`<div class="freq-item"><div><div>${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana</div><div class="freq-meta">Desde ${f.desde}</div></div>${index===0?'':`<button class="btn-ghost" onclick="deleteFrecuencia(${p.id},'${f.desde}')">Eliminar</button>`}</div>`).join('');
   const pausasHtml=p.pausas.length?p.pausas.map(pp=>`<div class="freq-item"><div><div>${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} · ${pp.actor}</div><div class="freq-meta">${pp.desde} → ${pp.hasta}${pp.nota?` · ${pp.nota}`:''}</div></div><button class="btn-ghost" onclick="deletePausa(${p.id},'${pp.id}')">Eliminar</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin vacaciones o pausas registradas.</div>';
@@ -3339,13 +3415,13 @@ function buildEditPanel(p){
       <div class="dsec full">
         <div class="sec-title">Días y horas de sesión</div>
         <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
-          <input type="checkbox" id="e-no-fixed-schedule" ${p.noFixedSchedule?'checked':''} onchange="toggleNoFixedEdit(this.checked)">
+          <input type="checkbox" id="e-no-fixed-schedule" ${baseNoFixed?'checked':''} onchange="toggleNoFixedEdit(this.checked)">
           <label class="form-label" for="e-no-fixed-schedule" style="margin:0">Sin horario fijo (selección manual en calendario)</label>
         </div>
-        <div id="e-fixed-days-wrap" style="margin-bottom:.75rem;${p.noFixedSchedule?'display:none;':''}"><div class="form-label" style="margin-bottom:8px">Días fijos</div>
+        <div id="e-fixed-days-wrap" style="margin-bottom:.75rem;${baseNoFixed?'display:none;':''}"><div class="form-label" style="margin-bottom:8px">Días fijos</div>
         <div class="days-row" id="e-dias">${diasBtns}</div></div>
-        <div id="e-fixed-hours-wrap" style="${p.noFixedSchedule?'display:none;':''}"><div id="e-horas-container">${horasRows}</div></div>
-        <div class="alert-box" id="e-fixed-alert" style="${p.noFixedSchedule?'display:none;':''}">Los días fijos afectan la agenda actual. Para cambios históricos de una a dos sesiones por semana, usa el bloque de frecuencia de abajo.</div>
+        <div id="e-fixed-hours-wrap" style="${baseNoFixed?'display:none;':''}"><div id="e-horas-container">${horasRows}</div></div>
+        <div class="alert-box" id="e-fixed-alert" style="${baseNoFixed?'display:none;':''}">Al guardar cambios de horario, se te pedirá la fecha a partir de la cual aplica para conservar el historial previo.</div>
         <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarDatosGenerales(${p.id})">Guardar cambios</button></div>
       </div>
       <div class="dsec full">
@@ -3418,15 +3494,105 @@ function toggleNoFixedEdit(checked){
   if(alertWrap) alertWrap.style.display=checked?'none':'';
 }
 
+function updateScheduleEffectiveDateDisplay(value){
+  const label=document.getElementById('schedule-effective-date-display');
+  if(label) label.textContent=displayDate(value);
+}
+
+function openScheduleEffectiveDateModal(id,payload){
+  pendingGeneralSave={id,payload};
+  const defaultDate=payload.suggestedDate;
+  document.getElementById('modal-title').textContent='Aplicar cambio de horario';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label class="form-label">¿A partir de qué fecha aplica el cambio?</label>
+        <input class="form-input" id="schedule-effective-date" type="date" value="${defaultDate}" min="${payload.minDate}" onchange="updateScheduleEffectiveDateDisplay(this.value)">
+        <div style="font-size:12px;color:var(--ink-light)">Fecha seleccionada: <strong id="schedule-effective-date-display">${displayDate(defaultDate)}</strong></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-sec" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="confirmScheduleEffectiveDate()">Guardar cambios</button></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function confirmScheduleEffectiveDate(){
+  if(!pendingGeneralSave) return;
+  const desdeHorario=(document.getElementById('schedule-effective-date')?.value||'').trim();
+  const {id,payload}=pendingGeneralSave;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(desdeHorario)){alert('Selecciona una fecha válida.');return;}
+  if(desdeHorario<payload.minDate){alert('La fecha del cambio no puede ser anterior al inicio de tratamiento.');return;}
+  closeModal();
+  applyGuardarDatosGenerales(id,payload,desdeHorario);
+}
+
+function applyGuardarDatosGenerales(id,payload,desdeHorario=null){
+  const p=patients.find(x=>x.id===id);
+  if(!p) return;
+  const {
+    nuevoNombre,nuevoInicio,nuevoPago,nuevaDuracion,nuevaPrimeraSinCosto,
+    nuevoStatus,nuevoStatusDate,nuevoStatusReason,nuevoStatusNote,
+    nuevasCancelWeeksTerapeuta,nuevasCancelWeeksPaciente,
+    diasSel,nuevasHoras,noFixedSchedule,
+    cambios,scheduleChanged
+  }=payload;
+
+  const oldInicio=p.inicio;
+  p.nombre=nuevoNombre;
+  p.inicio=nuevoInicio;
+  p.pago=nuevoPago;
+  p.duracion=nuevaDuracion;
+  p.primeraSinCosto=nuevaPrimeraSinCosto;
+  p.status=nuevoStatus;
+  p.statusDate=nuevoStatusDate;
+  p.statusReason=nuevoStatusReason;
+  p.statusNote=nuevoStatusNote;
+  if(nuevoStatus!==p.statusHistory[p.statusHistory.length-1]?.status || nuevoStatusDate!==p.statusHistory[p.statusHistory.length-1]?.fecha || nuevoStatusReason!==p.statusHistory[p.statusHistory.length-1]?.reason || nuevoStatusNote!==p.statusHistory[p.statusHistory.length-1]?.note){
+    p.statusHistory.push({fecha:nuevoStatusDate,status:nuevoStatus,reason:nuevoStatusReason,note:nuevoStatusNote});
+    normalizarStatusHistory(p);
+  }
+  if(!isNaN(nuevasCancelWeeksTerapeuta)) p.therapistCancelWeeksPerYear=nuevasCancelWeeksTerapeuta;
+  if(!isNaN(nuevasCancelWeeksPaciente)) p.patientAbsenceWeeksPerYear=nuevasCancelWeeksPaciente;
+  if(oldInicio!==nuevoInicio){
+    const primera=p.frecuencias[0];
+    if(primera&&primera.desde===oldInicio) primera.desde=nuevoInicio;
+    const horarioInicio=p.scheduleHistory.find(h=>h.desde===oldInicio);
+    if(horarioInicio) horarioInicio.desde=nuevoInicio;
+  }
+  if(scheduleChanged&&desdeHorario){
+    const nuevoHorario={desde:desdeHorario,dias:[...diasSel],horas:{...nuevasHoras},noFixedSchedule};
+    const idx=(p.scheduleHistory||[]).findIndex(h=>h.desde===desdeHorario);
+    if(idx>=0) p.scheduleHistory[idx]=nuevoHorario;
+    else p.scheduleHistory.push(nuevoHorario);
+    normalizarHistorialHorario(p);
+    cambios.push(`Horario aplicado desde ${displayDate(desdeHorario)}`);
+  }
+  normalizarHistorialHorario(p);
+  const vigenteHoy=getScheduleAtDate(p,today());
+  p.noFixedSchedule=!!vigenteHoy.noFixedSchedule;
+  p.dias=[...(vigenteHoy.dias||[])];
+  p.horas=(vigenteHoy.horas&&typeof vigenteHoy.horas==='object')?{...vigenteHoy.horas}:{};
+  p.hora=p.noFixedSchedule?(p.hora||'00:00'):(p.horas[p.dias[0]]||p.hora||'00:00');
+  if(p.frecuencias.length===1) p.frecuencias[0].vecesSemana=Math.max(1,p.noFixedSchedule?1:(p.dias.length||1));
+  normalizarFrecuencias(p);
+  if(cambios.length) addLog(p,'datos',cambios.join(' | '));
+  document.getElementById('det-nombre').textContent=p.nombre;
+  saveState();
+  curTab='bitacora';curBitTab='log';renderDetalle(p);
+}
+
 function guardarDatosGenerales(id){
   const p=patients.find(x=>x.id===id);
   normalizePatient(p);
+  const scheduleVigente=getScheduleAtDate(p,today());
+  const diasVigentes=[...(scheduleVigente.dias||[])];
+  const horasVigentes=(scheduleVigente.horas&&typeof scheduleVigente.horas==='object')?scheduleVigente.horas:{};
+  const noFixedVigente=!!scheduleVigente.noFixedSchedule;
   const noFixedSchedule=document.getElementById('e-no-fixed-schedule').checked;
   let diasSel=[...document.querySelectorAll('#e-dias .day-btn.sel')].map(b=>parseInt(b.dataset.d));
   if(noFixedSchedule) diasSel=[];
   if(!noFixedSchedule&&!diasSel.length){alert('Selecciona al menos un día o activa "Sin horario fijo".');return;}
   const nuevasHoras={};
-  diasSel.forEach(i=>{const inp=document.getElementById('hora-'+i);nuevasHoras[i]=inp?inp.value:horaDia(p,i);});
+  diasSel.forEach(i=>{const inp=document.getElementById('hora-'+i);nuevasHoras[i]=inp?(inp.value||'00:00'):(horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i));});
   const cambios=[];
   const nuevoNombre=document.getElementById('e-nombre').value.trim();
   const nuevoInicio=document.getElementById('e-inicio').value;
@@ -3447,32 +3613,31 @@ function guardarDatosGenerales(id){
   if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==p.statusNote) cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'}→${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?` — ${nuevoStatusNote}`:''}`);
   if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear) cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear}→${nuevasCancelWeeksTerapeuta} semanas/año`);
   if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear) cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear}→${nuevasCancelWeeksPaciente} semanas/año`);
-  if(p.dias.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${p.dias.map(d=>DIAS[d]).join(',')}]→[${diasSel.map(d=>DIAS[d]).join(',')}]`);
-  if(!!p.noFixedSchedule!==noFixedSchedule) cambios.push(`Horario fijo: ${p.noFixedSchedule?'no':'sí'}→${noFixedSchedule?'no':'sí'}`);
-  diasSel.forEach(i=>{if(nuevasHoras[i]!==horaDia(p,i)) cambios.push(`${DIAS[i]}: ${horaDia(p,i)}→${nuevasHoras[i]}`);});
-  const oldInicio=p.inicio;
-  p.nombre=nuevoNombre;p.inicio=nuevoInicio;p.pago=nuevoPago;p.duracion=nuevaDuracion;p.primeraSinCosto=nuevaPrimeraSinCosto;p.dias=diasSel;p.horas=nuevasHoras;p.hora=noFixedSchedule?(p.hora||'00:00'):(nuevasHoras[diasSel[0]]||'00:00');p.noFixedSchedule=noFixedSchedule;
-  p.status=nuevoStatus;
-  p.statusDate=nuevoStatusDate;
-  p.statusReason=nuevoStatusReason;
-  p.statusNote=nuevoStatusNote;
-  if(nuevoStatus!==p.statusHistory[p.statusHistory.length-1]?.status || nuevoStatusDate!==p.statusHistory[p.statusHistory.length-1]?.fecha || nuevoStatusReason!==p.statusHistory[p.statusHistory.length-1]?.reason || nuevoStatusNote!==p.statusHistory[p.statusHistory.length-1]?.note){
-    p.statusHistory.push({fecha:nuevoStatusDate,status:nuevoStatus,reason:nuevoStatusReason,note:nuevoStatusNote});
-    normalizarStatusHistory(p);
+  if(diasVigentes.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${diasVigentes.map(d=>DIAS[d]).join(',')}]→[${diasSel.map(d=>DIAS[d]).join(',')}]`);
+  if(noFixedVigente!==noFixedSchedule) cambios.push(`Horario fijo: ${noFixedVigente?'no':'sí'}→${noFixedSchedule?'no':'sí'}`);
+  diasSel.forEach(i=>{const horaAntes=horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i);if(nuevasHoras[i]!==horaAntes) cambios.push(`${DIAS[i]}: ${horaAntes}→${nuevasHoras[i]}`);});
+
+  const diasAntes=diasVigentes.slice().sort().join(',');
+  const diasNuevos=diasSel.slice().sort().join(',');
+  const horasChanged=diasSel.some(i=>{
+    const horaAntes=horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i);
+    return nuevasHoras[i]!==horaAntes;
+  });
+  const scheduleChanged=noFixedVigente!==noFixedSchedule||diasAntes!==diasNuevos||horasChanged;
+  const payload={
+    nuevoNombre,nuevoInicio,nuevoPago,nuevaDuracion,nuevaPrimeraSinCosto,
+    nuevoStatus,nuevoStatusDate,nuevoStatusReason,nuevoStatusNote,
+    nuevasCancelWeeksTerapeuta,nuevasCancelWeeksPaciente,
+    diasSel,nuevasHoras,noFixedSchedule,
+    cambios:[...cambios],scheduleChanged,
+    minDate:nuevoInicio,
+    suggestedDate:(today()>nuevoInicio?today():nuevoInicio)
+  };
+  if(scheduleChanged){
+    openScheduleEffectiveDateModal(id,payload);
+    return;
   }
-  if(!isNaN(nuevasCancelWeeksTerapeuta)) p.therapistCancelWeeksPerYear=nuevasCancelWeeksTerapeuta;
-  if(!isNaN(nuevasCancelWeeksPaciente)) p.patientAbsenceWeeksPerYear=nuevasCancelWeeksPaciente;
-  if(oldInicio!==nuevoInicio){
-    const primera=p.frecuencias[0];
-    if(primera&&primera.desde===oldInicio) primera.desde=nuevoInicio;
-  }
-  if(p.frecuencias.length===1) p.frecuencias[0].vecesSemana=Math.max(1,diasSel.length||1);
-    if(p.frecuencias.length===1) p.frecuencias[0].vecesSemana=Math.max(1,noFixedSchedule?1:(diasSel.length||1));
-  normalizarFrecuencias(p);
-  if(cambios.length) addLog(p,'datos',cambios.join(' | '));
-  document.getElementById('det-nombre').textContent=p.nombre;
-  saveState();
-  curTab='bitacora';curBitTab='log';renderDetalle(p);
+  applyGuardarDatosGenerales(id,payload,null);
 }
 
 function guardarNuevaTarifa(id){
@@ -3576,17 +3741,17 @@ function renderSemana(){
   const activos=activePatients();
   const base=new Date((semanaBaseDate||today())+'T12:00');
   const dayEntries=(fechaStr,dow)=>{
-    const slots=activos.filter(p=>p.dias.includes(dow)).map(p=>({
+    const slots=activos.filter(p=>isFixedScheduledOnDate(p,fechaStr)).map(p=>({
       pNombre:p.nombre,
-      hora:horaDia(p,dow)||'99:99',
-      html:`<div class="wslot" onclick="showDetalle(${p.id})"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${horaDia(p,dow)}</div></div>`
+      hora:horaDiaFecha(p,fechaStr)||'99:99',
+      html:`<div class="wslot" onclick="showDetalle(${p.id})"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`
     }));
     const repos=activos.flatMap(p=>p.sesiones
       .filter(s=>s.tipo==='reposicion'&&s.fecha===fechaStr)
       .map(s=>({
         pNombre:p.nombre,
-        hora:s.hora||horaDia(p,dow)||'99:99',
-        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">↩ ${p.nombre.split(' ')[0]}</div><div>${s.hora||'Repo.'}</div></div>`
+        hora:s.hora||horaDiaFecha(p,fechaStr)||'99:99',
+        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">↩ ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
       }))
     );
     return [...slots,...repos].sort((a,b)=>{
@@ -3851,6 +4016,7 @@ function guardarNuevo(){
     tarifa,pago,
     duracion,primeraSinCosto,
     noFixedSchedule,
+    scheduleHistory:[{desde:inicio,dias:[...diasSeleccionados],horas:{...horas},noFixedSchedule}],
     status:'active',statusDate:inicio,statusNote:'',
     statusReason:'otro',
     statusHistory:[{fecha:inicio,status:'active',reason:'otro',note:'Inicio de tratamiento'}],
@@ -3922,7 +4088,7 @@ function saveUnplannedSession(){
   alert('Sesión no prevista agregada.');
 }
 
-function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
+function closeModal(){pendingGeneralSave=null;document.getElementById('modal-overlay').classList.remove('open')}
 function closeModalOut(e){ /* overlay click no cierra modal */ }
 
 applyStore(getEmptyStore());
