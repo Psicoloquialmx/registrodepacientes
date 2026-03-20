@@ -313,6 +313,16 @@ input[type="file"].form-input{cursor:pointer}
 .wslot{background:var(--sage-soft);color:var(--ink);border-radius:6px;padding:5px 6px;font-size:11px;margin-bottom:4px;cursor:pointer;line-height:1.4}
 .wslot:hover{background:rgba(165,196,188,.45)}
 .wslot.repo{background:var(--cream);color:var(--ink)}
+.week-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
+.week-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.week-period{font-size:13px;color:var(--ink-light)}
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(140px,1fr));gap:6px;margin-top:.75rem;overflow-x:auto}
+.month-cell{background:white;border:1px solid #ede9e6;border-radius:10px;padding:.55rem .45rem;min-height:120px}
+.month-cell.muted{background:#faf9f8;opacity:.75}
+.month-day{font-size:11px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.month-day.muted{color:var(--ink-light)}
+.month-dow{display:grid;grid-template-columns:repeat(7,minmax(140px,1fr));gap:6px;color:var(--ink-light);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.month-dow div{text-align:center}
 
 /* ── RESUMEN ── */
 .res-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
@@ -456,6 +466,8 @@ input[type="file"].form-input{cursor:pointer}
   .form-grid{grid-template-columns:1fr}
   .hora-dia-row{flex-wrap:wrap}
   .hora-dia-label{min-width:0}
+  .month-grid{grid-template-columns:repeat(7,minmax(120px,1fr))}
+  .month-dow{grid-template-columns:repeat(7,minmax(120px,1fr))}
 }
 
 @media (min-width:769px){
@@ -1060,6 +1072,8 @@ let curId=null,curTab='sesiones',curBitTab='log';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
 let resumenPeriod='mes';
 let detallePeriod='mes';
+let semanaViewMode='semana';
+let semanaBaseDate=today();
 let lastPatientListView='pacientes';
 let inactiveFilter='all';
 let activeSearch='';
@@ -3537,18 +3551,93 @@ function confirmarReposicion(id){
 // ── SEMANA ───────────────────────────────────────────────────
 function renderSemana(){
   const activos=activePatients();
-  const hoy=new Date();
-  const lun=new Date(hoy);lun.setDate(hoy.getDate()-((hoy.getDay()+6)%7));
+  const base=new Date((semanaBaseDate||today())+'T12:00');
+  const dayEntries=(fechaStr,dow)=>{
+    const slots=activos.filter(p=>p.dias.includes(dow)).map(p=>({
+      pNombre:p.nombre,
+      hora:horaDia(p,dow)||'99:99',
+      html:`<div class="wslot" onclick="showDetalle(${p.id})"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${horaDia(p,dow)}</div></div>`
+    }));
+    const repos=activos.flatMap(p=>p.sesiones
+      .filter(s=>s.tipo==='reposicion'&&s.fecha===fechaStr)
+      .map(s=>({
+        pNombre:p.nombre,
+        hora:s.hora||horaDia(p,dow)||'99:99',
+        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">↩ ${p.nombre.split(' ')[0]}</div><div>${s.hora||'Repo.'}</div></div>`
+      }))
+    );
+    return [...slots,...repos].sort((a,b)=>{
+      if(a.hora!==b.hora) return a.hora.localeCompare(b.hora);
+      return a.pNombre.localeCompare(b.pNombre,'es',{sensitivity:'base'});
+    }).map(r=>r.html).join('');
+  };
+
+  if(semanaViewMode==='mes'){
+    const year=base.getFullYear();
+    const month=base.getMonth();
+    const firstDay=new Date(year,month,1,12,0,0,0);
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const offset=(firstDay.getDay()+6)%7;
+    const cells=[];
+    for(let idx=0;idx<42;idx++){
+      const dayNum=idx-offset+1;
+      const inMonth=dayNum>=1&&dayNum<=daysInMonth;
+      const dateObj=new Date(year,month,dayNum,12,0,0,0);
+      const dow=(dateObj.getDay()+6)%7;
+      const fechaStr=dateObj.toISOString().split('T')[0];
+      const rows=inMonth?dayEntries(fechaStr,dow):'';
+      cells.push(`<div class="month-cell${inMonth?'':' muted'}"><div class="month-day${inMonth?'':' muted'}">${inMonth?dayNum:''}</div>${rows}</div>`);
+    }
+    document.getElementById('semana-content').innerHTML=`
+      <div class="week-toolbar">
+        <div class="period-switch">
+          <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
+          <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
+        </div>
+        <div class="week-nav">
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">← Anterior</button>
+          <span class="week-period">${MESES[month]} ${year}</span>
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente →</button>
+        </div>
+      </div>
+      <div class="month-dow">${DIAS.map(d=>`<div>${d}</div>`).join('')}</div>
+      <div class="month-grid">${cells.join('')}</div>`;
+    return;
+  }
+
+  const lun=new Date(base);lun.setDate(base.getDate()-((base.getDay()+6)%7));
   const cols=DIAS.map((dia,i)=>{
     const fecha=new Date(lun);fecha.setDate(lun.getDate()+i);
     const fechaStr=fecha.toISOString().split('T')[0];
-    const slots=activos.filter(p=>p.dias.includes(i));
-    const repos=activos.flatMap(p=>p.sesiones.filter(s=>s.tipo==='reposicion'&&s.fecha.startsWith(fechaStr)).map(s=>({...s,pNombre:p.nombre,pId:p.id})));
-    const sh=slots.map(p=>`<div class="wslot" onclick="showDetalle(${p.id})"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${horaDia(p,i)}</div></div>`).join('');
-    const rh=repos.map(r=>`<div class="wslot repo" onclick="showDetalle(${r.pId})"><div style="font-weight:500">↩ ${r.pNombre.split(' ')[0]}</div><div>Repo.</div></div>`).join('');
-    return `<div class="wday"><div class="wday-name">${dia}<br><span style="font-size:9px;opacity:.6">${fechaStr.slice(5)}</span></div>${sh}${rh}</div>`;
+    return `<div class="wday"><div class="wday-name">${dia}<br><span style="font-size:9px;opacity:.6">${fechaStr.slice(5)}</span></div>${dayEntries(fechaStr,i)}</div>`;
   }).join('');
-  document.getElementById('semana-content').innerHTML=`<p style="font-size:13px;color:var(--ink-light);margin-bottom:.75rem">Semana del ${lun.toISOString().split('T')[0]}.</p><div class="week-grid">${cols}</div>`;
+  document.getElementById('semana-content').innerHTML=`
+    <div class="week-toolbar">
+      <div class="period-switch">
+        <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
+        <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
+      </div>
+      <div class="week-nav">
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">← Anterior</button>
+        <span class="week-period">Semana del ${lun.toISOString().split('T')[0]}</span>
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente →</button>
+      </div>
+    </div>
+    <div class="week-grid">${cols}</div>`;
+}
+
+function setSemanaViewMode(mode){
+  if(mode!=='semana'&&mode!=='mes') return;
+  semanaViewMode=mode;
+  renderSemana();
+}
+
+function moveSemanaRange(delta){
+  const base=new Date((semanaBaseDate||today())+'T12:00');
+  if(semanaViewMode==='mes') base.setMonth(base.getMonth()+delta);
+  else base.setDate(base.getDate()+(delta*7));
+  semanaBaseDate=base.toISOString().split('T')[0];
+  renderSemana();
 }
 
 // ── RESUMEN ──────────────────────────────────────────────────
