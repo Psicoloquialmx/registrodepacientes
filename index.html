@@ -29,7 +29,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .app{display:flex;min-height:100vh}
 body.auth-locked .app{display:none}
 
-/* �"?�"? AUTH �"?�"? */
+/* " - ? AUTH " - ? */
 .auth-screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:2rem;background:#384651}
 body.auth-locked .auth-screen{display:flex}
 .auth-shell{width:100%;max-width:980px;display:grid;grid-template-columns:minmax(320px,460px) minmax(240px,360px);gap:1rem;align-items:stretch;justify-content:center}
@@ -55,7 +55,7 @@ body.auth-locked .auth-screen{display:flex}
 .btn-sidebar{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:white;border-radius:8px;padding:7px 10px;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;text-align:left}
 .btn-sidebar:hover{background:rgba(255,255,255,.11)}
 
-/* �"?�"? SIDEBAR �"?�"? */
+/* " - ? SIDEBAR " - ? */
 .sidebar{width:220px;flex-shrink:0;background:var(--ink);display:flex;flex-direction:column}
 .sidebar-header{padding:1.25rem;border-bottom:1px solid rgba(255,255,255,0.08)}
 .brand{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:calc(100% + 2.5rem);margin:-1.25rem -1.25rem 0;padding:1.1rem 1.25rem .85rem;background:linear-gradient(to bottom,var(--cream) 0 66px,transparent 66px)}
@@ -75,7 +75,7 @@ body.auth-locked .auth-screen{display:flex}
 .sidebar-axo-wrap{margin-top:auto;height:180px;overflow:visible;position:relative;background:radial-gradient(circle at 78% 86%,rgba(247,228,241,.35) 0,rgba(165,196,188,.22) 38%,rgba(56,70,81,0) 72%)}
 .sidebar-axo-wrap img{width:140px;position:absolute;bottom:-8px;right:-12px;object-fit:contain;opacity:.98;mix-blend-mode:normal;filter:drop-shadow(0 4px 10px rgba(20,28,34,.32))}
 
-/* �"?�"? MAIN �"?�"? */
+/* " - ? MAIN " - ? */
 .main{flex:1;min-width:0;display:flex;flex-direction:column;overflow-x:hidden}
 .topbar{background:white;padding:1rem 1.75rem;border-bottom:1px solid #ede9e6;display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .topbar-left{display:flex;align-items:center;gap:1rem}
@@ -85,7 +85,7 @@ body.auth-locked .auth-screen{display:flex}
 .content{padding:1.5rem 1.75rem;flex:1;overflow-y:auto;background:var(--bg);padding-left:calc(1.75rem + env(safe-area-inset-left,0px));padding-right:calc(1.75rem + env(safe-area-inset-right,0px));padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))}
 .view{display:none}.view.active{display:block}
 
-/* �"?�"? BUTTONS �"?�"? */
+/* " - ? BUTTONS " - ? */
 .btn-primary{background:var(--terra);color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;font-family:'DM Sans',sans-serif;transition:background .15s;white-space:nowrap}
 .btn-primary:hover{background:#9e4f2e}
 .btn-sm{padding:6px 12px;font-size:12px}
@@ -96,14 +96,14 @@ body.auth-locked .auth-screen{display:flex}
 .btn-danger{background:none;border:1px solid #f5c5bc;color:#9e3020;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
 .btn-danger:hover{background:#fde8e4}
 
-/* �"?�"? STATS �"?�"? */
+/* " - ? STATS " - ? */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
 .stat-card{background:white;border-radius:12px;padding:.875rem 1rem;border:1px solid var(--ink-border)}
 .stat-label{font-size:11px;color:var(--ink-light);margin-bottom:2px}
 .stat-value{font-size:22px;font-weight:500;color:var(--ink);font-family:'Lora',serif;line-height:1.1}
 .stat-sub{font-size:11px;color:var(--ink-light);margin-top:2px}
 
-/* �"?�"? PATIENT LIST �?" silueta humana únicamente, NUNCA axolote �"?�"? */
+/* " - ? PATIENT LIST  -  silueta humana únicamente, NUNCA axolote " - ? */
 .patient-list{display:flex;flex-direction:column;gap:8px}
 .patient-card{background:white;border:1px solid var(--ink-border);border-radius:12px;padding:.875rem 1.25rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px}
 .patient-card:hover{border-color:var(--sage);transform:translateY(-1px);box-shadow:0 3px 10px rgba(56,70,81,.07)}
@@ -131,9 +131,9 @@ body.auth-locked .auth-screen{display:flex}
 .quick-pay{position:relative}
 .quick-pay-toggle{display:flex;align-items:center;gap:6px;background:var(--cream);border:1px solid var(--blush);color:var(--ink);padding:7px 11px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;list-style:none}
 .quick-pay-toggle::-webkit-details-marker{display:none}
-.quick-pay-toggle::after{content:'�-�';font-size:10px;color:var(--ink-light)}
+.quick-pay-toggle::after{content:'\25BE';font-size:10px;color:var(--ink-light)}
 .quick-pay[open] .quick-pay-toggle{background:white;border-color:var(--sage);box-shadow:0 2px 8px rgba(30,42,50,.08)}
-.quick-pay[open] .quick-pay-toggle::after{content:'�-�'}
+.quick-pay[open] .quick-pay-toggle::after{content:'\25B4'}
 .quick-pay-panel{position:absolute;right:0;top:calc(100% + 8px);width:320px;background:white;border:1px solid #e7e1dc;border-radius:12px;padding:12px;box-shadow:0 14px 28px rgba(30,42,50,.16);z-index:25}
 .quick-pay-title{font-size:12px;color:var(--ink-light);margin-bottom:8px}
 .quick-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -156,7 +156,7 @@ body.auth-locked .auth-screen{display:flex}
 .b-debt{background:var(--blush-soft);color:var(--terra)}
 .b-warn{background:rgba(185,93,55,.14);color:var(--terra)}
 
-/* �"?�"? MODAL �"?�"? */
+/* " - ? MODAL " - ? */
 .modal-overlay{position:fixed;inset:0;background:rgba(30,42,50,.55);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px)}
 .modal-overlay.open{display:flex}
 .modal{background:white;border-radius:16px;width:560px;max-width:97vw;max-height:90vh;overflow-y:auto;padding:1.75rem;box-shadow:0 24px 64px rgba(30,42,50,.2)}
@@ -175,11 +175,11 @@ input[type="file"].form-input{cursor:pointer}
 .day-btn.sel{background:var(--ink);color:white;border-color:var(--ink)}
 .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #ede9e6}
 
-/* �"?�"? DETAIL �"?�"? */
+/* " - ? DETAIL " - ? */
 .back-btn{background:none;border:none;cursor:pointer;color:var(--ink-light);font-size:13px;display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;padding:0}
 .back-btn:hover{color:var(--ink)}
 .detail-hero{background:white;border:1px solid #ede9e6;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:16px}
-/* Hero usa axolote feliz/pensativo �?" NUNCA triste */
+/* Hero usa axolote feliz/pensativo  -  NUNCA triste */
 .hero-axo{width:80px;height:80px;object-fit:contain;flex-shrink:0}
 .detail-hero-main{flex:1;min-width:0}
 .detail-hero-actions{display:flex;align-items:flex-start;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
@@ -197,14 +197,14 @@ input[type="file"].form-input{cursor:pointer}
 .dkey{font-size:13px;color:var(--ink-light)}
 .dval{font-size:13px;font-weight:500;color:var(--ink);text-align:right}
 
-/* �"?�"? HORAS POR DÍA �?" en el formulario de edición �"?�"? */
+/* " - ? HORAS POR DÍA  -  en el formulario de edición " - ? */
 .hora-dia-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f2f0}
 .hora-dia-row:last-child{border-bottom:none}
 .hora-dia-label{font-size:13px;color:var(--ink);min-width:80px;font-weight:500}
 .hora-dia-input{border:1px solid #ddd;border-radius:6px;padding:5px 9px;font-size:13px;color:var(--ink);font-family:'DM Sans',sans-serif;width:100px}
 .hora-dia-input:focus{outline:none;border-color:var(--sage-dark)}
 
-/* �"?�"? CALENDARIO �"?�"? */
+/* " - ? CALENDARIO " - ? */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem}
 .cal-nav-title{font-family:'Lora',serif;font-size:15px;font-weight:600;color:var(--ink);text-transform:capitalize}
 .cal-nav-btn{background:none;border:1px solid #ddd;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:15px;color:var(--ink-light)}
@@ -220,7 +220,7 @@ input[type="file"].form-input{cursor:pointer}
 .cal-day.is-programado:not(.has-session):hover{background:rgba(165,196,188,.08)}
 .cal-day.today .cal-day-num{background:var(--ink);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
 .cal-day-num{font-size:12px;color:var(--ink-light);line-height:1;margin-bottom:1px;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
-/* Pastilla de sesión �?" UNA SOLA por día programado */
+/* Pastilla de sesión  -  UNA SOLA por día programado */
 .cal-pip{
   width:90%;height:22px;border-radius:5px;
   display:flex;align-items:center;justify-content:center;gap:4px;
@@ -242,7 +242,7 @@ input[type="file"].form-input{cursor:pointer}
 .cal-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-light)}
 .cal-leg-dot{width:10px;height:10px;border-radius:3px}
 
-/* �"?�"? ALERTA FIN DE MES �"?�"? */
+/* " - ? ALERTA FIN DE MES " - ? */
 .alert-pendientes{
   background:#fffbf7;border:1.5px solid #f0c8a0;border-radius:10px;
   padding:.875rem 1.125rem;margin-bottom:1rem;
@@ -251,7 +251,7 @@ input[type="file"].form-input{cursor:pointer}
 .alert-pendientes strong{font-weight:500}
 .alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
 
-/* �"?�"? POPOVER DE SESI�"N �"?�"? */
+/* " - ? POPOVER DE SESI"N " - ? */
 .ses-popover{
   position:fixed;z-index:300;
   background:white;border:1px solid #ddd;border-radius:12px;
@@ -274,7 +274,7 @@ input[type="file"].form-input{cursor:pointer}
 .ses-popover-footer{margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0eeec;display:flex;justify-content:space-between;align-items:center}
 .popover-close{background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink-light);font-family:'DM Sans',sans-serif}
 
-/* �"?�"? ACCIONES RÁPIDAS �"?�"? */
+/* " - ? ACCIONES RÁPIDAS " - ? */
 .att-row{display:flex;gap:7px;margin-bottom:.75rem;flex-wrap:wrap}
 .att-btn{flex:1;min-width:80px;padding:8px;border-radius:8px;border:1px solid #ddd;cursor:pointer;font-size:12px;background:none;color:var(--ink-light);font-family:'DM Sans',sans-serif;transition:all .15s;font-weight:500}
 .att-btn.ok{background:var(--sage-soft);color:var(--ink);border-color:rgba(165,196,188,.58)}
@@ -282,7 +282,7 @@ input[type="file"].form-input{cursor:pointer}
 .att-btn.cancel{background:var(--cream);color:var(--ink-light);border-color:var(--ink-border)}
 .att-btn.repo{background:var(--cream);color:var(--ink);border-color:rgba(165,196,188,.58)}
 
-/* �"?�"? PAGOS �"?�"? */
+/* " - ? PAGOS " - ? */
 .pay-amounts{display:flex;gap:1.5rem;margin-bottom:.875rem;flex-wrap:wrap}
 .pa-label{font-size:11px;color:var(--ink-light);margin-bottom:3px}
 .pa-num{font-family:'Lora',serif;font-size:22px;font-weight:600}
@@ -297,7 +297,7 @@ input[type="file"].form-input{cursor:pointer}
 .inp-sm{padding:7px 10px;font-size:13px;border:1px solid #ddd;border-radius:8px;background:white;color:var(--ink);width:110px;font-family:'DM Sans',sans-serif}
 .inp-sm:focus{outline:none;border-color:var(--sage-dark)}
 
-/* �"?�"? TARIFAS / BITÁCORA �"?�"? */
+/* " - ? TARIFAS / BITÁCORA " - ? */
 .tariff-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cream);font-size:13px}
 .tariff-row:last-child{border-bottom:none}
 .tariff-period{color:var(--ink-light);flex:1}
@@ -313,7 +313,7 @@ input[type="file"].form-input{cursor:pointer}
 .lt-datos{background:var(--cream);color:var(--ink)}
 .lt-reposicion{background:var(--blush-soft);color:var(--ink)}
 
-/* �"?�"? SEMANA �"?�"? */
+/* " - ? SEMANA " - ? */
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:.75rem}
 .wday{background:white;border:1px solid #ede9e6;border-radius:10px;padding:.75rem .5rem;min-height:100px}
 .wday-name{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
@@ -333,7 +333,7 @@ input[type="file"].form-input{cursor:pointer}
 .month-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;color:var(--ink-light);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
 .month-dow div{text-align:center}
 
-/* �"?�"? RESUMEN �"?�"? */
+/* " - ? RESUMEN " - ? */
 .res-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
 .rcard{background:white;border:1px solid #ede9e6;border-radius:12px;padding:1.25rem;text-align:center}
 .rnum{font-family:'Lora',serif;font-size:38px;font-weight:600;color:var(--ink)}
@@ -345,7 +345,7 @@ input[type="file"].form-input{cursor:pointer}
 .bbar.cur{background:var(--sage-dark)}
 .blabel{font-size:10px;color:var(--ink-light)}.bval{font-size:10px;color:var(--ink-light)}
 
-/* �"?�"? PROSPECTADO �"?�"? */
+/* " - ? PROSPECTADO " - ? */
 .prosp-banner{background:var(--ink);border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1.5rem;overflow:hidden}
 .prosp-axo{width:90px;height:90px;object-fit:contain;flex-shrink:0;mix-blend-mode:screen}
 .prosp-head{font-family:'Lora',serif;font-size:13px;color:rgba(255,255,255,.55);margin-bottom:.5rem}
@@ -362,11 +362,11 @@ input[type="file"].form-input{cursor:pointer}
 .pr-bar-fill{height:100%;border-radius:4px;transition:width .4s}
 .pr-bar-note{font-size:11px;color:#aaa}
 
-/* �"?�"? EDIT �"?�"? */
+/* " - ? EDIT " - ? */
 .edit-banner{background:var(--cream);border:1.5px solid rgba(185,93,55,.35);border-radius:10px;padding:.875rem 1rem;margin-bottom:1rem;font-size:13px;color:var(--terra)}
 .alert-box{background:var(--cream);border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:.75rem 1rem;font-size:13px;color:var(--terra);margin:.75rem 0;line-height:1.5}
 
-/* �"?�"? TABS �"?�"? */
+/* " - ? TABS " - ? */
 .dtabs{display:flex;gap:0;border-bottom:2px solid #f0eeec;margin-bottom:1rem;overflow-x:auto}
 .dtab{background:none;border:none;padding:.625rem 1rem;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
 .dtab:hover{color:var(--ink)}
@@ -376,7 +376,7 @@ input[type="file"].form-input{cursor:pointer}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--ink-light);font-size:13px}
 .empty img{width:80px;opacity:.8;margin-bottom:.75rem;display:block;margin-left:auto;margin-right:auto}
 
-/* �"?�"? NOTAS CLÍNICAS �"?�"? */
+/* " - ? NOTAS CLÍNICAS " - ? */
 .nota-card{background:var(--cream);border:1px solid var(--ink-border);border-radius:10px;padding:.875rem 1rem;margin-bottom:.625rem}
 .nota-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.375rem;gap:8px}
 .nota-fecha{font-size:11px;color:var(--ink-light);white-space:nowrap}
@@ -394,7 +394,7 @@ input[type="file"].form-input{cursor:pointer}
 .nota-form textarea:focus{outline:none;border-color:var(--sage-dark)}
 .nota-form-row{display:flex;gap:8px;align-items:flex-end;margin-top:8px;flex-wrap:wrap}
 
-/* �"?�"? MOVE REPO �"?�"? */
+/* " - ? MOVE REPO " - ? */
 .ses-opt-move{background:var(--cream);color:var(--terra);border:1px dashed rgba(185,93,55,.45);border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;margin-top:6px;display:flex;align-items:center;gap:6px}
 .ses-opt-move:hover{background:var(--blush-soft)}
 .move-repo-panel{padding:.75rem 0 0}
@@ -403,14 +403,14 @@ input[type="file"].form-input{cursor:pointer}
 .move-repo-panel input:focus{outline:none;border-color:var(--sage-dark)}
 .move-repo-actions{display:flex;gap:8px;margin-top:8px}
 
-/* �"?�"? BITÁCORA TABS �"?�"? */
+/* " - ? BITÁCORA TABS " - ? */
 .bittabs{display:flex;gap:0;border-bottom:1.5px solid #f0eeec;margin-bottom:.875rem}
 .bittab{background:none;border:none;padding:5px 12px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1.5px;transition:all .15s;white-space:nowrap}
 .bittab:hover{color:var(--ink)}
 .bittab.active{color:var(--terra);border-bottom-color:var(--terra);font-weight:500}
 .bitpanel{display:none}.bitpanel.active{display:block}
 
-/* �"?�"? FILTROS DE PERIODO Y ESTIMADOR �"?�"? */
+/* " - ? FILTROS DE PERIODO Y ESTIMADOR " - ? */
 .period-switch{display:inline-flex;gap:4px;background:var(--cream);border:1px solid var(--blush);border-radius:999px;padding:3px}
 .period-btn{background:transparent;border:none;color:var(--ink-light);font-size:12px;font-family:'DM Sans',sans-serif;padding:5px 10px;border-radius:999px;cursor:pointer;transition:all .15s}
 .period-btn:hover{color:var(--ink)}
@@ -437,7 +437,7 @@ input[type="file"].form-input{cursor:pointer}
   .profile-grid{grid-template-columns:1fr}
 }
 
-/* �"?�"? MOBILE MENU �"?�"? */
+/* " - ? MOBILE MENU " - ? */
 @media (max-width:768px){
   .app{position:relative}
   .sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform .3s ease;box-shadow:2px 0 8px rgba(0,0,0,.15)}
@@ -540,19 +540,19 @@ input[type="file"].form-input{cursor:pointer}
     </div>
     <div class="nav-section">
       <div class="nav-label">Clínica</div>
-      <button class="nav-item active" onclick="showView('hoy')" id="nav-hoy"><span class="nav-ico">�-�</span> Hoy</button>
-      <button class="nav-item" onclick="showView('pacientes')" id="nav-pacientes"><span class="nav-ico">�-?</span> Pacientes</button>
-      <button class="nav-item" onclick="showView('inactivos')" id="nav-inactivos"><span class="nav-ico">�-Z</span> Pacientes inactivos</button>
-      <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">�-�</span> Semana</button>
+      <button class="nav-item active" onclick="showView('hoy')" id="nav-hoy"><span class="nav-ico">&#128197;</span> Hoy</button>
+      <button class="nav-item" onclick="showView('pacientes')" id="nav-pacientes"><span class="nav-ico">&#128101;</span> Pacientes</button>
+      <button class="nav-item" onclick="showView('inactivos')" id="nav-inactivos"><span class="nav-ico">&#128683;</span> Pacientes inactivos</button>
+      <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">&#128198;</span> Semana</button>
     </div>
     <div class="nav-section">
       <div class="nav-label">Finanzas</div>
-      <button class="nav-item" onclick="showView('resumen')" id="nav-resumen"><span class="nav-ico">�-^</span> Resumen</button>
-      <button class="nav-item" onclick="showView('prospectado')" id="nav-prospectado"><span class="nav-ico">�-�</span> Prospectado</button>
+      <button class="nav-item" onclick="showView('resumen')" id="nav-resumen"><span class="nav-ico">&#128200;</span> Resumen</button>
+      <button class="nav-item" onclick="showView('prospectado')" id="nav-prospectado"><span class="nav-ico">&#128176;</span> Prospectado</button>
     </div>
     <div class="nav-section">
       <div class="nav-label">Cuenta</div>
-      <button class="nav-item" onclick="showView('perfil')" id="nav-perfil"><span class="nav-ico">�sT</span> Perfil</button>
+      <button class="nav-item" onclick="showView('perfil')" id="nav-perfil"><span class="nav-ico">&#128100;</span> Perfil</button>
     </div>
     <div class="sidebar-axo-wrap"><img id="sb-axo" src="" alt=""></div>
   </nav>
@@ -560,7 +560,7 @@ input[type="file"].form-input{cursor:pointer}
   <div class="main">
     <div id="view-hoy" class="view active">
       <div class="topbar">
-        <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()">�~�</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
+        <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()">&#9776;</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
         <details class="quick-pay" id="quick-pay-drawer">
           <summary class="quick-pay-toggle">Pago rápido</summary>
           <div class="quick-pay-panel">
@@ -607,7 +607,7 @@ input[type="file"].form-input{cursor:pointer}
     </div>
     <div id="view-detalle" class="view">
       <div class="topbar">
-        <button class="back-btn" onclick="showView(lastPatientListView)">�?� Regresar</button>
+        <button class="back-btn" onclick="showView(lastPatientListView)">&larr; Regresar</button>
         <div class="topbar-left" style="text-align:right">
           <div class="page-title" id="det-nombre"></div>
           <div class="page-sub" id="det-sub"></div>
@@ -638,7 +638,7 @@ input[type="file"].form-input{cursor:pointer}
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title" id="modal-title">Nuevo paciente</span>
-      <button class="modal-close" onclick="closeModal()">�-</button>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div id="modal-body"></div>
   </div>
@@ -775,7 +775,7 @@ const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const DIAS_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-// �"?�"? Axo HERO: solo versiones felices/pensativas �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? Axo HERO: solo versiones felices/pensativas " -  -  -  -  -  -  -  -  -  -  -  - ?
 function axoHero(p){
   if(p.adeudo===0) return p.sesiones.length?AXO.normal1:AXO.normal3;
   if(p.adeudo<=tarifaVigente(p)) return AXO.pensando4;
@@ -783,11 +783,11 @@ function axoHero(p){
 }
 function axoProsp(r){ return 'Assets/Axolotl/Pensando-3.svg'; }
 
-// Silueta SVG �?" TODAS las listas, NUNCA axolote
+// Silueta SVG  -  TODAS las listas, NUNCA axolote
 const PERSON_SVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>`;
 const PATIENT_PROFILE_IMG='Assets/Axolotl/Normal-2.svg';
 
-// �"?�"? Helpers �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? Helpers " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function pagoLabel(p){return{sesion:'Por sesión',mensual:'Mensual',quincenal:'Quincenal',inicio:'Inicio de mes'}[p]||p}
 function today(){return new Date().toISOString().split('T')[0]}
 function durationOptionsHtml(selected=45,min=45,max=150,step=5){
@@ -944,7 +944,7 @@ function sesionesEnMes(p,year,month){
 }
 function ingresoProspMes(p,year,month){
   const hoy=new Date();
-  return sesionesEnMes(p,year??hoy.getFullYear(),month??hoy.getMonth())*tarifaVigente(p);
+  return sesionesEnMes(p,year?hoy.getFullYear(),month?hoy.getMonth())*tarifaVigente(p);
 }
 function sesionesPendientes(p){
   const hoy=new Date();
@@ -1119,8 +1119,8 @@ function getTimelineEvents(p){
   const eventos=[];
   eventos.push({fecha:p.inicio,tipo:'datos',desc:'Inicio de tratamiento'});
   (p.frecuencias||[]).forEach(f=>eventos.push({fecha:f.desde,tipo:'horario',desc:`Frecuencia: ${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana`}));
-  (p.pausas||[]).forEach(pp=>eventos.push({fecha:pp.desde,tipo:'horario',desc:`${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${pp.actor}: ${pp.desde}�?'${pp.hasta}${pp.nota?` �?" ${pp.nota}`:''}`}));
-  (p.statusHistory||[]).forEach(ev=>eventos.push({fecha:ev.fecha,tipo:'datos',desc:`${ev.status==='inactive'?'Paciente inactivo':'Reingreso / activo'}: ${statusReasonLabel(ev.reason)}${ev.note?` �?" ${ev.note}`:''}`}));
+  (p.pausas||[]).forEach(pp=>eventos.push({fecha:pp.desde,tipo:'horario',desc:`${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${pp.actor}: ${pp.desde} → ${pp.hasta}${pp.nota?`  -  ${pp.nota}`:''}`}));
+  (p.statusHistory||[]).forEach(ev=>eventos.push({fecha:ev.fecha,tipo:'datos',desc:`${ev.status==='inactive'?'Paciente inactivo':'Reingreso / activo'}: ${statusReasonLabel(ev.reason)}${ev.note?`  -  ${ev.note}`:''}`}));
   return eventos.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 }
 
@@ -1134,7 +1134,7 @@ function loadState(){
   return getLegacyLocalStore();
 }
 
-// �"?�"? Datos de ejemplo �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? Datos de ejemplo " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 let patients = [
   {id:1,nombre:'Ana García',inicio:'2024-03-10',dias:[0,2],
    hora:'09:00',horas:{0:'09:00',2:'10:30'},
@@ -1809,7 +1809,7 @@ function textoPeriodo(period){
   return period==='semana'?'esta semana':period==='anio'?'este año':'este mes';
 }
 
-// �"?�"? SIDEBAR BADGE �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? SIDEBAR BADGE " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function toggleSidebarMobile(){
   const sidebar=document.querySelector('.sidebar');
   const overlay=document.getElementById('sidebar-overlay');
@@ -1835,7 +1835,7 @@ function updateSidebarBadge(){
   } else if(existing) existing.remove();
 }
 
-// �"?�"? STATS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? STATS " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderStats(){
   const activos=activePatients();
   const hoy=new Date();
@@ -1853,7 +1853,7 @@ function renderStats(){
   updateSidebarBadge();
 }
 
-// �"?�"? LISTA PACIENTES �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? LISTA PACIENTES " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderPatients(){
   const activos=sortPatientsByName(activePatients().filter(p=>matchesPatientSearch(p,activeSearch)));
   renderStats();
@@ -1861,7 +1861,7 @@ function renderPatients(){
   if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="Assets/Axolotl/Angustia-4.svg"><p>Sin pacientes activos.</p></div>`;return}
   const hoy=new Date();
   const pendTotal=totalPendientesHoy();
-  const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">�s�</span><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
+  const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">s</span><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
   const searchHtml=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."><div style="font-size:12px;color:var(--ink-light)">${activos.length} resultado${activos.length!==1?'s':''}</div></div>`;
   el.innerHTML=searchHtml+alertaHtml+activos.map(p=>{
     const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
@@ -2072,7 +2072,7 @@ function renderHoy(){
             <button class="btn-primary btn-sm" type="button" style="cursor:default;pointer-events:none">Guardado</button>
             <span class="today-locked-pill">Registro confirmado</span>
           </div>
-          <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">�-</button>
+          <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
         </div>
       </div>`;
     }
@@ -2274,7 +2274,7 @@ function saveTodaySession(pid){
     ses.tipo=tipo;
     ses.noCharge=noCharge;
     if(!ses.hora) ses.hora=defaultHora;
-    addLog(p,'datos',`Registro hoy ${dateStr}: ${ant}�?'${tipo}${noCharge?' (sin cobro)':''}`);
+    addLog(p,'datos',`Registro hoy ${dateStr}: ${ant} → ${tipo}${noCharge?' (sin cobro)':''}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     ses={id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo,noCharge,hora:defaultHora};
@@ -2444,7 +2444,7 @@ function cancelTodayReposicion(pid){
   if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
 }
 
-// �"?�"? showView �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? showView " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function showView(v){
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
@@ -2458,7 +2458,7 @@ function showView(v){
     if(!tl.querySelector('.menu-toggle')){
       const btn=document.createElement('button');
       btn.className='menu-toggle';
-      btn.textContent='�~�';
+      btn.textContent='\u2630';
       btn.style.marginRight='0';
       btn.onclick=toggleSidebarMobile;
       tl.insertBefore(btn, tl.firstChild);
@@ -2475,7 +2475,7 @@ function showView(v){
   if(v==='perfil') renderTherapistProfileView();
 }
 
-// �"?�"? DETALLE �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? DETALLE " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function showDetalle(id){
   curId=id;curTab='sesiones';curBitTab='log';
   detallePeriod='mes';
@@ -2555,7 +2555,7 @@ function agregarCambioFrecuencia(pid){
   if(existing){
     const anterior=existing.vecesSemana;
     existing.vecesSemana=vecesSemana;
-    addLog(p,'horario',`Frecuencia ajustada: ${desde} ${anterior}�?'${vecesSemana} sesión(es)/semana`);
+    addLog(p,'horario',`Frecuencia ajustada: ${desde} ${anterior} → ${vecesSemana} sesión(es)/semana`);
   } else {
     p.frecuencias.push({desde,vecesSemana});
     normalizarFrecuencias(p);
@@ -2591,7 +2591,7 @@ function agregarPausa(pid){
   if(hasta<desde){alert('La fecha final debe ser posterior a la inicial');return;}
   p.pausas.push({id:'vp'+(nextPauseId++),actor,categoria,desde,hasta,nota});
   normalizarPausas(p);
-  addLog(p,'horario',`${categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${actor}: ${desde}�?'${hasta}${nota?` �?" ${nota}`:''}`);
+  addLog(p,'horario',`${categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${actor}: ${desde} → ${hasta}${nota?`  -  ${nota}`:''}`);
   saveState();
   curTab='editar';
   renderDetalle(p);
@@ -2602,7 +2602,7 @@ function deletePausa(pid,pauseId){
   const pausa=p.pausas.find(pp=>pp.id===pauseId);
   if(!pausa) return;
   p.pausas=p.pausas.filter(pp=>pp.id!==pauseId);
-  addLog(p,'horario',`${pausa.categoria==='vacaciones'?'Vacaciones':'Pausa'} eliminada: ${pausa.actor} ${pausa.desde}�?'${pausa.hasta}`);
+  addLog(p,'horario',`${pausa.categoria==='vacaciones'?'Vacaciones':'Pausa'} eliminada: ${pausa.actor} ${pausa.desde} → ${pausa.hasta}`);
   saveState();
   curTab='editar';
   renderDetalle(p);
@@ -2651,11 +2651,11 @@ function exportPatientSummary(pid){
   URL.revokeObjectURL(url);
 }
 
-// �"?�"? POPOVER �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? POPOVER " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 // El popover ahora incluye:
 //  - opciones de tipo (asistio, falta, cancelada, reposicion)
-//  - si la sesión es reposicion �?' botón "Mover a otra fecha"
-//  - si la sesión es falta con reposicion asociada �?' botón "Mover reposición"
+//  - si la sesión es reposicion → botón "Mover a otra fecha"
+//  - si la sesión es falta con reposicion asociada → botón "Mover reposición"
 //  - Eliminar: borra la respuesta SIN confirm, deja el día vacío/programado
 let popoverState={pid:null,dateStr:null,sesId:null};
 let moveRepoMode=false;
@@ -2681,10 +2681,10 @@ function openPopover(pid,dateStr,ses,anchorEl){
   const isSourceText=ses&&ses.skipped?`Sesión movida a ${ses.movedTo} ${ses.movedTime}`:'Esta sesión fue reposicionada.';
 
   const opts=[
-    {tipo:'asistio',icon:'�o"',label:'Asistió'},
-    {tipo:'falta',icon:'�o-',label:'Faltó paciente (sí cuenta)'},
-    {tipo:'cancelada',icon:'�?"',label:'Cancelé yo (sin costo)'},
-    {tipo:'reposicion',icon:'�?�',label:'Reposición'},
+    {tipo:'asistio',icon:'\u2713',label:'Asistió'},
+    {tipo:'falta',icon:'\u2715',label:'Faltó paciente (sí cuenta)'},
+    {tipo:'cancelada',icon:'\u2013',label:'Cancelé yo (sin costo)'},
+    {tipo:'reposicion',icon:'\u21BB',label:'Reposición'},
   ];
 
   const optsHtml = opts.map(o=>{
@@ -2724,8 +2724,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
     <div class="ses-popover-title">${dateStr} · ${hora}</div>
     <div class="ses-popover-opts">
       ${optsHtml}
-      ${repoAsociada?`<div class="ses-opt-move" onclick="toggleMoveRepo('${pid}','${dateStr}','${ses.id}')">
-        �o� Mover ${esRepo?'esta reposición':'la reposición'} a otra fecha
+      ${repoAsociada?`<div class="ses-opt-move" onclick="toggleMoveRepo('${pid}','${dateStr}','${ses.id}')">&#8635; Mover ${esRepo?'esta reposición':'la reposición'} a otra fecha
       </div>`:''}
     </div>
     <div id="move-repo-panel" style="display:none" class="move-repo-panel">
@@ -2849,7 +2848,7 @@ function confirmarMoveRepo(pid,sesId){
 
   if(ses.tipo==='reposicion'){
     // Mover esta reposición
-    addLog(p,'reposicion',`Reposición movida: ${fechaAnterior}�?'${nuevaFecha}`);
+    addLog(p,'reposicion',`Reposición movida: ${fechaAnterior} → ${nuevaFecha}`);
     ses.fecha=nuevaFecha;
     ses.replaced=true;
     ses.repoTo=nuevaFecha;
@@ -2857,7 +2856,7 @@ function confirmarMoveRepo(pid,sesId){
     // Mover la reposición asociada
     const repo=p.sesiones.find(s=>s.id===ses.repoId);
     if(repo){
-      addLog(p,'reposicion',`Reposición (de falta ${fechaAnterior}) movida: ${repo.fecha}�?'${nuevaFecha}`);
+      addLog(p,'reposicion',`Reposición (de falta ${fechaAnterior}) movida: ${repo.fecha} → ${nuevaFecha}`);
       repo.fecha=nuevaFecha;
       repo.replaced=true;
       repo.repoTo=nuevaFecha;
@@ -2872,7 +2871,7 @@ function confirmarMoveRepo(pid,sesId){
   saveState();
 }
 
-// �"?�"? REGISTRAR DESDE POPOVER �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? REGISTRAR DESDE POPOVER " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function registrarDesdePop(pid,dateStr,tipo){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
@@ -2969,7 +2968,7 @@ function registrarDesdePop(pid,dateStr,tipo){
       if(tipo==='asistio'||tipo==='falta'||tipo==='extra') p.adeudo+=tv;
     }
     existing.tipo=tipo;
-    if(tipo==='falta'||ant==='falta') addLog(p,'datos',`Sesión ${dateStr}: ${ant}�?'${tipo}`);
+    if(tipo==='falta'||ant==='falta') addLog(p,'datos',`Sesión ${dateStr}: ${ant} → ${tipo}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo});
@@ -2984,7 +2983,7 @@ function registrarDesdePop(pid,dateStr,tipo){
   saveState();
 }
 
-// �"?�"? ELIMINAR RESPUESTA �?" sin confirm, solo borra la respuesta del día �"?�"?
+// " - ? ELIMINAR RESPUESTA  -  sin confirm, solo borra la respuesta del día " - ?
 function deleteSesionPop(pid,sid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!ensurePatientActiveForScheduling(p)) return;
@@ -3002,7 +3001,7 @@ function deleteSesionPop(pid,sid){
   saveState();
 }
 
-// �"?�"? ELIMINAR PAGO �?" sin confirm �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? ELIMINAR PAGO  -  sin confirm " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function deletePago(pid,payId){
   const p=patients.find(x=>x.id===parseInt(pid));
   const pay=p.pagos.find(x=>x.id===payId);
@@ -3026,7 +3025,7 @@ function deletePatient(pid){
   renderPatients();
 }
 
-// �"?�"? CALENDARIO �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? CALENDARIO " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function exposeSesMap(p){
   window['sesMap_'+p.id]={};
   p.sesiones.forEach(s=>{window['sesMap_'+p.id][s.fecha.split(' ')[0]]=s;});
@@ -3071,17 +3070,17 @@ function buildCalendar(p){
 
     let pip='';
     if(ses){
-      const icons={asistio:'�o"',falta:'�o-',cancelada:'�?"',reposicion:'�?�',extra:'�o"'}[ses.tipo]||'?';
+      const icons={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013',reposicion:'\u21BB',extra:'\u2713'}[ses.tipo]||'?';
       const baseLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'Asistió'}[ses.tipo]||ses.tipo;
       const firstFree=firstFreeId&&ses.id===firstFreeId;
       const label=firstFree?(baseLabel+' (1ra sin costo)'):baseLabel;
       // Mostrar indicador de reposición movible
       const hasRepo=ses.tipo==='reposicion'||(ses.tipo==='falta'&&ses.repoId);
-      pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' �o�':''}</div>`;
+      pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' &#8635;':''}</div>`;
     } else if((isProg||isFlexibleDate)&&!isFuture&&!beforeStart){
       pip=isInactive?`<div class="cal-pip sin-registro" title="Paciente inactivo">Sin reg.</div>`:`<div class="cal-pip sin-registro" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sin registrar">? Sin reg.</div>`;
     } else if(!isFlexibleDate&&!isProg&&!isFuture&&!beforeStart){
-      pip=isInactive?'':`<div class="cal-pip nueva" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Agregar nueva sesión">�< Nueva</div>`;
+      pip=isInactive?'':`<div class="cal-pip nueva" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Agregar nueva sesión">+ Nueva</div>`;
     } else if(isProg&&isFuture){
       pip=`<div class="cal-prog-dot" title="${horaRango||''}"></div>`;
     }
@@ -3092,15 +3091,15 @@ function buildCalendar(p){
   }
 
   const nPend=pendientes.size;
-  const alertaCal=!isFlexible&&nPend>0?`<div style="background:#f7e4f1;border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:7px 12px;font-size:12px;color:#b95d37;margin-bottom:.75rem">�s� ${nPend} sesión${nPend!==1?'es':''} sin registrar en ${MESES[calMonth]}. Haz clic en las celdas <span style="background:white;border:1.5px dashed rgba(56,70,81,.25);padding:1px 5px;border-radius:4px;font-size:11px">? Sin reg.</span> para llenarlas.</div>`:'';
+  const alertaCal=!isFlexible&&nPend>0?`<div style="background:#f7e4f1;border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:7px 12px;font-size:12px;color:#b95d37;margin-bottom:.75rem">&#9888; ${nPend} sesión${nPend!==1?'es':''} sin registrar en ${MESES[calMonth]}. Haz clic en las celdas <span style="background:white;border:1.5px dashed rgba(56,70,81,.25);padding:1px 5px;border-radius:4px;font-size:11px">? Sin reg.</span> para llenarlas.</div>`:'';
   const flexibleAlert=isFlexible?`<div style="background:rgba(165,196,188,.24);border:1px solid rgba(165,196,188,.56);border-radius:8px;padding:7px 12px;font-size:12px;color:#384651;margin-bottom:.75rem">Paciente sin horario fijo: puedes registrar sesiones en cualquier día pasado desde el inicio del tratamiento.</div>`:'';
   const inactiveAlert=isInactive?`<div style="background:#f7e4f1;border:1px solid rgba(247,204,232,.9);border-radius:8px;padding:7px 12px;font-size:12px;color:#6a8494;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. Reactívalo para registrar nuevas sesiones.</div>`:'';
 
   return `
     <div class="cal-nav">
-      <button class="cal-nav-btn" onclick="calPrev(${p.id})">�?�</button>
+      <button class="cal-nav-btn" onclick="calPrev(${p.id})">&#8249;</button>
       <span class="cal-nav-title">${MESES[calMonth]} ${calYear}</span>
-      <button class="cal-nav-btn" onclick="calNext(${p.id})">�?�</button>
+      <button class="cal-nav-btn" onclick="calNext(${p.id})">&#8250;</button>
     </div>
     ${inactiveAlert}
     ${flexibleAlert}
@@ -3113,7 +3112,7 @@ function buildCalendar(p){
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#ede8f8"></div>Reposición</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#e3f0ff"></div>Nueva sesión fuera de horario</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fdf8f5;border:1.5px dashed #ddd"></div>Sin registrar</div>
-      <div class="cal-leg-item"><span style="font-size:10px;color:var(--ink-light)">�o� = movible</span></div>
+      <div class="cal-leg-item"><span style="font-size:10px;color:var(--ink-light)">&#8635; = movible</span></div>
     </div>`;
 }
 
@@ -3128,7 +3127,7 @@ function calNext(pid){
   document.getElementById('cal-container').innerHTML=buildCalendar(p);
 }
 
-// �"?�"? RENDER DETALLE �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? RENDER DETALLE " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderDetalle(p){
   normalizePatient(p);
   exposeSesMap(p);
@@ -3154,23 +3153,23 @@ function renderDetalle(p){
   const startedThisYear=inicioYear===new Date().getFullYear();
   const useManualMode=startedThisYear && !p.manualEstimateOverride;
 
-  const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">�s�</span><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
+  const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">s</span><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
 
-  // Pagos �?" �- sin confirm
+  // Pagos  -  - sin confirm
   const payLog=[...p.pagos].reverse().map(py=>{const metodo=py.metodo||'efectivo'; return `<div class="prow">
     <span class="pdate">${py.fecha} · ${metodo}</span>
     <span class="pamt">+$${py.monto.toLocaleString('es-MX')}</span>
-    <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">�-</button>
+    <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">&times;</button>
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
 
   // Tarifas
   const tarifasHtml=(p.tarifas||[]).map((t,i)=>`<div class="tariff-row">
-    <span class="tariff-period">${t.desde} �?' ${t.hasta||'(vigente)'}</span>
+    <span class="tariff-period">${t.desde} → ${t.hasta||'(vigente)'}</span>
     <span class="tariff-amount">$${t.monto.toLocaleString('es-MX')}/sesión</span>
     ${i===0&&!t.hasta?'<span class="tariff-current">vigente</span>':''}
   </div>`).join('');
 
-  // Bitácora �?" log de cambios
+  // Bitácora  -  log de cambios
   const logTagClass={tarifa:'lt-tarifa',horario:'lt-horario',datos:'lt-datos',reposicion:'lt-reposicion'};
   const logHtml=(p.cambios||[]).map(c=>`<div class="log-row">
     <span class="log-date">${c.fecha}</span>
@@ -3189,7 +3188,7 @@ function renderDetalle(p){
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         <span class="nota-fecha">${n.fecha}</span>
-        <button class="nota-del" onclick="deleteNota('${p.id}','${n.id}')" title="Eliminar nota">�-</button>
+        <button class="nota-del" onclick="deleteNota('${p.id}','${n.id}')" title="Eliminar nota">&times;</button>
       </div>
     </div>
     <div class="nota-body">${n.cuerpo}</div>
@@ -3218,7 +3217,7 @@ function renderDetalle(p){
       <button class="dtab" data-tab="pagos" onclick="switchTab('pagos')">Pagos</button>
       <button class="dtab" data-tab="tarifas" onclick="switchTab('tarifas')">Tarifas</button>
       <button class="dtab" data-tab="bitacora" onclick="switchTab('bitacora')">Bitácora</button>
-      <button class="dtab" data-tab="editar" onclick="switchTab('editar')">�o� Editar</button>
+      <button class="dtab" data-tab="editar" onclick="switchTab('editar')">o Editar</button>
     </div>
 
     <!-- Calendario -->
@@ -3343,7 +3342,7 @@ function renderDetalle(p){
             <div class="form-grid" style="margin-bottom:8px">
               <div class="form-group form-full">
                 <label class="form-label">Título de la nota</label>
-                <input class="form-input" id="nota-titulo" placeholder="Ej: Sesión 5 �?" transferencia">
+                <input class="form-input" id="nota-titulo" placeholder="Ej: Sesión 5  -  transferencia">
               </div>
             </div>
             <textarea id="nota-body" placeholder="Escribe aquí la nota clínica..."></textarea>
@@ -3370,7 +3369,7 @@ function renderDetalle(p){
   if(curTab==='bitacora') switchBitTab(curBitTab);
 }
 
-// �"?�"? GUARDAR NOTA �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? GUARDAR NOTA " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function guardarNota(id){
   const p=patients.find(x=>x.id===id);
   const titulo=document.getElementById('nota-titulo').value.trim();
@@ -3389,7 +3388,7 @@ function deleteNota(pid,nid){
   if(curTab==='bitacora') switchBitTab('notas');
 }
 
-// �"?�"? EDIT PANEL �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? EDIT PANEL " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function buildEditPanel(p){
   normalizePatient(p);
   const tv=tarifaVigente(p);
@@ -3401,9 +3400,9 @@ function buildEditPanel(p){
   const horasRows=baseDias.map(i=>`<div class="hora-dia-row" id="hora-row-${i}"><span class="hora-dia-label">${DIAS_FULL[i]}</span><input class="hora-dia-input" id="hora-${i}" type="time" value="${baseHoras[i]!==undefined?baseHoras[i]:horaDia(p,i)}"></div>`).join('');
   const freqActual=frecuenciaVigenteEnFecha(p,today());
   const frecuenciasHtml=p.frecuencias.map((f,index)=>`<div class="freq-item"><div><div>${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana</div><div class="freq-meta">Desde ${f.desde}</div></div>${index===0?'':`<button class="btn-ghost" onclick="deleteFrecuencia(${p.id},'${f.desde}')">Eliminar</button>`}</div>`).join('');
-  const pausasHtml=p.pausas.length?p.pausas.map(pp=>`<div class="freq-item"><div><div>${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} · ${pp.actor}</div><div class="freq-meta">${pp.desde} �?' ${pp.hasta}${pp.nota?` · ${pp.nota}`:''}</div></div><button class="btn-ghost" onclick="deletePausa(${p.id},'${pp.id}')">Eliminar</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin vacaciones o pausas registradas.</div>';
+  const pausasHtml=p.pausas.length?p.pausas.map(pp=>`<div class="freq-item"><div><div>${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} · ${pp.actor}</div><div class="freq-meta">${pp.desde} → ${pp.hasta}${pp.nota?` · ${pp.nota}`:''}</div></div><button class="btn-ghost" onclick="deletePausa(${p.id},'${pp.id}')">Eliminar</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin vacaciones o pausas registradas.</div>';
   return `
-    <div class="edit-banner">�o� <strong>Modo edición</strong> �?" Los cambios se registran en la bitácora automáticamente.</div>
+    <div class="edit-banner">o <strong>Modo edición</strong>  -  Los cambios se registran en la bitácora automáticamente.</div>
     <div class="detail-grid">
       <div class="dsec full">
         <div class="sec-title">Datos generales</div>
@@ -3503,7 +3502,7 @@ function buildEditPanel(p){
           <div class="form-group"><label class="form-label">Vigente a partir de</label><input class="form-input" id="e-tarifa-desde" type="date" value="${today()}"></div>
           <div class="form-group" style="align-self:flex-end"><button class="btn-primary" onclick="guardarNuevaTarifa(${p.id})">Aplicar nueva tarifa</button></div>
         </div>
-        ${p.adeudo>0?`<div class="alert-box">Hay adeudo de <strong>$${p.adeudo.toLocaleString('es-MX')}</strong> �?" al aplicar se preguntará cómo calcularlo.</div>`:''}
+        ${p.adeudo>0?`<div class="alert-box">Hay adeudo de <strong>$${p.adeudo.toLocaleString('es-MX')}</strong>  -  al aplicar se preguntará cómo calcularlo.</div>`:''}
       </div>
     </div>`;
 }
@@ -3644,17 +3643,17 @@ function guardarDatosGenerales(id){
   const nuevoStatusNote=document.getElementById('e-status-note').value.trim();
   const nuevasCancelWeeksTerapeuta=parseFloat(document.getElementById('e-therapist-cancel-weeks').value);
   const nuevasCancelWeeksPaciente=parseFloat(document.getElementById('e-patient-absence-weeks').value);
-  if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}"�?'"${nuevoNombre}"`);
-  if(nuevoInicio!==p.inicio) cambios.push(`Inicio: ${p.inicio}�?'${nuevoInicio}`);
-  if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)}�?'${pagoLabel(nuevoPago)}`);
-  if(p.duracion!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45}�?'${nuevaDuracion} min`);
-  if(p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto? 'sí':'no'}�?'${nuevaPrimeraSinCosto? 'sí':'no'}`);
-  if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==p.statusNote) cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'}�?'${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?` �?" ${nuevoStatusNote}`:''}`);
-  if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear) cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear}�?'${nuevasCancelWeeksTerapeuta} semanas/año`);
-  if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear) cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear}�?'${nuevasCancelWeeksPaciente} semanas/año`);
-  if(diasVigentes.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${diasVigentes.map(d=>DIAS[d]).join(',')}]�?'[${diasSel.map(d=>DIAS[d]).join(',')}]`);
-  if(noFixedVigente!==noFixedSchedule) cambios.push(`Horario fijo: ${noFixedVigente?'no':'sí'}�?'${noFixedSchedule?'no':'sí'}`);
-  diasSel.forEach(i=>{const horaAntes=horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i);if(nuevasHoras[i]!==horaAntes) cambios.push(`${DIAS[i]}: ${horaAntes}�?'${nuevasHoras[i]}`);});
+  if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}"?'"${nuevoNombre}"`);
+  if(nuevoInicio!==p.inicio) cambios.push(`Inicio: ${p.inicio} → ${nuevoInicio}`);
+  if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)} → ${pagoLabel(nuevoPago)}`);
+  if(p.duracion!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45} → ${nuevaDuracion} min`);
+  if(p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto? 'sí':'no'} → ${nuevaPrimeraSinCosto? 'sí':'no'}`);
+  if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==p.statusNote) cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'} → ${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?`  -  ${nuevoStatusNote}`:''}`);
+  if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear) cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear} → ${nuevasCancelWeeksTerapeuta} semanas/año`);
+  if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear) cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear} → ${nuevasCancelWeeksPaciente} semanas/año`);
+  if(diasVigentes.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${diasVigentes.map(d=>DIAS[d]).join(',')}]?'[${diasSel.map(d=>DIAS[d]).join(',')}]`);
+  if(noFixedVigente!==noFixedSchedule) cambios.push(`Horario fijo: ${noFixedVigente?'no':'sí'} → ${noFixedSchedule?'no':'sí'}`);
+  diasSel.forEach(i=>{const horaAntes=horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i);if(nuevasHoras[i]!==horaAntes) cambios.push(`${DIAS[i]}: ${horaAntes} → ${nuevasHoras[i]}`);});
 
   const diasAntes=diasVigentes.slice().sort().join(',');
   const diasNuevos=diasSel.slice().sort().join(',');
@@ -3688,10 +3687,10 @@ function guardarNuevaTarifa(id){
   if(!p.tarifas) p.tarifas=[{monto:p.tarifa,desde:p.inicio,hasta:null}];
   p.tarifas[0].hasta=desde;p.tarifas.unshift({monto,desde,hasta:null});p.tarifa=monto;
   if(p.adeudo>0){
-    const resp=confirm(`Adeudo $${p.adeudo.toLocaleString('es-MX')}.\nOK �?' tarifa anterior ($${tv})\nCancelar �?' recalcular ($${monto})`);
-    if(!resp){const ses=p.adeudo/tv;p.adeudo=Math.round(ses*monto);addLog(p,'tarifa',`Tarifa $${tv}�?'$${monto} desde ${desde}. Adeudo recalculado: $${p.adeudo.toLocaleString('es-MX')}`);}
-    else addLog(p,'tarifa',`Tarifa $${tv}�?'$${monto} desde ${desde}. Adeudo previo mantenido`);
-  } else addLog(p,'tarifa',`Tarifa $${tv}�?'$${monto}/sesión desde ${desde}`);
+    const resp=confirm(`Adeudo $${p.adeudo.toLocaleString('es-MX')}.\nOK → tarifa anterior ($${tv})\nCancelar → recalcular ($${monto})`);
+    if(!resp){const ses=p.adeudo/tv;p.adeudo=Math.round(ses*monto);addLog(p,'tarifa',`Tarifa $${tv}?'$${monto} desde ${desde}. Adeudo recalculado: $${p.adeudo.toLocaleString('es-MX')}`);}
+    else addLog(p,'tarifa',`Tarifa $${tv}?'$${monto} desde ${desde}. Adeudo previo mantenido`);
+  } else addLog(p,'tarifa',`Tarifa $${tv}?'$${monto}/sesión desde ${desde}`);
   saveState();
   curTab='tarifas';renderDetalle(p);
 }
@@ -3707,7 +3706,7 @@ function regPago(id,inputId,dateInputId,methodInputId){
   saveState();
 }
 
-// �"?�"? REPOSICI�"N MODAL �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? REPOSICI"N MODAL " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function abrirReposicion(){
   const p=patients.find(x=>x.id===curId);
   if(!ensurePatientActiveForScheduling(p)) return;
@@ -3770,12 +3769,12 @@ function confirmarReposicion(id){
     });
   }
 
-  addLog(p,'reposicion',`Repo: ${fechaRepo} (repone ${fechaOrig})${nota?' �?" '+nota:''}`);
+  addLog(p,'reposicion',`Repo: ${fechaRepo} (repone ${fechaOrig})${nota?'  -  '+nota:''}`);
   saveState();
   closeModal();curTab='sesiones';exposeSesMap(p);renderDetalle(p);updateSidebarBadge();
 }
 
-// �"?�"? SEMANA �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? SEMANA " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderSemana(){
   const activos=activePatients();
   const base=new Date((semanaBaseDate||today())+'T12:00');
@@ -3790,7 +3789,7 @@ function renderSemana(){
       .map(s=>({
         pNombre:p.nombre,
         hora:s.hora||horaDiaFecha(p,fechaStr)||'99:99',
-        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">�?� ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
+        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">? ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
       }))
     );
     return [...slots,...repos].sort((a,b)=>{
@@ -3822,9 +3821,9 @@ function renderSemana(){
           <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
         </div>
         <div class="week-nav">
-          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">�?� Anterior</button>
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">? Anterior</button>
           <span class="week-period">${MESES[month]} ${year}</span>
-          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente �?'</button>
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente ?'</button>
         </div>
       </div>
       <div class="month-scroll">
@@ -3851,9 +3850,9 @@ function renderSemana(){
         <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
       </div>
       <div class="week-nav">
-        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">�?� Anterior</button>
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">? Anterior</button>
         <span class="week-period">${weekLabel}</span>
-        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente �?'</button>
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente ?'</button>
       </div>
     </div>
     <div class="week-grid">${cols}</div>`;
@@ -3873,7 +3872,7 @@ function moveSemanaRange(delta){
   renderSemana();
 }
 
-// �"?�"? RESUMEN �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? RESUMEN " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderResumen(){
   const activos=activePatients();
   const hoy=new Date();
@@ -3912,7 +3911,7 @@ function renderResumen(){
       </div>
       <div class="drow"><span class="dkey">Sesiones dadas ${textoPeriodo(resumenPeriod)}</span><span class="dval">${activeCount}</span></div>
     </div>
-    <div class="dsec" style="background:white"><div class="sec-title">Sesiones por mes �?" ${hoy.getFullYear()}</div><div class="bar-chart">${bars}</div></div>
+    <div class="dsec" style="background:white"><div class="sec-title">Sesiones por mes  -  ${hoy.getFullYear()}</div><div class="bar-chart">${bars}</div></div>
     <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Por paciente</div>
       ${activos.map(p=>{
         const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
@@ -3922,7 +3921,7 @@ function renderResumen(){
     </div>`;
 }
 
-// �"?�"? PROSPECTADO �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? PROSPECTADO " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderProspectado(){
   const activos=activePatients();
   const hoy=new Date();const y=hoy.getFullYear(),m=hoy.getMonth();
@@ -3958,7 +3957,7 @@ function renderProspectado(){
   document.getElementById('prosp-content').innerHTML=`
     <div class="prosp-banner">
       <img src="${axoProsp(ratio)}" class="prosp-axo" alt="">
-      <div style="flex:1"><div class="prosp-head">${MESES[m]} ${y} �?" sesiones por horario real</div>
+      <div style="flex:1"><div class="prosp-head">${MESES[m]} ${y}  -  sesiones por horario real</div>
         <div class="prosp-nums">
           <div><div class="pn-val col-white">$${totalProsp.toLocaleString('es-MX')}</div><div class="pn-label col-white">prospectado ideal</div></div>
           <div><div class="pn-val col-red">$${totalDeuda.toLocaleString('es-MX')}</div><div class="pn-label col-white">adeudo actual</div></div>
@@ -3966,13 +3965,13 @@ function renderProspectado(){
         </div>
       </div>
     </div>
-    <div class="dsec" style="background:white"><div class="sec-title">Desglose �?" ${MESES[m]}</div>${rowsHtml}</div>
+    <div class="dsec" style="background:white"><div class="sec-title">Desglose  -  ${MESES[m]}</div>${rowsHtml}</div>
     <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Metodología</div>
       <p style="font-size:13px;color:var(--ink-light);line-height:1.6">Cuenta los días exactos del mes en que caen los horarios de cada paciente. Sin promedios.</p>
     </div>`;
 }
 
-// �"?�"? MODAL NUEVO PACIENTE �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+// " - ? MODAL NUEVO PACIENTE " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 let newPatDias=[];
 function openModalNuevo(){
   newPatDias=[];
@@ -4084,7 +4083,7 @@ function openUnplannedSessionModal(){
       <div class="form-group form-full">
         <label class="form-label">Paciente</label>
         <select class="form-input" id="unplanned-patient">
-          <option value="">�?"  Selecciona un paciente  �?"</option>
+          <option value=""> -   Selecciona un paciente   - </option>
           ${activos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('')}
         </select>
       </div>
@@ -4141,6 +4140,10 @@ initFirebase().catch(err=>{
 </script>
 </body>
 </html>
+
+
+
+
 
 
 
