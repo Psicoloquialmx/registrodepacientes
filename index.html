@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -29,7 +29,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .app{display:flex;min-height:100vh}
 body.auth-locked .app{display:none}
 
-/* ── AUTH ── */
+/* â”€â”€ AUTH â”€â”€ */
 .auth-screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:2rem;background:#384651}
 body.auth-locked .auth-screen{display:flex}
 .auth-shell{width:100%;max-width:980px;display:grid;grid-template-columns:minmax(320px,460px) minmax(240px,360px);gap:1rem;align-items:stretch;justify-content:center}
@@ -55,7 +55,7 @@ body.auth-locked .auth-screen{display:flex}
 .btn-sidebar{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:white;border-radius:8px;padding:7px 10px;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;text-align:left}
 .btn-sidebar:hover{background:rgba(255,255,255,.11)}
 
-/* ── SIDEBAR ── */
+/* â”€â”€ SIDEBAR â”€â”€ */
 .sidebar{width:220px;flex-shrink:0;background:var(--ink);display:flex;flex-direction:column}
 .sidebar-header{padding:1.25rem;border-bottom:1px solid rgba(255,255,255,0.08)}
 .brand{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:calc(100% + 2.5rem);margin:-1.25rem -1.25rem 0;padding:1.1rem 1.25rem .85rem;background:linear-gradient(to bottom,var(--cream) 0 66px,transparent 66px)}
@@ -75,7 +75,7 @@ body.auth-locked .auth-screen{display:flex}
 .sidebar-axo-wrap{margin-top:auto;height:180px;overflow:visible;position:relative;background:radial-gradient(circle at 78% 86%,rgba(247,228,241,.35) 0,rgba(165,196,188,.22) 38%,rgba(56,70,81,0) 72%)}
 .sidebar-axo-wrap img{width:140px;position:absolute;bottom:-8px;right:-12px;object-fit:contain;opacity:.98;mix-blend-mode:normal;filter:drop-shadow(0 4px 10px rgba(20,28,34,.32))}
 
-/* ── MAIN ── */
+/* â”€â”€ MAIN â”€â”€ */
 .main{flex:1;min-width:0;display:flex;flex-direction:column;overflow-x:hidden}
 .topbar{background:white;padding:1rem 1.75rem;border-bottom:1px solid #ede9e6;display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .topbar-left{display:flex;align-items:center;gap:1rem}
@@ -85,7 +85,7 @@ body.auth-locked .auth-screen{display:flex}
 .content{padding:1.5rem 1.75rem;flex:1;overflow-y:auto;background:var(--bg);padding-left:calc(1.75rem + env(safe-area-inset-left,0px));padding-right:calc(1.75rem + env(safe-area-inset-right,0px));padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))}
 .view{display:none}.view.active{display:block}
 
-/* ── BUTTONS ── */
+/* â”€â”€ BUTTONS â”€â”€ */
 .btn-primary{background:var(--terra);color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;font-family:'DM Sans',sans-serif;transition:background .15s;white-space:nowrap}
 .btn-primary:hover{background:#9e4f2e}
 .btn-sm{padding:6px 12px;font-size:12px}
@@ -96,14 +96,14 @@ body.auth-locked .auth-screen{display:flex}
 .btn-danger{background:none;border:1px solid #f5c5bc;color:#9e3020;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif}
 .btn-danger:hover{background:#fde8e4}
 
-/* ── STATS ── */
+/* â”€â”€ STATS â”€â”€ */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.25rem}
 .stat-card{background:white;border-radius:12px;padding:.875rem 1rem;border:1px solid var(--ink-border)}
 .stat-label{font-size:11px;color:var(--ink-light);margin-bottom:2px}
 .stat-value{font-size:22px;font-weight:500;color:var(--ink);font-family:'Lora',serif;line-height:1.1}
 .stat-sub{font-size:11px;color:var(--ink-light);margin-top:2px}
 
-/* ── PATIENT LIST — silueta humana únicamente, NUNCA axolote ── */
+/* â”€â”€ PATIENT LIST â€” silueta humana Ãºnicamente, NUNCA axolote â”€â”€ */
 .patient-list{display:flex;flex-direction:column;gap:8px}
 .patient-card{background:white;border:1px solid var(--ink-border);border-radius:12px;padding:.875rem 1.25rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:14px}
 .patient-card:hover{border-color:var(--sage);transform:translateY(-1px);box-shadow:0 3px 10px rgba(56,70,81,.07)}
@@ -131,9 +131,9 @@ body.auth-locked .auth-screen{display:flex}
 .quick-pay{position:relative}
 .quick-pay-toggle{display:flex;align-items:center;gap:6px;background:var(--cream);border:1px solid var(--blush);color:var(--ink);padding:7px 11px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;list-style:none}
 .quick-pay-toggle::-webkit-details-marker{display:none}
-.quick-pay-toggle::after{content:'▾';font-size:10px;color:var(--ink-light)}
+.quick-pay-toggle::after{content:'â–¾';font-size:10px;color:var(--ink-light)}
 .quick-pay[open] .quick-pay-toggle{background:white;border-color:var(--sage);box-shadow:0 2px 8px rgba(30,42,50,.08)}
-.quick-pay[open] .quick-pay-toggle::after{content:'▴'}
+.quick-pay[open] .quick-pay-toggle::after{content:'â–´'}
 .quick-pay-panel{position:absolute;right:0;top:calc(100% + 8px);width:320px;background:white;border:1px solid #e7e1dc;border-radius:12px;padding:12px;box-shadow:0 14px 28px rgba(30,42,50,.16);z-index:25}
 .quick-pay-title{font-size:12px;color:var(--ink-light);margin-bottom:8px}
 .quick-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -156,7 +156,7 @@ body.auth-locked .auth-screen{display:flex}
 .b-debt{background:var(--blush-soft);color:var(--terra)}
 .b-warn{background:rgba(185,93,55,.14);color:var(--terra)}
 
-/* ── MODAL ── */
+/* â”€â”€ MODAL â”€â”€ */
 .modal-overlay{position:fixed;inset:0;background:rgba(30,42,50,.55);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px)}
 .modal-overlay.open{display:flex}
 .modal{background:white;border-radius:16px;width:560px;max-width:97vw;max-height:90vh;overflow-y:auto;padding:1.75rem;box-shadow:0 24px 64px rgba(30,42,50,.2)}
@@ -175,11 +175,11 @@ input[type="file"].form-input{cursor:pointer}
 .day-btn.sel{background:var(--ink);color:white;border-color:var(--ink)}
 .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;padding-top:1rem;border-top:1px solid #ede9e6}
 
-/* ── DETAIL ── */
+/* â”€â”€ DETAIL â”€â”€ */
 .back-btn{background:none;border:none;cursor:pointer;color:var(--ink-light);font-size:13px;display:flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif;padding:0}
 .back-btn:hover{color:var(--ink)}
 .detail-hero{background:white;border:1px solid #ede9e6;border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:16px}
-/* Hero usa axolote feliz/pensativo — NUNCA triste */
+/* Hero usa axolote feliz/pensativo â€” NUNCA triste */
 .hero-axo{width:80px;height:80px;object-fit:contain;flex-shrink:0}
 .detail-hero-main{flex:1;min-width:0}
 .detail-hero-actions{display:flex;align-items:flex-start;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
@@ -197,14 +197,14 @@ input[type="file"].form-input{cursor:pointer}
 .dkey{font-size:13px;color:var(--ink-light)}
 .dval{font-size:13px;font-weight:500;color:var(--ink);text-align:right}
 
-/* ── HORAS POR DÍA — en el formulario de edición ── */
+/* â”€â”€ HORAS POR DÃA â€” en el formulario de ediciÃ³n â”€â”€ */
 .hora-dia-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f5f2f0}
 .hora-dia-row:last-child{border-bottom:none}
 .hora-dia-label{font-size:13px;color:var(--ink);min-width:80px;font-weight:500}
 .hora-dia-input{border:1px solid #ddd;border-radius:6px;padding:5px 9px;font-size:13px;color:var(--ink);font-family:'DM Sans',sans-serif;width:100px}
 .hora-dia-input:focus{outline:none;border-color:var(--sage-dark)}
 
-/* ── CALENDARIO ── */
+/* â”€â”€ CALENDARIO â”€â”€ */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem}
 .cal-nav-title{font-family:'Lora',serif;font-size:15px;font-weight:600;color:var(--ink);text-transform:capitalize}
 .cal-nav-btn{background:none;border:1px solid #ddd;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:15px;color:var(--ink-light)}
@@ -220,7 +220,7 @@ input[type="file"].form-input{cursor:pointer}
 .cal-day.is-programado:not(.has-session):hover{background:rgba(165,196,188,.08)}
 .cal-day.today .cal-day-num{background:var(--ink);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
 .cal-day-num{font-size:12px;color:var(--ink-light);line-height:1;margin-bottom:1px;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
-/* Pastilla de sesión — UNA SOLA por día programado */
+/* Pastilla de sesiÃ³n â€” UNA SOLA por dÃ­a programado */
 .cal-pip{
   width:90%;height:22px;border-radius:5px;
   display:flex;align-items:center;justify-content:center;gap:4px;
@@ -234,15 +234,15 @@ input[type="file"].form-input{cursor:pointer}
 .cal-pip.reposicion{background:#ede8f8;color:#5a3d9e}
 .cal-pip.nueva{background:#e3f0ff;color:#2d598f}
 .cal-pip.sin-registro{background:#fdf8f5;border:1.5px dashed #ddd;color:#aaa}
-/* Punto de sesión programada sin registro */
+/* Punto de sesiÃ³n programada sin registro */
 .cal-prog-dot{width:6px;height:6px;border-radius:50%;background:#ccd8de;margin:2px auto 0}
-/* Hora pequeña bajo el número */
+/* Hora pequeÃ±a bajo el nÃºmero */
 .cal-hora{font-size:9px;color:var(--ink-light);margin-top:1px;opacity:.7}
 .cal-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:.875rem;padding-top:.75rem;border-top:1px solid #f0eeec}
 .cal-leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-light)}
 .cal-leg-dot{width:10px;height:10px;border-radius:3px}
 
-/* ── ALERTA FIN DE MES ── */
+/* â”€â”€ ALERTA FIN DE MES â”€â”€ */
 .alert-pendientes{
   background:#fffbf7;border:1.5px solid #f0c8a0;border-radius:10px;
   padding:.875rem 1.125rem;margin-bottom:1rem;
@@ -251,7 +251,7 @@ input[type="file"].form-input{cursor:pointer}
 .alert-pendientes strong{font-weight:500}
 .alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
 
-/* ── POPOVER DE SESIÓN ── */
+/* â”€â”€ POPOVER DE SESIÃ“N â”€â”€ */
 .ses-popover{
   position:fixed;z-index:300;
   background:white;border:1px solid #ddd;border-radius:12px;
@@ -274,7 +274,7 @@ input[type="file"].form-input{cursor:pointer}
 .ses-popover-footer{margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0eeec;display:flex;justify-content:space-between;align-items:center}
 .popover-close{background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink-light);font-family:'DM Sans',sans-serif}
 
-/* ── ACCIONES RÁPIDAS ── */
+/* â”€â”€ ACCIONES RÃPIDAS â”€â”€ */
 .att-row{display:flex;gap:7px;margin-bottom:.75rem;flex-wrap:wrap}
 .att-btn{flex:1;min-width:80px;padding:8px;border-radius:8px;border:1px solid #ddd;cursor:pointer;font-size:12px;background:none;color:var(--ink-light);font-family:'DM Sans',sans-serif;transition:all .15s;font-weight:500}
 .att-btn.ok{background:var(--sage-soft);color:var(--ink);border-color:rgba(165,196,188,.58)}
@@ -282,7 +282,7 @@ input[type="file"].form-input{cursor:pointer}
 .att-btn.cancel{background:var(--cream);color:var(--ink-light);border-color:var(--ink-border)}
 .att-btn.repo{background:var(--cream);color:var(--ink);border-color:rgba(165,196,188,.58)}
 
-/* ── PAGOS ── */
+/* â”€â”€ PAGOS â”€â”€ */
 .pay-amounts{display:flex;gap:1.5rem;margin-bottom:.875rem;flex-wrap:wrap}
 .pa-label{font-size:11px;color:var(--ink-light);margin-bottom:3px}
 .pa-num{font-family:'Lora',serif;font-size:22px;font-weight:600}
@@ -297,7 +297,7 @@ input[type="file"].form-input{cursor:pointer}
 .inp-sm{padding:7px 10px;font-size:13px;border:1px solid #ddd;border-radius:8px;background:white;color:var(--ink);width:110px;font-family:'DM Sans',sans-serif}
 .inp-sm:focus{outline:none;border-color:var(--sage-dark)}
 
-/* ── TARIFAS / BITÁCORA ── */
+/* â”€â”€ TARIFAS / BITÃCORA â”€â”€ */
 .tariff-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--cream);font-size:13px}
 .tariff-row:last-child{border-bottom:none}
 .tariff-period{color:var(--ink-light);flex:1}
@@ -313,7 +313,7 @@ input[type="file"].form-input{cursor:pointer}
 .lt-datos{background:var(--cream);color:var(--ink)}
 .lt-reposicion{background:var(--blush-soft);color:var(--ink)}
 
-/* ── SEMANA ── */
+/* â”€â”€ SEMANA â”€â”€ */
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:.75rem}
 .wday{background:white;border:1px solid #ede9e6;border-radius:10px;padding:.75rem .5rem;min-height:100px}
 .wday-name{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
@@ -333,7 +333,7 @@ input[type="file"].form-input{cursor:pointer}
 .month-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;color:var(--ink-light);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
 .month-dow div{text-align:center}
 
-/* ── RESUMEN ── */
+/* â”€â”€ RESUMEN â”€â”€ */
 .res-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
 .rcard{background:white;border:1px solid #ede9e6;border-radius:12px;padding:1.25rem;text-align:center}
 .rnum{font-family:'Lora',serif;font-size:38px;font-weight:600;color:var(--ink)}
@@ -345,7 +345,7 @@ input[type="file"].form-input{cursor:pointer}
 .bbar.cur{background:var(--sage-dark)}
 .blabel{font-size:10px;color:var(--ink-light)}.bval{font-size:10px;color:var(--ink-light)}
 
-/* ── PROSPECTADO ── */
+/* â”€â”€ PROSPECTADO â”€â”€ */
 .prosp-banner{background:var(--ink);border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1.5rem;overflow:hidden}
 .prosp-axo{width:90px;height:90px;object-fit:contain;flex-shrink:0;mix-blend-mode:screen}
 .prosp-head{font-family:'Lora',serif;font-size:13px;color:rgba(255,255,255,.55);margin-bottom:.5rem}
@@ -362,11 +362,11 @@ input[type="file"].form-input{cursor:pointer}
 .pr-bar-fill{height:100%;border-radius:4px;transition:width .4s}
 .pr-bar-note{font-size:11px;color:#aaa}
 
-/* ── EDIT ── */
+/* â”€â”€ EDIT â”€â”€ */
 .edit-banner{background:var(--cream);border:1.5px solid rgba(185,93,55,.35);border-radius:10px;padding:.875rem 1rem;margin-bottom:1rem;font-size:13px;color:var(--terra)}
 .alert-box{background:var(--cream);border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:.75rem 1rem;font-size:13px;color:var(--terra);margin:.75rem 0;line-height:1.5}
 
-/* ── TABS ── */
+/* â”€â”€ TABS â”€â”€ */
 .dtabs{display:flex;gap:0;border-bottom:2px solid #f0eeec;margin-bottom:1rem;overflow-x:auto}
 .dtab{background:none;border:none;padding:.625rem 1rem;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
 .dtab:hover{color:var(--ink)}
@@ -376,7 +376,7 @@ input[type="file"].form-input{cursor:pointer}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--ink-light);font-size:13px}
 .empty img{width:80px;opacity:.8;margin-bottom:.75rem;display:block;margin-left:auto;margin-right:auto}
 
-/* ── NOTAS CLÍNICAS ── */
+/* â”€â”€ NOTAS CLÃNICAS â”€â”€ */
 .nota-card{background:var(--cream);border:1px solid var(--ink-border);border-radius:10px;padding:.875rem 1rem;margin-bottom:.625rem}
 .nota-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.375rem;gap:8px}
 .nota-fecha{font-size:11px;color:var(--ink-light);white-space:nowrap}
@@ -394,7 +394,7 @@ input[type="file"].form-input{cursor:pointer}
 .nota-form textarea:focus{outline:none;border-color:var(--sage-dark)}
 .nota-form-row{display:flex;gap:8px;align-items:flex-end;margin-top:8px;flex-wrap:wrap}
 
-/* ── MOVE REPO ── */
+/* â”€â”€ MOVE REPO â”€â”€ */
 .ses-opt-move{background:var(--cream);color:var(--terra);border:1px dashed rgba(185,93,55,.45);border-radius:8px;padding:7px 10px;font-size:12px;cursor:pointer;margin-top:6px;display:flex;align-items:center;gap:6px}
 .ses-opt-move:hover{background:var(--blush-soft)}
 .move-repo-panel{padding:.75rem 0 0}
@@ -403,14 +403,14 @@ input[type="file"].form-input{cursor:pointer}
 .move-repo-panel input:focus{outline:none;border-color:var(--sage-dark)}
 .move-repo-actions{display:flex;gap:8px;margin-top:8px}
 
-/* ── BITÁCORA TABS ── */
+/* â”€â”€ BITÃCORA TABS â”€â”€ */
 .bittabs{display:flex;gap:0;border-bottom:1.5px solid #f0eeec;margin-bottom:.875rem}
 .bittab{background:none;border:none;padding:5px 12px;font-size:12px;font-family:'DM Sans',sans-serif;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1.5px;transition:all .15s;white-space:nowrap}
 .bittab:hover{color:var(--ink)}
 .bittab.active{color:var(--terra);border-bottom-color:var(--terra);font-weight:500}
 .bitpanel{display:none}.bitpanel.active{display:block}
 
-/* ── FILTROS DE PERIODO Y ESTIMADOR ── */
+/* â”€â”€ FILTROS DE PERIODO Y ESTIMADOR â”€â”€ */
 .period-switch{display:inline-flex;gap:4px;background:var(--cream);border:1px solid var(--blush);border-radius:999px;padding:3px}
 .period-btn{background:transparent;border:none;color:var(--ink-light);font-size:12px;font-family:'DM Sans',sans-serif;padding:5px 10px;border-radius:999px;cursor:pointer;transition:all .15s}
 .period-btn:hover{color:var(--ink)}
@@ -437,7 +437,7 @@ input[type="file"].form-input{cursor:pointer}
   .profile-grid{grid-template-columns:1fr}
 }
 
-/* ── MOBILE MENU ── */
+/* â”€â”€ MOBILE MENU â”€â”€ */
 @media (max-width:768px){
   .app{position:relative}
   .sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;z-index:1000;transform:translateX(-100%);transition:transform .3s ease;box-shadow:2px 0 8px rgba(0,0,0,.15)}
@@ -456,7 +456,7 @@ input[type="file"].form-input{cursor:pointer}
   .topbar .menu-toggle{display:flex !important;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(0,0,0,.05);border:1px solid #ede9e6;border-radius:8px;color:var(--ink);cursor:pointer;font-size:18px;margin-right:6px;border:none;font-family:inherit;flex-shrink:0}
   .topbar .menu-toggle:hover{background:rgba(0,0,0,.08)}
 
-  /* Perfil de paciente en móvil: evitar layout roto y scroll horizontal */
+  /* Perfil de paciente en mÃ³vil: evitar layout roto y scroll horizontal */
   #view-detalle .topbar{flex-wrap:wrap;align-items:flex-start;gap:.5rem}
   #view-detalle .back-btn{order:1}
   #view-detalle .topbar-left{order:2;width:100%;flex-direction:column;align-items:flex-start;gap:.2rem;text-align:left !important}
@@ -501,22 +501,22 @@ input[type="file"].form-input{cursor:pointer}
   <div class="auth-shell">
     <div class="auth-card">
       <div class="auth-title">Registro de pacientes y asistencias</div>
-      <div class="auth-sub">Accede con tu correo profesional para ver solo tus pacientes y sincronizar la información en línea.</div>
+      <div class="auth-sub">Accede con tu correo profesional para ver solo tus pacientes y sincronizar la informaciÃ³n en lÃ­nea.</div>
       <div class="auth-tabs" id="auth-tabs">
-        <button type="button" class="auth-tab active" id="auth-tab-login" data-auth-mode="login">Iniciar sesión</button>
+        <button type="button" class="auth-tab active" id="auth-tab-login" data-auth-mode="login">Iniciar sesiÃ³n</button>
         <button type="button" class="auth-tab" id="auth-tab-register" data-auth-mode="register">Crear cuenta</button>
       </div>
       <div class="auth-msg" id="auth-message"></div>
       <div class="form-grid">
         <div class="form-group form-full"><label class="form-label">Correo</label><input class="form-input" id="auth-email" type="email" autocomplete="email"></div>
-        <div class="form-group form-full"><label class="form-label">Contraseña</label><input class="form-input" id="auth-password" type="password" autocomplete="current-password"></div>
+        <div class="form-group form-full"><label class="form-label">ContraseÃ±a</label><input class="form-input" id="auth-password" type="password" autocomplete="current-password"></div>
         <div class="form-group form-full" id="auth-name-group" style="display:none"><label class="form-label">Nombre visible</label><input class="form-input" id="auth-name" type="text" autocomplete="name"></div>
       </div>
       <div class="auth-actions">
         <button type="button" class="btn-primary" id="auth-submit">Entrar</button>
-        <button type="button" class="btn-ghost" id="auth-reset">Recuperar contraseña</button>
+        <button type="button" class="btn-ghost" id="auth-reset">Recuperar contraseÃ±a</button>
       </div>
-      <div class="auth-note" id="auth-setup-note">Configura Firebase para habilitar acceso multiusuario y sincronización.</div>
+      <div class="auth-note" id="auth-setup-note">Configura Firebase para habilitar acceso multiusuario y sincronizaciÃ³n.</div>
     </div>
     <aside class="auth-aside" aria-hidden="true">
       <div class="auth-axo-wrap">
@@ -533,26 +533,26 @@ input[type="file"].form-input{cursor:pointer}
         <div class="brand-text"><div class="brand-name" id="brand-name"></div><div class="brand-role" id="brand-role"></div></div>
       </div>
       <div class="sidebar-auth">
-        <div class="sidebar-auth-email" id="sidebar-user-email">Sin sesión</div>
-        <div class="sidebar-auth-status" id="sidebar-sync-status">Sincronización pendiente</div>
-        <button class="btn-sidebar" onclick="signOutUser()">Cerrar sesión</button>
+        <div class="sidebar-auth-email" id="sidebar-user-email">Sin sesiÃ³n</div>
+        <div class="sidebar-auth-status" id="sidebar-sync-status">SincronizaciÃ³n pendiente</div>
+        <button class="btn-sidebar" onclick="signOutUser()">Cerrar sesiÃ³n</button>
       </div>
     </div>
     <div class="nav-section">
-      <div class="nav-label">Clínica</div>
-      <button class="nav-item active" onclick="showView('hoy')" id="nav-hoy"><span class="nav-ico">●</span> Hoy</button>
-      <button class="nav-item" onclick="showView('pacientes')" id="nav-pacientes"><span class="nav-ico">◉</span> Pacientes</button>
-      <button class="nav-item" onclick="showView('inactivos')" id="nav-inactivos"><span class="nav-ico">◎</span> Pacientes inactivos</button>
-      <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">▦</span> Semana</button>
+      <div class="nav-label">ClÃ­nica</div>
+      <button class="nav-item active" onclick="showView('hoy')" id="nav-hoy"><span class="nav-ico">â—</span> Hoy</button>
+      <button class="nav-item" onclick="showView('pacientes')" id="nav-pacientes"><span class="nav-ico">â—‰</span> Pacientes</button>
+      <button class="nav-item" onclick="showView('inactivos')" id="nav-inactivos"><span class="nav-ico">â—Ž</span> Pacientes inactivos</button>
+      <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">â–¦</span> Semana</button>
     </div>
     <div class="nav-section">
       <div class="nav-label">Finanzas</div>
-      <button class="nav-item" onclick="showView('resumen')" id="nav-resumen"><span class="nav-ico">◈</span> Resumen</button>
-      <button class="nav-item" onclick="showView('prospectado')" id="nav-prospectado"><span class="nav-ico">◐</span> Prospectado</button>
+      <button class="nav-item" onclick="showView('resumen')" id="nav-resumen"><span class="nav-ico">â—ˆ</span> Resumen</button>
+      <button class="nav-item" onclick="showView('prospectado')" id="nav-prospectado"><span class="nav-ico">â—</span> Prospectado</button>
     </div>
     <div class="nav-section">
       <div class="nav-label">Cuenta</div>
-      <button class="nav-item" onclick="showView('perfil')" id="nav-perfil"><span class="nav-ico">⚙</span> Perfil</button>
+      <button class="nav-item" onclick="showView('perfil')" id="nav-perfil"><span class="nav-ico">âš™</span> Perfil</button>
     </div>
     <div class="sidebar-axo-wrap"><img id="sb-axo" src="" alt=""></div>
   </nav>
@@ -560,9 +560,9 @@ input[type="file"].form-input{cursor:pointer}
   <div class="main">
     <div id="view-hoy" class="view active">
       <div class="topbar">
-        <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()">☰</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del día y registro rápido</div></div>
+        <div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebarMobile()">â˜°</button><div class="page-title">Agenda de hoy</div><div class="page-sub">Sesiones del dÃ­a y registro rÃ¡pido</div></div>
         <details class="quick-pay" id="quick-pay-drawer">
-          <summary class="quick-pay-toggle">Pago rápido</summary>
+          <summary class="quick-pay-toggle">Pago rÃ¡pido</summary>
           <div class="quick-pay-panel">
             <div class="quick-pay-title">Registrar pago manual</div>
             <div class="quick-pay-grid">
@@ -607,7 +607,7 @@ input[type="file"].form-input{cursor:pointer}
     </div>
     <div id="view-detalle" class="view">
       <div class="topbar">
-        <button class="back-btn" onclick="showView(lastPatientListView)">← Regresar</button>
+        <button class="back-btn" onclick="showView(lastPatientListView)">â† Regresar</button>
         <div class="topbar-left" style="text-align:right">
           <div class="page-title" id="det-nombre"></div>
           <div class="page-sub" id="det-sub"></div>
@@ -620,7 +620,7 @@ input[type="file"].form-input{cursor:pointer}
       <div class="content" id="semana-content"></div>
     </div>
     <div id="view-resumen" class="view">
-      <div class="topbar"><div class="topbar-left"><div class="page-title">Resumen de sesiones</div><div class="page-sub">Año en curso</div></div></div>
+      <div class="topbar"><div class="topbar-left"><div class="page-title">Resumen de sesiones</div><div class="page-sub">AÃ±o en curso</div></div></div>
       <div class="content" id="resumen-content"></div>
     </div>
     <div id="view-prospectado" class="view">
@@ -628,7 +628,7 @@ input[type="file"].form-input{cursor:pointer}
       <div class="content" id="prosp-content"></div>
     </div>
     <div id="view-perfil" class="view">
-      <div class="topbar"><div class="topbar-left"><div class="page-title">Perfil del terapeuta</div><div class="page-sub">Identidad profesional y configuración base</div></div></div>
+      <div class="topbar"><div class="topbar-left"><div class="page-title">Perfil del terapeuta</div><div class="page-sub">Identidad profesional y configuraciÃ³n base</div></div></div>
       <div class="content" id="profile-content"></div>
     </div>
   </div>
@@ -638,7 +638,7 @@ input[type="file"].form-input{cursor:pointer}
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title" id="modal-title">Nuevo paciente</span>
-      <button class="modal-close" onclick="closeModal()">×</button>
+      <button class="modal-close" onclick="closeModal()">Ã—</button>
     </div>
     <div id="modal-body"></div>
   </div>
@@ -679,7 +679,7 @@ input[type="file"].form-input{cursor:pointer}
       const msg=document.getElementById('auth-message');
       if(msg){
         msg.className='auth-msg show error';
-        msg.textContent='No pude iniciar el módulo de acceso. Recarga con Ctrl+F5 e intenta de nuevo.';
+        msg.textContent='No pude iniciar el mÃ³dulo de acceso. Recarga con Ctrl+F5 e intenta de nuevo.';
       }
     };
     tick();
@@ -745,7 +745,7 @@ input[type="file"].form-input{cursor:pointer}
 </script>
 
 <script>
-// Bridge de arranque: evita timeout si el módulo principal tarda en exponer handlers.
+// Bridge de arranque: evita timeout si el mÃ³dulo principal tarda en exponer handlers.
 (function(){
   if(!Array.isArray(window.__authActionQueue)) window.__authActionQueue=[];
   if(typeof window.submitAuth!=='function'){
@@ -771,11 +771,11 @@ const AXO={normal1:"data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1
 document.getElementById('sb-axo').src = 'Assets/Axolotl/Normal-1.svg';
 document.getElementById('auth-axo').src = 'Assets/Axolotl/Normal-1.svg';
 
-const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-const DIAS_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DIAS = ['Lun','Mar','MiÃ©','Jue','Vie','SÃ¡b','Dom'];
+const DIAS_FULL = ['Lunes','Martes','MiÃ©rcoles','Jueves','Viernes','SÃ¡bado','Domingo'];
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-// ── Axo HERO: solo versiones felices/pensativas ─────────────
+// â”€â”€ Axo HERO: solo versiones felices/pensativas â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function axoHero(p){
   if(p.adeudo===0) return p.sesiones.length?AXO.normal1:AXO.normal3;
   if(p.adeudo<=tarifaVigente(p)) return AXO.pensando4;
@@ -783,12 +783,12 @@ function axoHero(p){
 }
 function axoProsp(r){ return 'Assets/Axolotl/Pensando-3.svg'; }
 
-// Silueta SVG — TODAS las listas, NUNCA axolote
+// Silueta SVG â€” TODAS las listas, NUNCA axolote
 const PERSON_SVG = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>`;
 const PATIENT_PROFILE_IMG='Assets/Axolotl/Normal-2.svg';
 
-// ── Helpers ─────────────────────────────────────────────────
-function pagoLabel(p){return{sesion:'Por sesión',mensual:'Mensual',quincenal:'Quincenal',inicio:'Inicio de mes'}[p]||p}
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function pagoLabel(p){return{sesion:'Por sesiÃ³n',mensual:'Mensual',quincenal:'Quincenal',inicio:'Inicio de mes'}[p]||p}
 function today(){return new Date().toISOString().split('T')[0]}
 function durationOptionsHtml(selected=45,min=45,max=150,step=5){
   const safe=Number.isFinite(Number(selected))?Number(selected):45;
@@ -818,10 +818,44 @@ function tarifaEnFecha(p,fechaStr){
   const match=sorted.find(t=>t.desde<=fechaStr);
   return match?match.monto:sorted[sorted.length-1].monto;
 }
+function isChargeableSessionType(tipo){
+  return tipo==='asistio'||tipo==='falta'||tipo==='reposicion'||tipo==='extra';
+}
+function getFirstFreeSessionId(p){
+  if(!p?.primeraSinCosto) return null;
+  const sesiones=(p.sesiones||[])
+    .filter(s=>!s.skipped&&!s.noCharge&&isChargeableSessionType(s.tipo))
+    .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||String(a.hora||'').localeCompare(String(b.hora||''))||String(a.id||'').localeCompare(String(b.id||'')));
+  return sesiones[0]?.id||null;
+}
+function isSessionBillableForDebt(p,s,firstFreeId=null){
+  if(!s||s.skipped||s.noCharge) return false;
+  if(!isChargeableSessionType(s.tipo)) return false;
+  if(firstFreeId&&s.id===firstFreeId) return false;
+  return true;
+}
+function recomputePatientDebt(p){
+  if(!p) return 0;
+  const pagosTotal=(p.pagos||[]).reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+  p.pagado=pagosTotal;
+  if(p.pago!=='sesion'){
+    p.adeudo=Math.max(0,p.adeudo||0);
+    return p.adeudo;
+  }
+  const firstFreeId=getFirstFreeSessionId(p);
+  const cargos=(p.sesiones||[]).reduce((sum,s)=>{
+    if(!isSessionBillableForDebt(p,s,firstFreeId)) return sum;
+    return sum+tarifaEnFecha(p,s.fecha);
+  },0);
+  p.adeudo=Math.max(0,cargos-pagosTotal);
+  return p.adeudo;
+}
 function calcBalanceDesde(p,fechaIso){
   if(!fechaIso) return{cargos:p.adeudo+p.pagado,pagos:p.pagado,saldo:p.adeudo};
-  const billable=s=>!s.skipped&&!s.noCharge&&(s.tipo==='asistio'||s.tipo==='falta'||s.tipo==='reposicion'||s.tipo==='extra');
-  const cargos=p.sesiones.filter(s=>s.fecha>=fechaIso&&billable(s)).reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
+  const firstFreeId=getFirstFreeSessionId(p);
+  const cargos=p.sesiones
+    .filter(s=>s.fecha>=fechaIso&&isSessionBillableForDebt(p,s,firstFreeId))
+    .reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
   const pagos=p.pagos.filter(py=>py.fecha>=fechaIso).reduce((sum,py)=>sum+py.monto,0);
   return{cargos,pagos,saldo:Math.max(0,cargos-pagos)};
 }
@@ -889,7 +923,7 @@ function scheduleSummary(p,useFull=false){
   const sch=getScheduleAtDate(p,today());
   if(sch?.noFixedSchedule) return 'Sin horario fijo';
   const labels=useFull?DIAS_FULL:DIAS;
-  return (sch?.dias||[]).map(d=>`${labels[d]} ${sch.horas&&sch.horas[d]!==undefined?sch.horas[d]:horaDia(p,d)}`).join(' · ');
+  return (sch?.dias||[]).map(d=>`${labels[d]} ${sch.horas&&sch.horas[d]!==undefined?sch.horas[d]:horaDia(p,d)}`).join(' Â· ');
 }
 function sesionesEnMes(p,year,month){
   const daysInMonth=new Date(year,month+1,0).getDate();
@@ -905,7 +939,7 @@ function sesionesEnMes(p,year,month){
   const reprogramadas=p.sesiones.filter(s=>s.tipo==='reprogramada' && monthDates(s)).length;
   const canceladas=p.sesiones.filter(s=>s.tipo==='cancelada' && monthDates(s)).length;
   const reposiciones=p.sesiones.filter(s=>s.tipo==='reposicion' && monthDates(s)).length;
-  // Agrega reposiciones y quita reprogramaciones/cancelaciones de la programación original
+  // Agrega reposiciones y quita reprogramaciones/cancelaciones de la programaciÃ³n original
   return Math.max(0, scheduled - reprogramadas - canceladas + reposiciones);
 }
 function ingresoProspMes(p,year,month){
@@ -1032,16 +1066,17 @@ function normalizePatient(p){
   p.dias=[...(vig.dias||[])];
   p.horas=(vig.horas&&typeof vig.horas==='object')?{...vig.horas}:{};
   p.hora=p.noFixedSchedule?(p.hora||'00:00'):(p.horas[p.dias[0]]||p.hora||'00:00');
+  recomputePatientDebt(p);
   return p;
 }
 
 function statusReasonLabel(reason){
-  return {all:'Todos',suspendio:'Suspendió',alta:'Alta',cierre:'Cierre',pausa:'Pausa',otro:'Otro'}[reason]||'Otro';
+  return {all:'Todos',suspendio:'SuspendiÃ³',alta:'Alta',cierre:'Cierre',pausa:'Pausa',otro:'Otro'}[reason]||'Otro';
 }
 
 function ensurePatientActiveForScheduling(p){
   if(p.status==='inactive'){
-    alert('Este paciente está inactivo. Reactívalo en Editar > Estado del proceso antes de registrar nuevas sesiones.');
+    alert('Este paciente estÃ¡ inactivo. ReactÃ­valo en Editar > Estado del proceso antes de registrar nuevas sesiones.');
     return false;
   }
   return true;
@@ -1066,7 +1101,7 @@ function toggleManualEstimation(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   p.manualEstimateOverride=!p.manualEstimateOverride;
-  addLog(p,'datos',`${p.manualEstimateOverride?'Estimación manual activada':'Estimación manual desactivada'} para pacientes de inicio reciente`);
+  addLog(p,'datos',`${p.manualEstimateOverride?'EstimaciÃ³n manual activada':'EstimaciÃ³n manual desactivada'} para pacientes de inicio reciente`);
   saveState();
   renderDetalle(p);
 }
@@ -1083,9 +1118,9 @@ function sortPatientsByName(list){
 function getTimelineEvents(p){
   const eventos=[];
   eventos.push({fecha:p.inicio,tipo:'datos',desc:'Inicio de tratamiento'});
-  (p.frecuencias||[]).forEach(f=>eventos.push({fecha:f.desde,tipo:'horario',desc:`Frecuencia: ${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana`}));
-  (p.pausas||[]).forEach(pp=>eventos.push({fecha:pp.desde,tipo:'horario',desc:`${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${pp.actor}: ${pp.desde}→${pp.hasta}${pp.nota?` — ${pp.nota}`:''}`}));
-  (p.statusHistory||[]).forEach(ev=>eventos.push({fecha:ev.fecha,tipo:'datos',desc:`${ev.status==='inactive'?'Paciente inactivo':'Reingreso / activo'}: ${statusReasonLabel(ev.reason)}${ev.note?` — ${ev.note}`:''}`}));
+  (p.frecuencias||[]).forEach(f=>eventos.push({fecha:f.desde,tipo:'horario',desc:`Frecuencia: ${f.vecesSemana} sesiÃ³n${f.vecesSemana!==1?'es':''}/semana`}));
+  (p.pausas||[]).forEach(pp=>eventos.push({fecha:pp.desde,tipo:'horario',desc:`${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${pp.actor}: ${pp.desde}â†’${pp.hasta}${pp.nota?` â€” ${pp.nota}`:''}`}));
+  (p.statusHistory||[]).forEach(ev=>eventos.push({fecha:ev.fecha,tipo:'datos',desc:`${ev.status==='inactive'?'Paciente inactivo':'Reingreso / activo'}: ${statusReasonLabel(ev.reason)}${ev.note?` â€” ${ev.note}`:''}`}));
   return eventos.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 }
 
@@ -1099,15 +1134,15 @@ function loadState(){
   return getLegacyLocalStore();
 }
 
-// ── Datos de ejemplo ────────────────────────────────────────
+// â”€â”€ Datos de ejemplo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let patients = [
-  {id:1,nombre:'Ana García',inicio:'2024-03-10',dias:[0,2],
+  {id:1,nombre:'Ana GarcÃ­a',inicio:'2024-03-10',dias:[0,2],
    hora:'09:00',horas:{0:'09:00',2:'10:30'},
    tarifa:800,pago:'sesion',pagado:2400,adeudo:0,
    tarifas:[{monto:800,desde:'2024-03-10',hasta:null}],
    cambios:[{fecha:'2024-03-10',tipo:'datos',desc:'Expediente creado'}],
    notas:[
-     {id:'n1',fecha:'2024-03-18',titulo:'Primera impresión',cuerpo:'Paciente con alta capacidad de introspección. Refiere sueños recurrentes desde la infancia.',tag:'clinica'},
+     {id:'n1',fecha:'2024-03-18',titulo:'Primera impresiÃ³n',cuerpo:'Paciente con alta capacidad de introspecciÃ³n. Refiere sueÃ±os recurrentes desde la infancia.',tag:'clinica'},
    ],
    sesiones:[
      {id:'s1',num:1,fecha:'2024-03-11',tipo:'asistio'},
@@ -1266,7 +1301,7 @@ function applyTherapistProfileDisplay(){
   const nameEl=document.getElementById('brand-name');
   const roleEl=document.getElementById('brand-role');
   if(nameEl) nameEl.textContent=p.displayName||'Completa tu perfil';
-  if(roleEl) roleEl.textContent=p.profession||'Sin profesión configurada';
+  if(roleEl) roleEl.textContent=p.profession||'Sin profesiÃ³n configurada';
   const logoEl=document.getElementById('brand-logo');
   if(logoEl){
     logoEl.src='Assets/Branding/Logo-Color.svg';
@@ -1348,7 +1383,7 @@ function setSyncStatus(text){
 
 function setSidebarUser(user){
   const el=document.getElementById('sidebar-user-email');
-  if(el) el.textContent=user?.email||'Sin sesión';
+  if(el) el.textContent=user?.email||'Sin sesiÃ³n';
 }
 
 function setSidebarAxoForSession(user){
@@ -1413,11 +1448,12 @@ async function persistStateNow(){
 }
 
 function saveState(){
+  patients.forEach(recomputePatientDebt);
   if(currentUser?.uid) cacheStoreForUser(currentUser.uid);
   if(!firebaseReady||!currentUser||!db||isHydrating) return;
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
-    persistStateNow().catch(err=>{console.error('No se pudo sincronizar',err);setSyncStatus('Error de sincronización');});
+    persistStateNow().catch(err=>{console.error('No se pudo sincronizar',err);setSyncStatus('Error de sincronizaciÃ³n');});
   },350);
 }
 
@@ -1453,15 +1489,15 @@ async function submitAuth(){
     try { await initFirebase(); } catch(err){ console.error(err); }
   }
   if(!firebaseReady||!auth){
-    showAuthMessage('No pude inicializar Firebase. Revisa conexión y dominio autorizado.', 'error');
+    showAuthMessage('No pude inicializar Firebase. Revisa conexiÃ³n y dominio autorizado.', 'error');
     return;
   }
   const email=document.getElementById('auth-email').value.trim();
   const password=document.getElementById('auth-password').value;
   const name=document.getElementById('auth-name').value.trim();
-  if(!email||!password){showAuthMessage('Escribe correo y contraseña.', 'error');return;}
+  if(!email||!password){showAuthMessage('Escribe correo y contraseÃ±a.', 'error');return;}
   try {
-    showAuthMessage(authMode==='login'?'Iniciando sesión...':'Creando cuenta...', 'info');
+    showAuthMessage(authMode==='login'?'Iniciando sesiÃ³n...':'Creando cuenta...', 'info');
     if(authMode==='login'){
       await auth.signInWithEmailAndPassword(email,password);
     } else {
@@ -1480,12 +1516,12 @@ async function sendPasswordReset(){
   if(!firebaseReady||!auth){
     try { await initFirebase(); } catch(err){ console.error(err); }
   }
-  if(!firebaseReady||!auth){showAuthMessage('No pude inicializar Firebase para recuperar contraseña.', 'error');return;}
+  if(!firebaseReady||!auth){showAuthMessage('No pude inicializar Firebase para recuperar contraseÃ±a.', 'error');return;}
   const email=document.getElementById('auth-email').value.trim();
-  if(!email){showAuthMessage('Escribe tu correo para enviarte un enlace de recuperación.', 'error');return;}
+  if(!email){showAuthMessage('Escribe tu correo para enviarte un enlace de recuperaciÃ³n.', 'error');return;}
   try {
     await auth.sendPasswordResetEmail(email);
-    showAuthMessage('Te envié un correo para restablecer tu contraseña.', 'info');
+    showAuthMessage('Te enviÃ© un correo para restablecer tu contraseÃ±a.', 'info');
   } catch(err){
     console.error(err);
     showAuthMessage(mapFirebaseError(err), 'error');
@@ -1509,22 +1545,22 @@ async function signOutUser(){
 function mapFirebaseError(err){
   const code=err?.code||'';
   return {
-    'auth/invalid-credential':'Correo o contraseña incorrectos.',
+    'auth/invalid-credential':'Correo o contraseÃ±a incorrectos.',
     'auth/email-already-in-use':'Ese correo ya tiene una cuenta.',
-    'auth/operation-not-allowed':'El acceso con correo/contraseña no está habilitado en Firebase.',
-    'auth/user-disabled':'Esta cuenta está deshabilitada.',
+    'auth/operation-not-allowed':'El acceso con correo/contraseÃ±a no estÃ¡ habilitado en Firebase.',
+    'auth/user-disabled':'Esta cuenta estÃ¡ deshabilitada.',
     'auth/user-not-found':'No existe una cuenta con ese correo.',
-    'auth/wrong-password':'La contraseña es incorrecta.',
-    'auth/invalid-api-key':'La API key de Firebase es inválida.',
-    'auth/app-not-authorized':'Este dominio no está autorizado en Firebase Authentication.',
-    'auth/invalid-email':'El correo no es válido.',
-    'auth/invalid-user-token':'La sesión guardada no es válida. Inicia sesión de nuevo.',
-    'auth/user-token-expired':'Tu sesión expiró. Inicia sesión de nuevo.',
-    'auth/weak-password':'La contraseña debe tener al menos 6 caracteres.',
-    'auth/missing-password':'Escribe una contraseña.',
-    'auth/network-request-failed':'No hubo conexión con Firebase.',
-    'auth/too-many-requests':'Demasiados intentos. Intenta más tarde.'
-  }[code]||(`No pude completar la autenticación. Código: ${code||'desconocido'}`);
+    'auth/wrong-password':'La contraseÃ±a es incorrecta.',
+    'auth/invalid-api-key':'La API key de Firebase es invÃ¡lida.',
+    'auth/app-not-authorized':'Este dominio no estÃ¡ autorizado en Firebase Authentication.',
+    'auth/invalid-email':'El correo no es vÃ¡lido.',
+    'auth/invalid-user-token':'La sesiÃ³n guardada no es vÃ¡lida. Inicia sesiÃ³n de nuevo.',
+    'auth/user-token-expired':'Tu sesiÃ³n expirÃ³. Inicia sesiÃ³n de nuevo.',
+    'auth/weak-password':'La contraseÃ±a debe tener al menos 6 caracteres.',
+    'auth/missing-password':'Escribe una contraseÃ±a.',
+    'auth/network-request-failed':'No hubo conexiÃ³n con Firebase.',
+    'auth/too-many-requests':'Demasiados intentos. Intenta mÃ¡s tarde.'
+  }[code]||(`No pude completar la autenticaciÃ³n. CÃ³digo: ${code||'desconocido'}`);
 }
 
 function isRecoverableAuthBootError(err){
@@ -1545,10 +1581,10 @@ function scheduleInactivityLogout(){
   inactivityTimer=setTimeout(async ()=>{
     try {
       await auth.signOut();
-      showAuthMessage('Sesión cerrada por 10 minutos de inactividad.', 'info');
-      setSyncStatus('Sesión cerrada por inactividad');
+      showAuthMessage('SesiÃ³n cerrada por 10 minutos de inactividad.', 'info');
+      setSyncStatus('SesiÃ³n cerrada por inactividad');
     } catch(err){
-      console.error('No se pudo cerrar sesión por inactividad',err);
+      console.error('No se pudo cerrar sesiÃ³n por inactividad',err);
     }
   },INACTIVITY_LOGOUT_MS);
 }
@@ -1573,7 +1609,7 @@ async function handleAuthStateChanged(user){
     clearInactivityLogoutTimer();
     applyStore(getEmptyStore());
     lockApp();
-    setSyncStatus(firebaseConfigMissing?'Configura Firebase':'Esperando inicio de sesión');
+    setSyncStatus(firebaseConfigMissing?'Configura Firebase':'Esperando inicio de sesiÃ³n');
     return;
   }
   bindInactivityHandlers();
@@ -1584,7 +1620,7 @@ async function handleAuthStateChanged(user){
     forceProfileSetupOnNextAuth=false;
     showView('perfil');
     if(therapistProfileNeedsSetup()){
-      alert('Antes de continuar, completa tu perfil profesional (nombre y profesión).');
+      alert('Antes de continuar, completa tu perfil profesional (nombre y profesiÃ³n).');
     }
     return;
   }
@@ -1598,7 +1634,7 @@ async function initFirebase(){
   switchAuthMode('login');
   if(typeof firebase==='undefined'){
     firebaseReady=false;
-    showAuthMessage('No cargaron las librerías de Firebase. Revisa conexión a Internet o bloqueo del navegador.', 'error');
+    showAuthMessage('No cargaron las librerÃ­as de Firebase. Revisa conexiÃ³n a Internet o bloqueo del navegador.', 'error');
     setSyncStatus('Firebase no disponible');
     return;
   }
@@ -1635,11 +1671,11 @@ async function initFirebase(){
       console.error(err);
       if(isRecoverableAuthBootError(err)){
         try { await auth.signOut(); } catch(_e) {}
-        showAuthMessage('Tu sesión anterior expiró. Inicia sesión de nuevo.', 'info');
-        setSyncStatus('Esperando inicio de sesión');
+        showAuthMessage('Tu sesiÃ³n anterior expirÃ³. Inicia sesiÃ³n de nuevo.', 'info');
+        setSyncStatus('Esperando inicio de sesiÃ³n');
         return;
       }
-      showAuthMessage('No pude cargar la sesión.', 'error');
+      showAuthMessage('No pude cargar la sesiÃ³n.', 'error');
     }
   });
 }
@@ -1770,10 +1806,10 @@ function estimarSesionActual(p,targetDateStr){
 }
 
 function textoPeriodo(period){
-  return period==='semana'?'esta semana':period==='anio'?'este año':'este mes';
+  return period==='semana'?'esta semana':period==='anio'?'este aÃ±o':'este mes';
 }
 
-// ── SIDEBAR BADGE ────────────────────────────────────────────
+// â”€â”€ SIDEBAR BADGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toggleSidebarMobile(){
   const sidebar=document.querySelector('.sidebar');
   const overlay=document.getElementById('sidebar-overlay');
@@ -1799,7 +1835,7 @@ function updateSidebarBadge(){
   } else if(existing) existing.remove();
 }
 
-// ── STATS ────────────────────────────────────────────────────
+// â”€â”€ STATS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderStats(){
   const activos=activePatients();
   const hoy=new Date();
@@ -1817,7 +1853,7 @@ function renderStats(){
   updateSidebarBadge();
 }
 
-// ── LISTA PACIENTES ──────────────────────────────────────────
+// â”€â”€ LISTA PACIENTES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderPatients(){
   const activos=sortPatientsByName(activePatients().filter(p=>matchesPatientSearch(p,activeSearch)));
   renderStats();
@@ -1825,7 +1861,7 @@ function renderPatients(){
   if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="Assets/Axolotl/Angustia-4.svg"><p>Sin pacientes activos.</p></div>`;return}
   const hoy=new Date();
   const pendTotal=totalPendientesHoy();
-  const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">⚠</span><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
+  const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">âš </span><div>Tienes <strong>${pendTotal} sesiÃ³n${pendTotal!==1?'es':''} sin registrar</strong> de dÃ­as pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
   const searchHtml=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."><div style="font-size:12px;color:var(--ink-light)">${activos.length} resultado${activos.length!==1?'s':''}</div></div>`;
   el.innerHTML=searchHtml+alertaHtml+activos.map(p=>{
     const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
@@ -1840,7 +1876,7 @@ function renderPatients(){
       <div class="p-info">
         <div class="p-head">
           <div class="p-name">${shortName(p.nombre)}</div>
-          <div class="p-meta p-meta-inline">Sesión #${n} · Fecha: ${fechaDetalle} · ${pagoLabel(p.pago)} · $${tv.toLocaleString('es-MX')}/ses</div>
+          <div class="p-meta p-meta-inline">SesiÃ³n #${n} Â· Fecha: ${fechaDetalle} Â· ${pagoLabel(p.pago)} Â· $${tv.toLocaleString('es-MX')}/ses</div>
         </div>
         <div class="p-badges p-badges-bottom">${pendBadge}${badge}</div>
       </div>
@@ -1862,7 +1898,7 @@ function renderInactivePatients(){
     <div class="person-avatar"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
     <div class="p-info">
       <div class="p-name">${shortName(p.nombre)}</div>
-      <div class="p-meta">${statusReasonLabel(p.statusReason)} · Inactivo desde ${p.statusDate}${p.statusNote?` · ${p.statusNote}`:''}</div>
+      <div class="p-meta">${statusReasonLabel(p.statusReason)} Â· Inactivo desde ${p.statusDate}${p.statusNote?` Â· ${p.statusNote}`:''}</div>
     </div>
     <div class="p-badges"><span class="badge b-day">${statusReasonLabel(p.statusReason)}</span></div>
   </div>`).join('');
@@ -1871,10 +1907,10 @@ function renderInactivePatients(){
 function renderTherapistProfileView(){
   const p=normalizeTherapistProfile(therapistProfile);
   const clinicLabel=p.clinicName||'Consultorio no especificado';
-  const affiliationLabel=p.clinicAffiliation||'Sin clínica asociada';
-  const summaryParts=[p.profession,p.specialty,p.pronouns].filter(Boolean).join(' · ');
+  const affiliationLabel=p.clinicAffiliation||'Sin clÃ­nica asociada';
+  const summaryParts=[p.profession,p.specialty,p.pronouns].filter(Boolean).join(' Â· ');
   const displayName=p.displayName||'Completa tu perfil';
-  const summaryLabel=summaryParts||'Nombre y profesión pendientes';
+  const summaryLabel=summaryParts||'Nombre y profesiÃ³n pendientes';
   document.getElementById('profile-content').innerHTML=`
     <div class="profile-grid">
       <div class="dsec">
@@ -1884,35 +1920,35 @@ function renderTherapistProfileView(){
           <div>
             <div style="font-family:'Lora',serif;font-size:20px;color:var(--ink)">${escAttr(displayName)}</div>
             <div style="font-size:12px;color:var(--ink-light)">${escAttr(summaryLabel)}</div>
-            <div style="font-size:11px;color:var(--ink-light);margin-top:2px">${escAttr(clinicLabel)} · ${escAttr(affiliationLabel)} · ${escAttr(p.currency)} · ${escAttr(timezoneLabel(p.timezone))}</div>
+            <div style="font-size:11px;color:var(--ink-light);margin-top:2px">${escAttr(clinicLabel)} Â· ${escAttr(affiliationLabel)} Â· ${escAttr(p.currency)} Â· ${escAttr(timezoneLabel(p.timezone))}</div>
           </div>
         </div>
-        <div style="margin-top:.85rem;font-size:12px;color:var(--ink-light);line-height:1.6">${escAttr(p.bio||'Agrega una biografía corta para mostrar tu enfoque clínico en reportes y vistas compartidas.')}</div>
+        <div style="margin-top:.85rem;font-size:12px;color:var(--ink-light);line-height:1.6">${escAttr(p.bio||'Agrega una biografÃ­a corta para mostrar tu enfoque clÃ­nico en reportes y vistas compartidas.')}</div>
       </div>
       <div class="dsec">
-        <div class="sec-title">Defaults clínicos</div>
-        <div class="drow"><span class="dkey">Duración por defecto</span><span class="dval">${p.defaultSessionDuration} min</span></div>
+        <div class="sec-title">Defaults clÃ­nicos</div>
+        <div class="drow"><span class="dkey">DuraciÃ³n por defecto</span><span class="dval">${p.defaultSessionDuration} min</span></div>
         <div class="drow"><span class="dkey">Tarifa por defecto</span><span class="dval">$${Number(p.defaultSessionRate).toLocaleString('es-MX')}</span></div>
         <div class="drow"><span class="dkey">Cobro por defecto</span><span class="dval">${pagoLabel(p.defaultPaymentMode)}</span></div>
-        <div class="drow"><span class="dkey">Primera sin costo (default)</span><span class="dval">${p.firstSessionNoChargeDefault?'sí':'no'}</span></div>
+        <div class="drow"><span class="dkey">Primera sin costo (default)</span><span class="dval">${p.firstSessionNoChargeDefault?'sÃ­':'no'}</span></div>
       </div>
     </div>
     <div class="dsec" style="margin-top:12px">
       <div class="sec-title">Editar perfil</div>
       <div class="form-grid" style="margin-top:.5rem">
         <div class="form-group"><label class="form-label">Nombre visible</label><input class="form-input" id="tp-display-name" value="${escAttr(p.displayName)}"></div>
-        <div class="form-group"><label class="form-label">Profesión / rol</label><input class="form-input" id="tp-profession" value="${escAttr(p.profession)}" placeholder="Ej: Psicóloga clínica"></div>
-        <div class="form-group"><label class="form-label">Pronombres (opcional)</label><input class="form-input" id="tp-pronouns" value="${escAttr(p.pronouns)}" placeholder="ella, él, elle"></div>
+        <div class="form-group"><label class="form-label">ProfesiÃ³n / rol</label><input class="form-input" id="tp-profession" value="${escAttr(p.profession)}" placeholder="Ej: PsicÃ³loga clÃ­nica"></div>
+        <div class="form-group"><label class="form-label">Pronombres (opcional)</label><input class="form-input" id="tp-pronouns" value="${escAttr(p.pronouns)}" placeholder="ella, Ã©l, elle"></div>
         <div class="form-group"><label class="form-label">Especialidad (opcional)</label><input class="form-input" id="tp-specialty" value="${escAttr(p.specialty)}" placeholder="Trauma, parejas, infancia..."></div>
         <div class="form-group"><label class="form-label">Consultorio / marca (opcional)</label><input class="form-input" id="tp-clinic-name" value="${escAttr(p.clinicName)}"></div>
-        <div class="form-group"><label class="form-label">Clínica a la que pertenece (opcional)</label><input class="form-input" id="tp-clinic-affiliation" value="${escAttr(p.clinicAffiliation)}"></div>
-        <div class="form-group"><label class="form-label">Cédula/Licencia (opcional)</label><input class="form-input" id="tp-license" value="${escAttr(p.license)}"></div>
+        <div class="form-group"><label class="form-label">ClÃ­nica a la que pertenece (opcional)</label><input class="form-input" id="tp-clinic-affiliation" value="${escAttr(p.clinicAffiliation)}"></div>
+        <div class="form-group"><label class="form-label">CÃ©dula/Licencia (opcional)</label><input class="form-input" id="tp-license" value="${escAttr(p.license)}"></div>
         <div class="form-group"><label class="form-label">Zona horaria</label><select class="form-input" id="tp-timezone">${timezoneOptionsHtml(p.timezone)}</select></div>
         <div class="form-group"><label class="form-label">Moneda</label><input class="form-input" id="tp-currency" value="${escAttr(p.currency)}" maxlength="3" placeholder="MXN"></div>
-        <div class="form-group"><label class="form-label">Duración default (min)</label><input class="form-input" id="tp-duration" type="number" min="15" step="5" value="${p.defaultSessionDuration}"></div>
+        <div class="form-group"><label class="form-label">DuraciÃ³n default (min)</label><input class="form-input" id="tp-duration" type="number" min="15" step="5" value="${p.defaultSessionDuration}"></div>
         <div class="form-group"><label class="form-label">Tarifa default ($)</label><input class="form-input" id="tp-rate" type="number" min="0" value="${p.defaultSessionRate}"></div>
         <div class="form-group"><label class="form-label">Cobro default</label><select class="form-input" id="tp-payment">
-          <option value="sesion"${p.defaultPaymentMode==='sesion'?' selected':''}>Por sesión</option>
+          <option value="sesion"${p.defaultPaymentMode==='sesion'?' selected':''}>Por sesiÃ³n</option>
           <option value="mensual"${p.defaultPaymentMode==='mensual'?' selected':''}>Mensual</option>
           <option value="quincenal"${p.defaultPaymentMode==='quincenal'?' selected':''}>Quincenal</option>
           <option value="inicio"${p.defaultPaymentMode==='inicio'?' selected':''}>Inicio de mes</option>
@@ -1920,7 +1956,7 @@ function renderTherapistProfileView(){
         <div class="form-group"><label class="form-label">Logo (imagen opcional)</label><input class="form-input" id="tp-logo-file" type="file" accept="image/*" onchange="handleLogoUpload()"></div>
         <div class="form-group form-full" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" id="tp-first-free" ${p.firstSessionNoChargeDefault?'checked':''}>
-          <label class="form-label" for="tp-first-free" style="margin:0">Primera sesión sin costo por default</label>
+          <label class="form-label" for="tp-first-free" style="margin:0">Primera sesiÃ³n sin costo por default</label>
         </div>
         <div class="form-group form-full"><label class="form-label">Bio breve (display)</label><textarea class="form-input" id="tp-bio" rows="3" style="resize:vertical">${escAttr(p.bio)}</textarea></div>
       </div>
@@ -1944,7 +1980,7 @@ function saveTherapistProfile(){
   const displayName=document.getElementById('tp-display-name').value.trim();
   const profession=document.getElementById('tp-profession').value.trim();
   if(!displayName){alert('Escribe el nombre visible del terapeuta.');return;}
-  if(!profession){alert('Escribe la profesión o rol clínico.');return;}
+  if(!profession){alert('Escribe la profesiÃ³n o rol clÃ­nico.');return;}
   therapistProfile=normalizeTherapistProfile({
     displayName,
     profession,
@@ -1995,29 +2031,29 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="dsec"><div class="sec-title">Sin sesiones en agenda para hoy</div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones hoy"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas hoy. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p><button class="btn-primary" style="margin-top:1rem" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div>`;
+    el.innerHTML=`<div class="dsec"><div class="sec-title">Sin sesiones en agenda para hoy</div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones hoy"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas hoy. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p><button class="btn-primary" style="margin-top:1rem" onclick="openUnplannedSessionModal()">+ Agregar sesiÃ³n no prevista</button></div>`;
     return;
   }
 
-  el.innerHTML=`<div class="dsec" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start"><div><div class="sec-title">${new Date(todayStr+'T12:00').toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'long'})}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Registra asistencia y pago por sesión. Esto se refleja en el calendario del paciente.</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div>
+  el.innerHTML=`<div class="dsec" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start"><div><div class="sec-title">${new Date(todayStr+'T12:00').toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'long'})}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Registra asistencia y pago por sesiÃ³n. Esto se refleja en el calendario del paciente.</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ SesiÃ³n no prevista</button></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
     if(r.movedFrom){
       const sk=r.skippedSes;
       const reschLabel=sk?.movedTo?new Date(sk.movedTo+'T12:00').toLocaleDateString('es-MX',{weekday:'short',day:'2-digit',month:'short'})+(sk.movedTime?' '+sk.movedTime:''):''
       return `<div class="today-card">
-        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
+        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} Â· ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
         <div class="today-form" style="padding-top:4px">
           <div class="today-status-label">Reagendada${reschLabel?' \u2192 '+reschLabel:''}</div>
-          <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="cancelTodayReposicion(${p.id})">Cancelar reposición</button>
+          <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="cancelTodayReposicion(${p.id})">Cancelar reposiciÃ³n</button>
         </div>
       </div>`;
     }
     if(r.ses?.therapistCancel){
       return `<div class="today-card">
-        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
+        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} Â· ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
         <div class="today-form" style="padding-top:4px">
-          <div class="today-status-label">Cancelación del terapeuta</div>
+          <div class="today-status-label">CancelaciÃ³n del terapeuta</div>
           <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="undoTerapeutaCancel(${p.id})">Deshacer</button>
         </div>
       </div>`;
@@ -2027,7 +2063,7 @@ function renderHoy(){
         <div class="today-head">
           <div>
             <div class="today-name">${p.nombre}</div>
-            <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'}</div>
+            <div class="today-meta">${r.hora} Â· ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'}</div>
           </div>
           <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
         </div>
@@ -2036,7 +2072,7 @@ function renderHoy(){
             <button class="btn-primary btn-sm" type="button" style="cursor:default;pointer-events:none">Guardado</button>
             <span class="today-locked-pill">Registro confirmado</span>
           </div>
-          <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">×</button>
+          <button class="today-reset-btn" type="button" title="Rehacer selecciÃ³n" onclick="unlockTodayCard(${p.id})">Ã—</button>
         </div>
       </div>`;
     }
@@ -2050,8 +2086,8 @@ function renderHoy(){
     return `<div class="today-card">
       <div class="today-head">
         <div>
-          <div class="today-name">${p.nombre}${esReposicion?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
-          <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} · ${pagoLabel(p.pago)}</div>
+          <div class="today-name">${p.nombre}${esReposicion?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">SesiÃ³n repuesta</span>`:''}</div>
+          <div class="today-meta">${r.hora} Â· ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} Â· ${pagoLabel(p.pago)}</div>
         </div>
         <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
       </div>
@@ -2061,25 +2097,25 @@ function renderHoy(){
         <input type="hidden" id="today-paid-${p.id}" value="${paidYes?'si':'no'}">
 
         <div class="yn-row">
-          <label class="form-label">¿Asistió?</label>
+          <label class="form-label">Â¿AsistiÃ³?</label>
           <div class="yn-toggle" id="today-attended-group-${p.id}">
-            <button type="button" class="yn-btn${attendedYes?' active':''}" onclick="setTodayToggle(${p.id},'attended','si')">Sí</button>
+            <button type="button" class="yn-btn${attendedYes?' active':''}" onclick="setTodayToggle(${p.id},'attended','si')">SÃ­</button>
             <button type="button" class="yn-btn${!attendedYes?' active':''}" onclick="setTodayToggle(${p.id},'attended','no')">No</button>
           </div>
         </div>
 
         <div class="yn-row" id="today-charge-wrap-${p.id}" style="display:${attendedYes?'none':'block'}">
-          <label class="form-label">¿Se cobra la sesión?</label>
+          <label class="form-label">Â¿Se cobra la sesiÃ³n?</label>
           <div class="yn-toggle" id="today-charge-group-${p.id}">
-            <button type="button" class="yn-btn${chargeOnMiss?' active':''}" onclick="setTodayToggle(${p.id},'charge','si')">Sí</button>
+            <button type="button" class="yn-btn${chargeOnMiss?' active':''}" onclick="setTodayToggle(${p.id},'charge','si')">SÃ­</button>
             <button type="button" class="yn-btn${!chargeOnMiss?' active':''}" onclick="setTodayToggle(${p.id},'charge','no')">No</button>
           </div>
         </div>
 
         <div class="yn-row" id="today-paid-wrap-${p.id}" style="display:${attendedYes||chargeOnMiss?'block':'none'}">
-          <label class="form-label">¿Pagó?</label>
+          <label class="form-label">Â¿PagÃ³?</label>
           <div class="yn-toggle" id="today-paid-group-${p.id}">
-            <button type="button" class="yn-btn${paidYes?' active':''}" onclick="setTodayToggle(${p.id},'paid','si')">Sí</button>
+            <button type="button" class="yn-btn${paidYes?' active':''}" onclick="setTodayToggle(${p.id},'paid','si')">SÃ­</button>
             <button type="button" class="yn-btn${!paidYes?' active':''}" onclick="setTodayToggle(${p.id},'paid','no')">No</button>
           </div>
           <div class="today-pay-row" id="today-amount-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
@@ -2099,8 +2135,8 @@ function renderHoy(){
 
         <button class="btn-primary btn-sm" onclick="saveTodaySession(${p.id})">Guardar</button>
         <div class="today-extra-actions">
-          <button class="btn-sec btn-sm" onclick="saveTerapeutaCancel(${p.id})">Cancelación del terapeuta</button>
-          <button class="btn-sec btn-sm" onclick="openTodayReposicionModal(${p.id})">Reposición</button>
+          <button class="btn-sec btn-sm" onclick="saveTerapeutaCancel(${p.id})">CancelaciÃ³n del terapeuta</button>
+          <button class="btn-sec btn-sm" onclick="openTodayReposicionModal(${p.id})">ReposiciÃ³n</button>
         </div>
       </div>
     </div>`;
@@ -2141,13 +2177,13 @@ function registerQuickPay(){
   if(!p){alert('Paciente no encontrado.');return;}
   if(!ensurePatientActiveForScheduling(p)) return;
   const amount=Math.max(0,parseInt(amountInput.value)||0);
-  if(amount<=0){alert('Escribe una cantidad válida.');return;}
+  if(amount<=0){alert('Escribe una cantidad vÃ¡lida.');return;}
   const metodo=methodSel.value||'efectivo';
   const fecha=today();
   p.pagos.push({id:'p'+(nextPayId++),fecha,monto:amount,metodo});
   p.pagado+=amount;
   p.adeudo=Math.max(0,p.adeudo-amount);
-  addLog(p,'datos',`Pago rápido registrado: $${amount.toLocaleString('es-MX')} (${metodo})`);
+  addLog(p,'datos',`Pago rÃ¡pido registrado: $${amount.toLocaleString('es-MX')} (${metodo})`);
   exposeSesMap(p);
   saveState();
   const drawer=document.getElementById('quick-pay-drawer');
@@ -2165,7 +2201,7 @@ function setTodayToggle(pid,field,value){
   if(group){
     const buttons=[...group.querySelectorAll('.yn-btn')];
     buttons.forEach(btn=>btn.classList.remove('active'));
-    const active=buttons.find(btn=>btn.textContent.trim().toLowerCase().startsWith(value==='si'?'sí':'no')||btn.textContent.trim().toLowerCase().startsWith(value));
+    const active=buttons.find(btn=>btn.textContent.trim().toLowerCase().startsWith(value==='si'?'sÃ­':'no')||btn.textContent.trim().toLowerCase().startsWith(value));
     if(active) active.classList.add('active');
   }
   refreshTodayCardLogic(pid);
@@ -2223,7 +2259,7 @@ function saveTodaySession(pid){
     return sessionType==='asistio'||sessionType==='falta'||sessionType==='extra';
   };
   if(paid&&!isBillable(tipo,noCharge)){
-    alert('Solo puedes registrar pago cuando la sesión es cobrable.');
+    alert('Solo puedes registrar pago cuando la sesiÃ³n es cobrable.');
     return;
   }
   const defaultHora=horaDiaFecha(p,dateStr);
@@ -2238,7 +2274,7 @@ function saveTodaySession(pid){
     ses.tipo=tipo;
     ses.noCharge=noCharge;
     if(!ses.hora) ses.hora=defaultHora;
-    addLog(p,'datos',`Registro hoy ${dateStr}: ${ant}→${tipo}${noCharge?' (sin cobro)':''}`);
+    addLog(p,'datos',`Registro hoy ${dateStr}: ${ant}â†’${tipo}${noCharge?' (sin cobro)':''}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     ses={id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo,noCharge,hora:defaultHora};
@@ -2249,7 +2285,7 @@ function saveTodaySession(pid){
 
   const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===dateStr);
   if(paid){
-    if(amount<=0){alert('Escribe un monto de pago válido.');return;}
+    if(amount<=0){alert('Escribe un monto de pago vÃ¡lido.');return;}
     if(autoPay){
       const diff=amount-autoPay.monto;
       autoPay.monto=amount;
@@ -2309,7 +2345,7 @@ function saveTerapeutaCancel(pid){
     p.adeudo+=autoPay.monto;
     p.pagos=p.pagos.filter(py=>py.id!==autoPay.id);
   }
-  addLog(p,'datos',`Cancelación del terapeuta: ${dateStr}`);
+  addLog(p,'datos',`CancelaciÃ³n del terapeuta: ${dateStr}`);
   exposeSesMap(p);
   saveState();
   renderHoy();
@@ -2320,7 +2356,7 @@ function undoTerapeutaCancel(pid){
   if(!p) return;
   const dateStr=today();
   p.sesiones=p.sesiones.filter(s=>!(s.fecha===dateStr&&s.therapistCancel));
-  addLog(p,'datos',`Cancelación del terapeuta deshecha: ${dateStr}`);
+  addLog(p,'datos',`CancelaciÃ³n del terapeuta deshecha: ${dateStr}`);
   exposeSesMap(p);
   saveState();
   renderHoy();
@@ -2331,9 +2367,9 @@ function openTodayReposicionModal(pid){
   if(!p) return;
   const todayStr=today();
   const defaultHora=horaDiaFecha(p,todayStr);
-  document.getElementById('modal-title').textContent='Reposición de sesión';
+  document.getElementById('modal-title').textContent='ReposiciÃ³n de sesiÃ³n';
   document.getElementById('modal-body').innerHTML=`
-    <p style="font-size:13px;color:var(--ink-light);margin-bottom:12px">¿A qué fecha y hora se repone la sesión de hoy?</p>
+    <p style="font-size:13px;color:var(--ink-light);margin-bottom:12px">Â¿A quÃ© fecha y hora se repone la sesiÃ³n de hoy?</p>
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Nueva fecha</label><input class="form-input" id="rep-today-fecha" type="date" min="${todayStr}"></div>
       <div class="form-group"><label class="form-label">Nueva hora</label><input class="form-input" id="rep-today-hora" type="time" value="${defaultHora}"></div>
@@ -2373,7 +2409,7 @@ function confirmarTodayReposicion(pid){
     target.hora=newTime;
     target.fromDate=todayStr;
   }
-  addLog(p,'reposicion',`Sesión ${todayStr} reagendada a ${newDate} ${newTime}`);
+  addLog(p,'reposicion',`SesiÃ³n ${todayStr} reagendada a ${newDate} ${newTime}`);
   exposeSesMap(p);
   saveState();
   closeModal();
@@ -2401,14 +2437,14 @@ function cancelTodayReposicion(pid){
   } else {
     p.sesiones=p.sesiones.filter(s=>s.id!==source.id);
   }
-  addLog(p,'reposicion',`Reposición de ${todayStr} cancelada`);
+  addLog(p,'reposicion',`ReposiciÃ³n de ${todayStr} cancelada`);
   exposeSesMap(p);
   saveState();
   renderHoy();
   if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
 }
 
-// ── showView ─────────────────────────────────────────────────
+// â”€â”€ showView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showView(v){
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
@@ -2417,12 +2453,12 @@ function showView(v){
   closeSidebarMobile();
   try{sessionStorage.setItem('axo_last_view',v);}catch(e){}
   
-  // Asegurar que todos los topbar-left tengan el botón hamburguesa
+  // Asegurar que todos los topbar-left tengan el botÃ³n hamburguesa
   document.querySelectorAll('.view.active .topbar-left').forEach(tl=>{
     if(!tl.querySelector('.menu-toggle')){
       const btn=document.createElement('button');
       btn.className='menu-toggle';
-      btn.textContent='☰';
+      btn.textContent='â˜°';
       btn.style.marginRight='0';
       btn.onclick=toggleSidebarMobile;
       tl.insertBefore(btn, tl.firstChild);
@@ -2439,7 +2475,7 @@ function showView(v){
   if(v==='perfil') renderTherapistProfileView();
 }
 
-// ── DETALLE ──────────────────────────────────────────────────
+// â”€â”€ DETALLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showDetalle(id){
   curId=id;curTab='sesiones';curBitTab='log';
   detallePeriod='mes';
@@ -2490,7 +2526,7 @@ function guardarDeudaDesde(pid){
   const fecha=document.getElementById('deuda-desde-in')?.value;
   if(!fecha) return;
   p.deudaDesde=fecha;
-  addLog(p,'datos',`Fecha inicio cálculo de deuda: ${fecha}`);
+  addLog(p,'datos',`Fecha inicio cÃ¡lculo de deuda: ${fecha}`);
   saveState();
   renderDetalle(p);
 }
@@ -2498,7 +2534,7 @@ function resetDeudaDesde(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   delete p.deudaDesde;
-  addLog(p,'datos','Fecha de cálculo de deuda restablecida al inicio de tratamiento');
+  addLog(p,'datos','Fecha de cÃ¡lculo de deuda restablecida al inicio de tratamiento');
   saveState();
   renderDetalle(p);
 }
@@ -2512,18 +2548,18 @@ function agregarCambioFrecuencia(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   const desde=document.getElementById('e-freq-desde').value;
   const vecesSemana=parseInt(document.getElementById('e-freq-veces').value);
-  if(!desde){alert('Selecciona desde cuándo aplica la frecuencia');return;}
-  if(!vecesSemana||vecesSemana<1||vecesSemana>7){alert('Escribe una frecuencia válida');return;}
+  if(!desde){alert('Selecciona desde cuÃ¡ndo aplica la frecuencia');return;}
+  if(!vecesSemana||vecesSemana<1||vecesSemana>7){alert('Escribe una frecuencia vÃ¡lida');return;}
   normalizarFrecuencias(p);
   const existing=p.frecuencias.find(f=>f.desde===desde);
   if(existing){
     const anterior=existing.vecesSemana;
     existing.vecesSemana=vecesSemana;
-    addLog(p,'horario',`Frecuencia ajustada: ${desde} ${anterior}→${vecesSemana} sesión(es)/semana`);
+    addLog(p,'horario',`Frecuencia ajustada: ${desde} ${anterior}â†’${vecesSemana} sesiÃ³n(es)/semana`);
   } else {
     p.frecuencias.push({desde,vecesSemana});
     normalizarFrecuencias(p);
-    addLog(p,'horario',`Frecuencia nueva: ${desde} ${vecesSemana} sesión(es)/semana`);
+    addLog(p,'horario',`Frecuencia nueva: ${desde} ${vecesSemana} sesiÃ³n(es)/semana`);
   }
   saveState();
   curTab='editar';
@@ -2538,7 +2574,7 @@ function deleteFrecuencia(pid,desde){
   if(!freq) return;
   p.frecuencias=p.frecuencias.filter(f=>f.desde!==desde);
   normalizarFrecuencias(p);
-  addLog(p,'horario',`Frecuencia eliminada: ${desde} ${freq.vecesSemana} sesión(es)/semana`);
+  addLog(p,'horario',`Frecuencia eliminada: ${desde} ${freq.vecesSemana} sesiÃ³n(es)/semana`);
   saveState();
   curTab='editar';
   renderDetalle(p);
@@ -2555,7 +2591,7 @@ function agregarPausa(pid){
   if(hasta<desde){alert('La fecha final debe ser posterior a la inicial');return;}
   p.pausas.push({id:'vp'+(nextPauseId++),actor,categoria,desde,hasta,nota});
   normalizarPausas(p);
-  addLog(p,'horario',`${categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${actor}: ${desde}→${hasta}${nota?` — ${nota}`:''}`);
+  addLog(p,'horario',`${categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${actor}: ${desde}â†’${hasta}${nota?` â€” ${nota}`:''}`);
   saveState();
   curTab='editar';
   renderDetalle(p);
@@ -2566,7 +2602,7 @@ function deletePausa(pid,pauseId){
   const pausa=p.pausas.find(pp=>pp.id===pauseId);
   if(!pausa) return;
   p.pausas=p.pausas.filter(pp=>pp.id!==pauseId);
-  addLog(p,'horario',`${pausa.categoria==='vacaciones'?'Vacaciones':'Pausa'} eliminada: ${pausa.actor} ${pausa.desde}→${pausa.hasta}`);
+  addLog(p,'horario',`${pausa.categoria==='vacaciones'?'Vacaciones':'Pausa'} eliminada: ${pausa.actor} ${pausa.desde}â†’${pausa.hasta}`);
   saveState();
   curTab='editar';
   renderDetalle(p);
@@ -2598,8 +2634,8 @@ function exportPatientSummary(pid){
     `Reposiciones: ${repos}`,
       `Reposiciones: ${repos}`,
     `Frecuencia actual: ${frecuenciaVigenteEnFecha(p,today()).vecesSemana} por semana`,
-    ...(showTherapistAbsence?[`Ausencias terapeuta/año: ${p.therapistCancelWeeksPerYear}`]:[]),
-    ...(showPatientAbsence?[`Ausencias paciente/año: ${p.patientAbsenceWeeksPerYear}`]:[]),
+    ...(showTherapistAbsence?[`Ausencias terapeuta/aÃ±o: ${p.therapistCancelWeeksPerYear}`]:[]),
+    ...(showPatientAbsence?[`Ausencias paciente/aÃ±o: ${p.patientAbsenceWeeksPerYear}`]:[]),
     '',
     'Linea de tiempo',
     ...timelineLines
@@ -2615,12 +2651,12 @@ function exportPatientSummary(pid){
   URL.revokeObjectURL(url);
 }
 
-// ── POPOVER ──────────────────────────────────────────────────
+// â”€â”€ POPOVER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // El popover ahora incluye:
 //  - opciones de tipo (asistio, falta, cancelada, reposicion)
-//  - si la sesión es reposicion → botón "Mover a otra fecha"
-//  - si la sesión es falta con reposicion asociada → botón "Mover reposición"
-//  - Eliminar: borra la respuesta SIN confirm, deja el día vacío/programado
+//  - si la sesiÃ³n es reposicion â†’ botÃ³n "Mover a otra fecha"
+//  - si la sesiÃ³n es falta con reposicion asociada â†’ botÃ³n "Mover reposiciÃ³n"
+//  - Eliminar: borra la respuesta SIN confirm, deja el dÃ­a vacÃ­o/programado
 let popoverState={pid:null,dateStr:null,sesId:null};
 let moveRepoMode=false;
 
@@ -2637,18 +2673,18 @@ function openPopover(pid,dateStr,ses,anchorEl){
   const hora=horaDiaFecha(p,dateStr);
   const tipoActual=ses?ses.tipo:null;
 
-  // ¿Esta sesión tiene reposición vinculada (o es una reposición)?
+  // Â¿Esta sesiÃ³n tiene reposiciÃ³n vinculada (o es una reposiciÃ³n)?
   const esRepo=ses&&ses.tipo==='reposicion';
   const tieneFaltaRepo=ses&&ses.tipo==='falta'&&ses.repoId;
   const repoAsociada=esRepo||tieneFaltaRepo;
   const isSourceRepo=ses&&ses.skipped;
-  const isSourceText=ses&&ses.skipped?`Sesión movida a ${ses.movedTo} ${ses.movedTime}`:'Esta sesión fue reposicionada.';
+  const isSourceText=ses&&ses.skipped?`SesiÃ³n movida a ${ses.movedTo} ${ses.movedTime}`:'Esta sesiÃ³n fue reposicionada.';
 
   const opts=[
-    {tipo:'asistio',icon:'✓',label:'Asistió'},
-    {tipo:'falta',icon:'✗',label:'Faltó paciente (sí cuenta)'},
-    {tipo:'cancelada',icon:'—',label:'Cancelé yo (sin costo)'},
-    {tipo:'reposicion',icon:'↩',label:'Reposición'},
+    {tipo:'asistio',icon:'âœ“',label:'AsistiÃ³'},
+    {tipo:'falta',icon:'âœ—',label:'FaltÃ³ paciente (sÃ­ cuenta)'},
+    {tipo:'cancelada',icon:'â€”',label:'CancelÃ© yo (sin costo)'},
+    {tipo:'reposicion',icon:'â†©',label:'ReposiciÃ³n'},
   ];
 
   const optsHtml = opts.map(o=>{
@@ -2666,7 +2702,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
 
   if(isSourceRepo){
     pop.innerHTML=`
-      <div class="ses-popover-title">${dateStr} · ${hora}</div>
+      <div class="ses-popover-title">${dateStr} Â· ${hora}</div>
       <div class="ses-popover-opts">
         <div class="ses-opt selected" style="cursor:default;background:#f0f0f0;color:#707070">
           ${isSourceText}
@@ -2685,15 +2721,15 @@ function openPopover(pid,dateStr,ses,anchorEl){
   }
 
   pop.innerHTML=`
-    <div class="ses-popover-title">${dateStr} · ${hora}</div>
+    <div class="ses-popover-title">${dateStr} Â· ${hora}</div>
     <div class="ses-popover-opts">
       ${optsHtml}
       ${repoAsociada?`<div class="ses-opt-move" onclick="toggleMoveRepo('${pid}','${dateStr}','${ses.id}')">
-        ✦ Mover ${esRepo?'esta reposición':'la reposición'} a otra fecha
+        âœ¦ Mover ${esRepo?'esta reposiciÃ³n':'la reposiciÃ³n'} a otra fecha
       </div>`:''}
     </div>
     <div id="move-repo-panel" style="display:none" class="move-repo-panel">
-      <label>Nueva fecha de reposición</label>
+      <label>Nueva fecha de reposiciÃ³n</label>
       <input type="date" id="move-repo-date" value="${dateStr}" min="${today()}">
       <div class="move-repo-actions">
         <button class="btn-primary btn-sm" onclick="confirmarMoveRepo('${pid}','${ses?ses.id:''}')">Confirmar</button>
@@ -2729,13 +2765,13 @@ function toggleMoveRepo(pid,dateStr,sesId){
   }
 }
 
-// Mover sesión de reposición (o la reposición asociada a una falta) a otra fecha
+// Mover sesiÃ³n de reposiciÃ³n (o la reposiciÃ³n asociada a una falta) a otra fecha
 function showReposicionPicker(pid,dateStr){
   closePopover();
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!ensurePatientActiveForScheduling(p)) return;
   const defaultHora=horaDiaFecha(p,dateStr);
-  document.getElementById('modal-title').textContent='Reposición de sesión';
+  document.getElementById('modal-title').textContent='ReposiciÃ³n de sesiÃ³n';
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Fecha destino</label><input class="form-input" id="rep-calc-fecha" type="date" value="${dateStr}"></div>
@@ -2754,7 +2790,7 @@ function confirmarReposicionDesdePopover(pid,dateStr){
   const [y,m,d]=newDate.split('-');
   const nuevaIso=`${y}-${m}-${d}`;
   if(isBeforeTreatmentStart(p,nuevaIso)){
-    alert(`No puedes mover una sesión a una fecha anterior al inicio (${p.inicio}).`);
+    alert(`No puedes mover una sesiÃ³n a una fecha anterior al inicio (${p.inicio}).`);
     return;
   }
   if(nuevaIso===dateStr){alert('Elige fecha distinta');return;}
@@ -2778,9 +2814,9 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
     source.tipo='reprogramada';
     source.movedTo=nuevaIso;
     source.movedTime=nuevaHora;
-    addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
+    addLog(p,'reposicion',`SesiÃ³n ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
   } else {
-    addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
+    addLog(p,'reposicion',`SesiÃ³n ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
   }
   let target=p.sesiones.find(s=>s.fecha===nuevaIso && s.tipo!=='reprogramada');
   if(target){
@@ -2797,7 +2833,7 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
   updateSidebarBadge();
 }
 
-// Mover sesión de reposición (o la reposición asociada a una falta) a otra fecha
+// Mover sesiÃ³n de reposiciÃ³n (o la reposiciÃ³n asociada a una falta) a otra fecha
 function confirmarMoveRepo(pid,sesId){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!ensurePatientActiveForScheduling(p)) return;
@@ -2806,22 +2842,22 @@ function confirmarMoveRepo(pid,sesId){
   const nuevaFecha=document.getElementById('move-repo-date').value;
   if(!nuevaFecha){alert('Selecciona una fecha');return}
   if(isBeforeTreatmentStart(p,nuevaFecha)){
-    alert(`No puedes mover la reposición a una fecha anterior al inicio (${p.inicio}).`);
+    alert(`No puedes mover la reposiciÃ³n a una fecha anterior al inicio (${p.inicio}).`);
     return;
   }
   const fechaAnterior=ses.fecha;
 
   if(ses.tipo==='reposicion'){
-    // Mover esta reposición
-    addLog(p,'reposicion',`Reposición movida: ${fechaAnterior}→${nuevaFecha}`);
+    // Mover esta reposiciÃ³n
+    addLog(p,'reposicion',`ReposiciÃ³n movida: ${fechaAnterior}â†’${nuevaFecha}`);
     ses.fecha=nuevaFecha;
     ses.replaced=true;
     ses.repoTo=nuevaFecha;
   } else if(ses.tipo==='falta'&&ses.repoId){
-    // Mover la reposición asociada
+    // Mover la reposiciÃ³n asociada
     const repo=p.sesiones.find(s=>s.id===ses.repoId);
     if(repo){
-      addLog(p,'reposicion',`Reposición (de falta ${fechaAnterior}) movida: ${repo.fecha}→${nuevaFecha}`);
+      addLog(p,'reposicion',`ReposiciÃ³n (de falta ${fechaAnterior}) movida: ${repo.fecha}â†’${nuevaFecha}`);
       repo.fecha=nuevaFecha;
       repo.replaced=true;
       repo.repoTo=nuevaFecha;
@@ -2836,7 +2872,7 @@ function confirmarMoveRepo(pid,sesId){
   saveState();
 }
 
-// ── REGISTRAR DESDE POPOVER ──────────────────────────────────
+// â”€â”€ REGISTRAR DESDE POPOVER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function registrarDesdePop(pid,dateStr,tipo){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
@@ -2849,25 +2885,25 @@ function registrarDesdePop(pid,dateStr,tipo){
   const existing=p.sesiones.find(s=>s.fecha===dateStr);
 
   if(tipo==='reposicion'){
-    const nuevaFecha=prompt('¿A qué fecha se movió la sesión? (DD-MM-YYYY)', `${dateStr.split('-')[2]}-${dateStr.split('-')[1]}-${dateStr.split('-')[0]}`);
+    const nuevaFecha=prompt('Â¿A quÃ© fecha se moviÃ³ la sesiÃ³n? (DD-MM-YYYY)', `${dateStr.split('-')[2]}-${dateStr.split('-')[1]}-${dateStr.split('-')[0]}`);
     if(!nuevaFecha){return;}
     if(!/^\d{2}-\d{2}-\d{4}$/.test(nuevaFecha)){
-      alert('Formato inválido. Usa DD-MM-YYYY.');
+      alert('Formato invÃ¡lido. Usa DD-MM-YYYY.');
       return;
     }
     const [d,m,y] = nuevaFecha.split('-');
     const nuevaIso = `${y}-${m}-${d}`;
     if(isBeforeTreatmentStart(p,nuevaIso)){
-      alert(`No puedes mover una sesión a una fecha anterior al inicio (${p.inicio}).`);
+      alert(`No puedes mover una sesiÃ³n a una fecha anterior al inicio (${p.inicio}).`);
       return;
     }
     if(nuevaIso===dateStr){
-      alert('Elige una fecha distinta para la reposición.');
+      alert('Elige una fecha distinta para la reposiciÃ³n.');
       return;
     }
     const FechaObjeto = new Date(`${y}-${m}-${d}T12:00`);
     if(isNaN(FechaObjeto.getTime())){
-      alert('Fecha inválida.');
+      alert('Fecha invÃ¡lida.');
       return;
     }
 
@@ -2882,7 +2918,7 @@ function registrarDesdePop(pid,dateStr,tipo){
       source.skipped=true;
       source.movedTo=nuevaIso;
       source.movedTime=nuevaHora;
-      addLog(p,'reposicion',`Sesión ${dateStr} ${sourceHora} movida a ${nuevaIso} ${nuevaHora}`);
+      addLog(p,'reposicion',`SesiÃ³n ${dateStr} ${sourceHora} movida a ${nuevaIso} ${nuevaHora}`);
     } else {
       p.sesiones.push({
         id:'s'+(nextSesId++),
@@ -2893,7 +2929,7 @@ function registrarDesdePop(pid,dateStr,tipo){
         movedTo:nuevaIso,
         movedTime:nuevaHora
       });
-      addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
+      addLog(p,'reposicion',`SesiÃ³n ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
     }
 
     let target=p.sesiones.find(s=>s.fecha===nuevaIso);
@@ -2933,7 +2969,7 @@ function registrarDesdePop(pid,dateStr,tipo){
       if(tipo==='asistio'||tipo==='falta'||tipo==='extra') p.adeudo+=tv;
     }
     existing.tipo=tipo;
-    if(tipo==='falta'||ant==='falta') addLog(p,'datos',`Sesión ${dateStr}: ${ant}→${tipo}`);
+    if(tipo==='falta'||ant==='falta') addLog(p,'datos',`SesiÃ³n ${dateStr}: ${ant}â†’${tipo}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo});
@@ -2948,7 +2984,7 @@ function registrarDesdePop(pid,dateStr,tipo){
   saveState();
 }
 
-// ── ELIMINAR RESPUESTA — sin confirm, solo borra la respuesta del día ──
+// â”€â”€ ELIMINAR RESPUESTA â€” sin confirm, solo borra la respuesta del dÃ­a â”€â”€
 function deleteSesionPop(pid,sid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!ensurePatientActiveForScheduling(p)) return;
@@ -2966,7 +3002,7 @@ function deleteSesionPop(pid,sid){
   saveState();
 }
 
-// ── ELIMINAR PAGO — sin confirm ───────────────────────────────
+// â”€â”€ ELIMINAR PAGO â€” sin confirm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function deletePago(pid,payId){
   const p=patients.find(x=>x.id===parseInt(pid));
   const pay=p.pagos.find(x=>x.id===payId);
@@ -2983,14 +3019,14 @@ function deletePatient(pid){
   const idx=patients.findIndex(x=>x.id===id);
   if(idx===-1) return;
   const p=patients[idx];
-  if(!confirm(`¿Eliminar a ${p.nombre} del registro? Esta acción no se puede deshacer.`)) return;
+  if(!confirm(`Â¿Eliminar a ${p.nombre} del registro? Esta acciÃ³n no se puede deshacer.`)) return;
   patients.splice(idx,1);
   saveState();
   showView('pacientes');
   renderPatients();
 }
 
-// ── CALENDARIO ───────────────────────────────────────────────
+// â”€â”€ CALENDARIO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function exposeSesMap(p){
   window['sesMap_'+p.id]={};
   p.sesiones.forEach(s=>{window['sesMap_'+p.id][s.fecha.split(' ')[0]]=s;});
@@ -3007,6 +3043,7 @@ function buildCalendar(p){
   const hoy=new Date();
   const sesMap={};
   p.sesiones.forEach(s=>{const fKey=s.fecha.split(' ')[0];sesMap[fKey]=s;});
+  const firstFreeId=getFirstFreeSessionId(p);
   const pendientes=new Set(sesionesPendientes(p));
 
   let cells='';
@@ -3034,15 +3071,17 @@ function buildCalendar(p){
 
     let pip='';
     if(ses){
-      const icons={asistio:'✓',falta:'✗',cancelada:'—',reposicion:'↩',extra:'✓'}[ses.tipo]||'?';
-      const label={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'Asistió'}[ses.tipo]||ses.tipo;
-      // Mostrar indicador de reposición movible
+      const icons={asistio:'âœ“',falta:'âœ—',cancelada:'â€”',reposicion:'â†©',extra:'âœ“'}[ses.tipo]||'?';
+      const baseLabel={asistio:'AsistiÃ³',falta:'FaltÃ³',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'AsistiÃ³'}[ses.tipo]||ses.tipo;
+      const firstFree=firstFreeId&&ses.id===firstFreeId;
+      const label=firstFree?(baseLabel+' (1ra sin costo)'):baseLabel;
+      // Mostrar indicador de reposiciÃ³n movible
       const hasRepo=ses.tipo==='reposicion'||(ses.tipo==='falta'&&ses.repoId);
-      pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' ✦':''}</div>`;
+      pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' âœ¦':''}</div>`;
     } else if((isProg||isFlexibleDate)&&!isFuture&&!beforeStart){
       pip=isInactive?`<div class="cal-pip sin-registro" title="Paciente inactivo">Sin reg.</div>`:`<div class="cal-pip sin-registro" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sin registrar">? Sin reg.</div>`;
     } else if(!isFlexibleDate&&!isProg&&!isFuture&&!beforeStart){
-      pip=isInactive?'':`<div class="cal-pip nueva" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Agregar nueva sesión">＋ Nueva</div>`;
+      pip=isInactive?'':`<div class="cal-pip nueva" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Agregar nueva sesiÃ³n">ï¼‹ Nueva</div>`;
     } else if(isProg&&isFuture){
       pip=`<div class="cal-prog-dot" title="${horaRango||''}"></div>`;
     }
@@ -3053,28 +3092,28 @@ function buildCalendar(p){
   }
 
   const nPend=pendientes.size;
-  const alertaCal=!isFlexible&&nPend>0?`<div style="background:#f7e4f1;border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:7px 12px;font-size:12px;color:#b95d37;margin-bottom:.75rem">⚠ ${nPend} sesión${nPend!==1?'es':''} sin registrar en ${MESES[calMonth]}. Haz clic en las celdas <span style="background:white;border:1.5px dashed rgba(56,70,81,.25);padding:1px 5px;border-radius:4px;font-size:11px">? Sin reg.</span> para llenarlas.</div>`:'';
-  const flexibleAlert=isFlexible?`<div style="background:rgba(165,196,188,.24);border:1px solid rgba(165,196,188,.56);border-radius:8px;padding:7px 12px;font-size:12px;color:#384651;margin-bottom:.75rem">Paciente sin horario fijo: puedes registrar sesiones en cualquier día pasado desde el inicio del tratamiento.</div>`:'';
-  const inactiveAlert=isInactive?`<div style="background:#f7e4f1;border:1px solid rgba(247,204,232,.9);border-radius:8px;padding:7px 12px;font-size:12px;color:#6a8494;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. Reactívalo para registrar nuevas sesiones.</div>`:'';
+  const alertaCal=!isFlexible&&nPend>0?`<div style="background:#f7e4f1;border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:7px 12px;font-size:12px;color:#b95d37;margin-bottom:.75rem">âš  ${nPend} sesiÃ³n${nPend!==1?'es':''} sin registrar en ${MESES[calMonth]}. Haz clic en las celdas <span style="background:white;border:1.5px dashed rgba(56,70,81,.25);padding:1px 5px;border-radius:4px;font-size:11px">? Sin reg.</span> para llenarlas.</div>`:'';
+  const flexibleAlert=isFlexible?`<div style="background:rgba(165,196,188,.24);border:1px solid rgba(165,196,188,.56);border-radius:8px;padding:7px 12px;font-size:12px;color:#384651;margin-bottom:.75rem">Paciente sin horario fijo: puedes registrar sesiones en cualquier dÃ­a pasado desde el inicio del tratamiento.</div>`:'';
+  const inactiveAlert=isInactive?`<div style="background:#f7e4f1;border:1px solid rgba(247,204,232,.9);border-radius:8px;padding:7px 12px;font-size:12px;color:#6a8494;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. ReactÃ­valo para registrar nuevas sesiones.</div>`:'';
 
   return `
     <div class="cal-nav">
-      <button class="cal-nav-btn" onclick="calPrev(${p.id})">‹</button>
+      <button class="cal-nav-btn" onclick="calPrev(${p.id})">â€¹</button>
       <span class="cal-nav-title">${MESES[calMonth]} ${calYear}</span>
-      <button class="cal-nav-btn" onclick="calNext(${p.id})">›</button>
+      <button class="cal-nav-btn" onclick="calNext(${p.id})">â€º</button>
     </div>
     ${inactiveAlert}
     ${flexibleAlert}
     ${alertaCal}
     <div class="cal-grid-wrap"><div class="cal-grid">${cells}</div></div>
     <div class="cal-legend">
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#d4ede8"></div>Asistió</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fde0cc"></div>Faltó paciente</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#d4ede8"></div>AsistiÃ³</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fde0cc"></div>FaltÃ³ paciente</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f0eeec"></div>Cancelada por terapeuta</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#ede8f8"></div>Reposición</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#e3f0ff"></div>Nueva sesión fuera de horario</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#ede8f8"></div>ReposiciÃ³n</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#e3f0ff"></div>Nueva sesiÃ³n fuera de horario</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fdf8f5;border:1.5px dashed #ddd"></div>Sin registrar</div>
-      <div class="cal-leg-item"><span style="font-size:10px;color:var(--ink-light)">✦ = movible</span></div>
+      <div class="cal-leg-item"><span style="font-size:10px;color:var(--ink-light)">âœ¦ = movible</span></div>
     </div>`;
 }
 
@@ -3089,7 +3128,7 @@ function calNext(pid){
   document.getElementById('cal-container').innerHTML=buildCalendar(p);
 }
 
-// ── RENDER DETALLE ───────────────────────────────────────────
+// â”€â”€ RENDER DETALLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderDetalle(p){
   normalizePatient(p);
   exposeSesMap(p);
@@ -3115,23 +3154,23 @@ function renderDetalle(p){
   const startedThisYear=inicioYear===new Date().getFullYear();
   const useManualMode=startedThisYear && !p.manualEstimateOverride;
 
-  const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">⚠</span><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
+  const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">âš </span><div><strong>${pend.length} sesiÃ³n${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
 
-  // Pagos — × sin confirm
+  // Pagos â€” Ã— sin confirm
   const payLog=[...p.pagos].reverse().map(py=>{const metodo=py.metodo||'efectivo'; return `<div class="prow">
-    <span class="pdate">${py.fecha} · ${metodo}</span>
+    <span class="pdate">${py.fecha} Â· ${metodo}</span>
     <span class="pamt">+$${py.monto.toLocaleString('es-MX')}</span>
-    <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">×</button>
+    <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">Ã—</button>
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
 
   // Tarifas
   const tarifasHtml=(p.tarifas||[]).map((t,i)=>`<div class="tariff-row">
-    <span class="tariff-period">${t.desde} → ${t.hasta||'(vigente)'}</span>
-    <span class="tariff-amount">$${t.monto.toLocaleString('es-MX')}/sesión</span>
+    <span class="tariff-period">${t.desde} â†’ ${t.hasta||'(vigente)'}</span>
+    <span class="tariff-amount">$${t.monto.toLocaleString('es-MX')}/sesiÃ³n</span>
     ${i===0&&!t.hasta?'<span class="tariff-current">vigente</span>':''}
   </div>`).join('');
 
-  // Bitácora — log de cambios
+  // BitÃ¡cora â€” log de cambios
   const logTagClass={tarifa:'lt-tarifa',horario:'lt-horario',datos:'lt-datos',reposicion:'lt-reposicion'};
   const logHtml=(p.cambios||[]).map(c=>`<div class="log-row">
     <span class="log-date">${c.fecha}</span>
@@ -3139,9 +3178,9 @@ function renderDetalle(p){
     <span class="log-tag ${logTagClass[c.tipo]||'lt-datos'}">${c.tipo}</span>
   </div>`).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin cambios.</div>';
 
-  // Notas clínicas
+  // Notas clÃ­nicas
   const notas=p.notas||[];
-  const tagLabels={clinica:'Clínica',general:'General',avance:'Avance',alerta:'Alerta'};
+  const tagLabels={clinica:'ClÃ­nica',general:'General',avance:'Avance',alerta:'Alerta'};
   const notasHtml=notas.length?notas.map(n=>`<div class="nota-card">
     <div class="nota-card-header">
       <div>
@@ -3150,11 +3189,11 @@ function renderDetalle(p){
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         <span class="nota-fecha">${n.fecha}</span>
-        <button class="nota-del" onclick="deleteNota('${p.id}','${n.id}')" title="Eliminar nota">×</button>
+        <button class="nota-del" onclick="deleteNota('${p.id}','${n.id}')" title="Eliminar nota">Ã—</button>
       </div>
     </div>
     <div class="nota-body">${n.cuerpo}</div>
-  </div>`).join(''):`<div style="font-size:13px;color:#aaa;padding:8px 0">Sin notas clínicas.</div>`;
+  </div>`).join(''):`<div style="font-size:13px;color:#aaa;padding:8px 0">Sin notas clÃ­nicas.</div>`;
 
   // Edit panel
   const editHtml=buildEditPanel(p);
@@ -3166,7 +3205,7 @@ function renderDetalle(p){
       <img src="Assets/Axolotl/Normal-2.svg" class="hero-axo" alt="Axo-lotl">
       <div class="detail-hero-main">
         <div class="hero-name">${p.nombre}</div>
-        <div class="hero-sub">${diasHoras} · Sesión #${n} · $${tv.toLocaleString('es-MX')}/sesión · ${p.status==='inactive'?'Inactivo':'Activo'}</div>
+        <div class="hero-sub">${diasHoras} Â· SesiÃ³n #${n} Â· $${tv.toLocaleString('es-MX')}/sesiÃ³n Â· ${p.status==='inactive'?'Inactivo':'Activo'}</div>
       </div>
       <div class="detail-hero-actions">
         <button class="btn-sec btn-sm" onclick="exportPatientSummary(${p.id})">Exportar resumen</button>
@@ -3178,8 +3217,8 @@ function renderDetalle(p){
       <button class="dtab active" data-tab="sesiones" onclick="switchTab('sesiones')">Calendario</button>
       <button class="dtab" data-tab="pagos" onclick="switchTab('pagos')">Pagos</button>
       <button class="dtab" data-tab="tarifas" onclick="switchTab('tarifas')">Tarifas</button>
-      <button class="dtab" data-tab="bitacora" onclick="switchTab('bitacora')">Bitácora</button>
-      <button class="dtab" data-tab="editar" onclick="switchTab('editar')">✏ Editar</button>
+      <button class="dtab" data-tab="bitacora" onclick="switchTab('bitacora')">BitÃ¡cora</button>
+      <button class="dtab" data-tab="editar" onclick="switchTab('editar')">âœ Editar</button>
     </div>
 
     <!-- Calendario -->
@@ -3187,11 +3226,11 @@ function renderDetalle(p){
       <div class="detail-grid">
         <div class="dsec">
           <div class="sec-title-row">
-            <span class="sec-title">Resumen clínico</span>
+            <span class="sec-title">Resumen clÃ­nico</span>
             <div class="period-switch">
               <button class="period-btn${detallePeriod==='semana'?' active':''}" onclick="setDetallePeriod('semana')">Semana</button>
               <button class="period-btn${detallePeriod==='mes'?' active':''}" onclick="setDetallePeriod('mes')">Mes</button>
-              <button class="period-btn${detallePeriod==='anio'?' active':''}" onclick="setDetallePeriod('anio')">Año</button>
+              <button class="period-btn${detallePeriod==='anio'?' active':''}" onclick="setDetallePeriod('anio')">AÃ±o</button>
             </div>
           </div>
           <div class="drow"><span class="dkey">Inicio tratamiento</span><span class="dval">${p.inicio}</span></div>
@@ -3201,28 +3240,28 @@ function renderDetalle(p){
           <div class="drow"><span class="dkey">Canceladas por terapeuta</span><span class="dval">${cancels}</span></div>
           <div class="drow"><span class="dkey">Reposiciones</span><span class="dval">${repos}</span></div>
           <div class="drow"><span class="dkey">Frecuencia vigente</span><span class="dval">${freqActual.vecesSemana} por semana</span></div>
-          ${showTherapistAbsence?`<div class="drow"><span class="dkey">Ausencias terapeuta</span><span class="dval">${p.therapistCancelWeeksPerYear} sem/año</span></div>`:''}
-          ${showPatientAbsence?`<div class="drow"><span class="dkey">Ausencias paciente</span><span class="dval">${p.patientAbsenceWeeksPerYear} sem/año</span></div>`:''}
-          <div class="drow"><span class="dkey">Duración</span><span class="dval">${p.duracion||45} min</span></div>
-          <div class="drow"><span class="dkey">Primera sesión sin costo</span><span class="dval">${p.primeraSinCosto?'sí':'no'}</span></div>
+          ${showTherapistAbsence?`<div class="drow"><span class="dkey">Ausencias terapeuta</span><span class="dval">${p.therapistCancelWeeksPerYear} sem/aÃ±o</span></div>`:''}
+          ${showPatientAbsence?`<div class="drow"><span class="dkey">Ausencias paciente</span><span class="dval">${p.patientAbsenceWeeksPerYear} sem/aÃ±o</span></div>`:''}
+          <div class="drow"><span class="dkey">DuraciÃ³n</span><span class="dval">${p.duracion||45} min</span></div>
+          <div class="drow"><span class="dkey">Primera sesiÃ³n sin costo</span><span class="dval">${p.primeraSinCosto?'sÃ­':'no'}</span></div>
           <div class="est-card">
-            <div class="est-head">Estimador de número de sesión</div>
+            <div class="est-head">Estimador de nÃºmero de sesiÃ³n</div>
             ${useManualMode?`
               <div class="est-main">Registro manual recomendado</div>
-              <div class="est-sub">Este paciente inició en ${inicioYear}. Como el tratamiento comenzó este año, no hace falta usar una fecha aproximada.</div>
-              <div class="est-sub">Puedes llenar manualmente asistencias e inasistencias en el calendario y el número de sesión se irá reflejando con mayor precisión.</div>
+              <div class="est-sub">Este paciente iniciÃ³ en ${inicioYear}. Como el tratamiento comenzÃ³ este aÃ±o, no hace falta usar una fecha aproximada.</div>
+              <div class="est-sub">Puedes llenar manualmente asistencias e inasistencias en el calendario y el nÃºmero de sesiÃ³n se irÃ¡ reflejando con mayor precisiÃ³n.</div>
               <div class="est-sub">Sesiones registradas hasta ahora: ${registradasHastaFecha}.</div>
-              <div class="est-row"><button class="btn-sec btn-sm" onclick="toggleManualEstimation(${p.id})">Activar estimación</button></div>
+              <div class="est-row"><button class="btn-sec btn-sm" onclick="toggleManualEstimation(${p.id})">Activar estimaciÃ³n</button></div>
             `:`
               <div class="est-row">
                 <div class="form-group">
-                  <label class="form-label">Calcular al día</label>
+                  <label class="form-label">Calcular al dÃ­a</label>
                   <input class="form-input" type="date" id="est-fecha" value="${estTarget}" onchange="onEstDateChange(${p.id})">
                 </div>
                 ${startedThisYear?`<button class="btn-ghost" onclick="toggleManualEstimation(${p.id})">Volver a registro manual</button>`:''}
               </div>
-              <div class="est-main">Sesión aproximada #${est.estimada}</div>
-              <div class="est-sub">Programadas en agenda: ${est.programadas} · Ajuste total: -${est.canceladasEstimadas}.</div>
+              <div class="est-main">SesiÃ³n aproximada #${est.estimada}</div>
+              <div class="est-sub">Programadas en agenda: ${est.programadas} Â· Ajuste total: -${est.canceladasEstimadas}.</div>
               ${showTherapistAbsence||showPatientAbsence?`<div class="est-sub">${showTherapistAbsence?`Promedio terapeuta: -${est.therapistEstimated}.`:''} ${showPatientAbsence?`Promedio paciente: -${est.patientEstimated}.`:''}</div>`:''}
               ${showTherapistAbsence||showPatientAbsence?`<div class="est-sub">${showTherapistAbsence?`Vacaciones/pausas terapeuta: -${est.therapistPauses}.`:''} ${showPatientAbsence?`Vacaciones/pausas paciente: -${est.patientPauses}.`:''}</div>`:''}
               <div class="est-sub">Registradas en expediente hasta esa fecha: ${registradasHastaFecha}. Si te falta registrar semanas, usa la estimada como referencia.</div>
@@ -3250,13 +3289,13 @@ function renderDetalle(p){
             <input class="inp-sm" type="number" id="pay-in" value="${tv}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
             <input class="inp-sm" type="date" id="pay-date" value="${today()}"></div>
-            <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
+            <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">MÃ©todo</div>
             <select class="inp-sm" id="pay-method"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
             <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in','pay-date','pay-method')">Registrar</button>
           </div>
         </div>
         <div class="dsec full" id="cal-container">${buildCalendar(p)}</div>
-        <div class="dsec full"><div class="sec-title">Línea de tiempo</div><div class="timeline-wrap">${timelineHtml}</div></div>
+        <div class="dsec full"><div class="sec-title">LÃ­nea de tiempo</div><div class="timeline-wrap">${timelineHtml}</div></div>
       </div>
     </div>
 
@@ -3270,7 +3309,7 @@ function renderDetalle(p){
           <input class="inp-sm" type="number" id="pay-in2" value="${tv}"></div>
           <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
           <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
-          <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
+          <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">MÃ©todo</div>
           <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
           <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2')">Registrar pago</button>
         </div>
@@ -3287,30 +3326,30 @@ function renderDetalle(p){
       </div>
     </div>
 
-    <!-- Bitácora + Notas clínicas -->
+    <!-- BitÃ¡cora + Notas clÃ­nicas -->
     <div class="dtab-panel" id="panel-bitacora">
       <div class="dsec">
         <div class="bittabs">
           <button class="bittab active" data-bt="log" onclick="switchBitTab('log')">Cambios del expediente</button>
-          <button class="bittab" data-bt="notas" onclick="switchBitTab('notas')">Notas clínicas</button>
+          <button class="bittab" data-bt="notas" onclick="switchBitTab('notas')">Notas clÃ­nicas</button>
         </div>
         <!-- Log de cambios -->
         <div class="bitpanel active" id="bitpanel-log">
           <div style="max-height:320px;overflow-y:auto">${logHtml}</div>
         </div>
-        <!-- Notas clínicas -->
+        <!-- Notas clÃ­nicas -->
         <div class="bitpanel" id="bitpanel-notas">
           <div class="nota-form">
             <div class="form-grid" style="margin-bottom:8px">
               <div class="form-group form-full">
-                <label class="form-label">Título de la nota</label>
-                <input class="form-input" id="nota-titulo" placeholder="Ej: Sesión 5 — transferencia">
+                <label class="form-label">TÃ­tulo de la nota</label>
+                <input class="form-input" id="nota-titulo" placeholder="Ej: SesiÃ³n 5 â€” transferencia">
               </div>
             </div>
-            <textarea id="nota-body" placeholder="Escribe aquí la nota clínica..."></textarea>
+            <textarea id="nota-body" placeholder="Escribe aquÃ­ la nota clÃ­nica..."></textarea>
             <div class="nota-form-row">
               <select class="form-input" id="nota-tag" style="width:auto;flex:1">
-                <option value="clinica">Clínica</option>
+                <option value="clinica">ClÃ­nica</option>
                 <option value="avance">Avance</option>
                 <option value="alerta">Alerta</option>
                 <option value="general">General</option>
@@ -3327,11 +3366,11 @@ function renderDetalle(p){
     <div class="dtab-panel" id="panel-editar">${editHtml}</div>
   `;
   switchTab(curTab);
-  // Restaurar sub-tab de bitácora si aplica
+  // Restaurar sub-tab de bitÃ¡cora si aplica
   if(curTab==='bitacora') switchBitTab(curBitTab);
 }
 
-// ── GUARDAR NOTA ─────────────────────────────────────────────
+// â”€â”€ GUARDAR NOTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function guardarNota(id){
   const p=patients.find(x=>x.id===id);
   const titulo=document.getElementById('nota-titulo').value.trim();
@@ -3350,7 +3389,7 @@ function deleteNota(pid,nid){
   if(curTab==='bitacora') switchBitTab('notas');
 }
 
-// ── EDIT PANEL ───────────────────────────────────────────────
+// â”€â”€ EDIT PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildEditPanel(p){
   normalizePatient(p);
   const tv=tarifaVigente(p);
@@ -3361,10 +3400,10 @@ function buildEditPanel(p){
   const diasBtns=DIAS.map((d,i)=>`<button class="day-btn${baseDias.includes(i)?' sel':''}" onclick="toggleDayEdit(this,${i})" data-d="${i}">${d}</button>`).join('');
   const horasRows=baseDias.map(i=>`<div class="hora-dia-row" id="hora-row-${i}"><span class="hora-dia-label">${DIAS_FULL[i]}</span><input class="hora-dia-input" id="hora-${i}" type="time" value="${baseHoras[i]!==undefined?baseHoras[i]:horaDia(p,i)}"></div>`).join('');
   const freqActual=frecuenciaVigenteEnFecha(p,today());
-  const frecuenciasHtml=p.frecuencias.map((f,index)=>`<div class="freq-item"><div><div>${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana</div><div class="freq-meta">Desde ${f.desde}</div></div>${index===0?'':`<button class="btn-ghost" onclick="deleteFrecuencia(${p.id},'${f.desde}')">Eliminar</button>`}</div>`).join('');
-  const pausasHtml=p.pausas.length?p.pausas.map(pp=>`<div class="freq-item"><div><div>${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} · ${pp.actor}</div><div class="freq-meta">${pp.desde} → ${pp.hasta}${pp.nota?` · ${pp.nota}`:''}</div></div><button class="btn-ghost" onclick="deletePausa(${p.id},'${pp.id}')">Eliminar</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin vacaciones o pausas registradas.</div>';
+  const frecuenciasHtml=p.frecuencias.map((f,index)=>`<div class="freq-item"><div><div>${f.vecesSemana} sesiÃ³n${f.vecesSemana!==1?'es':''}/semana</div><div class="freq-meta">Desde ${f.desde}</div></div>${index===0?'':`<button class="btn-ghost" onclick="deleteFrecuencia(${p.id},'${f.desde}')">Eliminar</button>`}</div>`).join('');
+  const pausasHtml=p.pausas.length?p.pausas.map(pp=>`<div class="freq-item"><div><div>${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} Â· ${pp.actor}</div><div class="freq-meta">${pp.desde} â†’ ${pp.hasta}${pp.nota?` Â· ${pp.nota}`:''}</div></div><button class="btn-ghost" onclick="deletePausa(${p.id},'${pp.id}')">Eliminar</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin vacaciones o pausas registradas.</div>';
   return `
-    <div class="edit-banner">✏ <strong>Modo edición</strong> — Los cambios se registran en la bitácora automáticamente.</div>
+    <div class="edit-banner">âœ <strong>Modo ediciÃ³n</strong> â€” Los cambios se registran en la bitÃ¡cora automÃ¡ticamente.</div>
     <div class="detail-grid">
       <div class="dsec full">
         <div class="sec-title">Datos generales</div>
@@ -3373,20 +3412,20 @@ function buildEditPanel(p){
           <div class="form-group"><label class="form-label">Fecha de inicio</label><input class="form-input" id="e-inicio" type="date" value="${p.inicio}"></div>
           <div class="form-group"><label class="form-label">Modalidad de pago</label>
             <select class="form-input" id="e-pago">
-              <option value="sesion"${p.pago==='sesion'?' selected':''}>Por sesión</option>
+              <option value="sesion"${p.pago==='sesion'?' selected':''}>Por sesiÃ³n</option>
               <option value="mensual"${p.pago==='mensual'?' selected':''}>Mensual</option>
               <option value="quincenal"${p.pago==='quincenal'?' selected':''}>Quincenal</option>
               <option value="inicio"${p.pago==='inicio'?' selected':''}>Inicio de mes</option>
             </select>
           </div>
-          <div class="form-group"><label class="form-label">Duración por sesión</label>
+          <div class="form-group"><label class="form-label">DuraciÃ³n por sesiÃ³n</label>
             <select class="form-input" id="e-duracion">
               ${durationOptionsHtml(p.duracion||45)}
             </select>
           </div>
           <div class="form-group" style="display:flex;align-items:center;gap:8px">
             <input type="checkbox" id="e-primera-sin-costo" ${p.primeraSinCosto?'checked':''}>
-            <label class="form-label" for="e-primera-sin-costo" style="margin:0">Primera sesión sin costo</label>
+            <label class="form-label" for="e-primera-sin-costo" style="margin:0">Primera sesiÃ³n sin costo</label>
           </div>
         </div>
       </div>
@@ -3402,34 +3441,34 @@ function buildEditPanel(p){
           <div class="form-group"><label class="form-label">Fecha del estado</label><input class="form-input" id="e-status-date" type="date" value="${p.statusDate||today()}"></div>
           <div class="form-group"><label class="form-label">Motivo</label>
             <select class="form-input" id="e-status-reason">
-              <option value="suspendio"${p.statusReason==='suspendio'?' selected':''}>Suspendió</option>
+              <option value="suspendio"${p.statusReason==='suspendio'?' selected':''}>SuspendiÃ³</option>
               <option value="alta"${p.statusReason==='alta'?' selected':''}>Alta</option>
               <option value="cierre"${p.statusReason==='cierre'?' selected':''}>Cierre</option>
               <option value="pausa"${p.statusReason==='pausa'?' selected':''}>Pausa</option>
               <option value="otro"${p.statusReason==='otro'?' selected':''}>Otro</option>
             </select>
           </div>
-          <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-status-note" value="${p.statusNote||''}" placeholder="Ej: suspendió terapia, alta, cierre temporal"></div>
+          <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-status-note" value="${p.statusNote||''}" placeholder="Ej: suspendiÃ³ terapia, alta, cierre temporal"></div>
         </div>
       </div>
       <div class="dsec full">
-        <div class="sec-title">Días y horas de sesión</div>
+        <div class="sec-title">DÃ­as y horas de sesiÃ³n</div>
         <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
           <input type="checkbox" id="e-no-fixed-schedule" ${baseNoFixed?'checked':''} onchange="toggleNoFixedEdit(this.checked)">
-          <label class="form-label" for="e-no-fixed-schedule" style="margin:0">Sin horario fijo (selección manual en calendario)</label>
+          <label class="form-label" for="e-no-fixed-schedule" style="margin:0">Sin horario fijo (selecciÃ³n manual en calendario)</label>
         </div>
-        <div id="e-fixed-days-wrap" style="margin-bottom:.75rem;${baseNoFixed?'display:none;':''}"><div class="form-label" style="margin-bottom:8px">Días fijos</div>
+        <div id="e-fixed-days-wrap" style="margin-bottom:.75rem;${baseNoFixed?'display:none;':''}"><div class="form-label" style="margin-bottom:8px">DÃ­as fijos</div>
         <div class="days-row" id="e-dias">${diasBtns}</div></div>
         <div id="e-fixed-hours-wrap" style="${baseNoFixed?'display:none;':''}"><div id="e-horas-container">${horasRows}</div></div>
-        <div class="alert-box" id="e-fixed-alert" style="${baseNoFixed?'display:none;':''}">Al guardar cambios de horario, se te pedirá la fecha a partir de la cual aplica para conservar el historial previo.</div>
+        <div class="alert-box" id="e-fixed-alert" style="${baseNoFixed?'display:none;':''}">Al guardar cambios de horario, se te pedirÃ¡ la fecha a partir de la cual aplica para conservar el historial previo.</div>
         <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarDatosGenerales(${p.id})">Guardar cambios</button></div>
       </div>
       <div class="dsec full">
         <div class="sec-title">Frecuencia y ajuste fino</div>
         <div class="form-grid" style="margin-top:.25rem">
-          <div class="form-group"><label class="form-label">Frecuencia vigente</label><input class="form-input" value="${freqActual.vecesSemana} sesión${freqActual.vecesSemana!==1?'es':''}/semana" disabled></div>
-          <div class="form-group"><label class="form-label">Ausencias terapeuta al año</label><input class="form-input" id="e-therapist-cancel-weeks" type="number" step="0.5" min="0" value="${p.therapistCancelWeeksPerYear}"></div>
-          <div class="form-group"><label class="form-label">Ausencias paciente al año</label><input class="form-input" id="e-patient-absence-weeks" type="number" step="0.5" min="0" value="${p.patientAbsenceWeeksPerYear}"></div>
+          <div class="form-group"><label class="form-label">Frecuencia vigente</label><input class="form-input" value="${freqActual.vecesSemana} sesiÃ³n${freqActual.vecesSemana!==1?'es':''}/semana" disabled></div>
+          <div class="form-group"><label class="form-label">Ausencias terapeuta al aÃ±o</label><input class="form-input" id="e-therapist-cancel-weeks" type="number" step="0.5" min="0" value="${p.therapistCancelWeeksPerYear}"></div>
+          <div class="form-group"><label class="form-label">Ausencias paciente al aÃ±o</label><input class="form-input" id="e-patient-absence-weeks" type="number" step="0.5" min="0" value="${p.patientAbsenceWeeksPerYear}"></div>
         </div>
         <div class="form-grid" style="margin-top:.75rem">
           <div class="form-group"><label class="form-label">Nueva frecuencia</label><input class="form-input" id="e-freq-veces" type="number" min="1" max="7" value="${freqActual.vecesSemana}"></div>
@@ -3443,7 +3482,7 @@ function buildEditPanel(p){
       <div class="dsec full">
         <div class="sec-title">Vacaciones y pausas largas</div>
         <div class="form-grid" style="margin-top:.25rem">
-          <div class="form-group"><label class="form-label">De quién es la pausa</label>
+          <div class="form-group"><label class="form-label">De quiÃ©n es la pausa</label>
             <select class="form-input" id="e-pausa-actor"><option value="terapeuta">Terapeuta</option><option value="paciente">Paciente</option></select>
           </div>
           <div class="form-group"><label class="form-label">Tipo</label>
@@ -3451,7 +3490,7 @@ function buildEditPanel(p){
           </div>
           <div class="form-group"><label class="form-label">Desde</label><input class="form-input" id="e-pausa-desde" type="date" value="${today()}"></div>
           <div class="form-group"><label class="form-label">Hasta</label><input class="form-input" id="e-pausa-hasta" type="date" value="${today()}"></div>
-          <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-pausa-nota" placeholder="Ej: vacaciones de verano, pausa terapéutica"></div>
+          <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-pausa-nota" placeholder="Ej: vacaciones de verano, pausa terapÃ©utica"></div>
         </div>
         <div class="est-row"><button class="btn-primary" onclick="agregarPausa(${p.id})">Registrar vacaciones o pausa</button></div>
         <div class="freq-list">${pausasHtml}</div>
@@ -3459,12 +3498,12 @@ function buildEditPanel(p){
       <div class="dsec full">
         <div class="sec-title">Cambio de tarifa</div>
         <div class="form-grid" style="margin-top:.25rem">
-          <div class="form-group"><label class="form-label">Tarifa vigente</label><input class="form-input" value="$${tv.toLocaleString('es-MX')}/sesión" disabled></div>
+          <div class="form-group"><label class="form-label">Tarifa vigente</label><input class="form-input" value="$${tv.toLocaleString('es-MX')}/sesiÃ³n" disabled></div>
           <div class="form-group"><label class="form-label">Nueva tarifa ($)</label><input class="form-input" id="e-tarifa-nueva" type="number" min="50" step="50" placeholder="${tv}"></div>
           <div class="form-group"><label class="form-label">Vigente a partir de</label><input class="form-input" id="e-tarifa-desde" type="date" value="${today()}"></div>
           <div class="form-group" style="align-self:flex-end"><button class="btn-primary" onclick="guardarNuevaTarifa(${p.id})">Aplicar nueva tarifa</button></div>
         </div>
-        ${p.adeudo>0?`<div class="alert-box">Hay adeudo de <strong>$${p.adeudo.toLocaleString('es-MX')}</strong> — al aplicar se preguntará cómo calcularlo.</div>`:''}
+        ${p.adeudo>0?`<div class="alert-box">Hay adeudo de <strong>$${p.adeudo.toLocaleString('es-MX')}</strong> â€” al aplicar se preguntarÃ¡ cÃ³mo calcularlo.</div>`:''}
       </div>
     </div>`;
 }
@@ -3506,7 +3545,7 @@ function openScheduleEffectiveDateModal(id,payload){
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
       <div class="form-group form-full">
-        <label class="form-label">¿A partir de qué fecha aplica el cambio?</label>
+        <label class="form-label">Â¿A partir de quÃ© fecha aplica el cambio?</label>
         <input class="form-input" id="schedule-effective-date" type="date" value="${defaultDate}" min="${payload.minDate}" onchange="updateScheduleEffectiveDateDisplay(this.value)">
         <div style="font-size:12px;color:var(--ink-light)">Fecha seleccionada: <strong id="schedule-effective-date-display">${displayDate(defaultDate)}</strong></div>
       </div>
@@ -3519,7 +3558,7 @@ function confirmScheduleEffectiveDate(){
   if(!pendingGeneralSave) return;
   const desdeHorario=(document.getElementById('schedule-effective-date')?.value||'').trim();
   const {id,payload}=pendingGeneralSave;
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(desdeHorario)){alert('Selecciona una fecha válida.');return;}
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(desdeHorario)){alert('Selecciona una fecha vÃ¡lida.');return;}
   if(desdeHorario<payload.minDate){alert('La fecha del cambio no puede ser anterior al inicio de tratamiento.');return;}
   closeModal();
   applyGuardarDatosGenerales(id,payload,desdeHorario);
@@ -3590,7 +3629,7 @@ function guardarDatosGenerales(id){
   const noFixedSchedule=document.getElementById('e-no-fixed-schedule').checked;
   let diasSel=[...document.querySelectorAll('#e-dias .day-btn.sel')].map(b=>parseInt(b.dataset.d));
   if(noFixedSchedule) diasSel=[];
-  if(!noFixedSchedule&&!diasSel.length){alert('Selecciona al menos un día o activa "Sin horario fijo".');return;}
+  if(!noFixedSchedule&&!diasSel.length){alert('Selecciona al menos un dÃ­a o activa "Sin horario fijo".');return;}
   const nuevasHoras={};
   diasSel.forEach(i=>{const inp=document.getElementById('hora-'+i);nuevasHoras[i]=inp?(inp.value||'00:00'):(horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i));});
   const cambios=[];
@@ -3605,17 +3644,17 @@ function guardarDatosGenerales(id){
   const nuevoStatusNote=document.getElementById('e-status-note').value.trim();
   const nuevasCancelWeeksTerapeuta=parseFloat(document.getElementById('e-therapist-cancel-weeks').value);
   const nuevasCancelWeeksPaciente=parseFloat(document.getElementById('e-patient-absence-weeks').value);
-  if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}"→"${nuevoNombre}"`);
-  if(nuevoInicio!==p.inicio) cambios.push(`Inicio: ${p.inicio}→${nuevoInicio}`);
-  if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)}→${pagoLabel(nuevoPago)}`);
-  if(p.duracion!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45}→${nuevaDuracion} min`);
-  if(p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto? 'sí':'no'}→${nuevaPrimeraSinCosto? 'sí':'no'}`);
-  if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==p.statusNote) cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'}→${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?` — ${nuevoStatusNote}`:''}`);
-  if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear) cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear}→${nuevasCancelWeeksTerapeuta} semanas/año`);
-  if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear) cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear}→${nuevasCancelWeeksPaciente} semanas/año`);
-  if(diasVigentes.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${diasVigentes.map(d=>DIAS[d]).join(',')}]→[${diasSel.map(d=>DIAS[d]).join(',')}]`);
-  if(noFixedVigente!==noFixedSchedule) cambios.push(`Horario fijo: ${noFixedVigente?'no':'sí'}→${noFixedSchedule?'no':'sí'}`);
-  diasSel.forEach(i=>{const horaAntes=horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i);if(nuevasHoras[i]!==horaAntes) cambios.push(`${DIAS[i]}: ${horaAntes}→${nuevasHoras[i]}`);});
+  if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}"â†’"${nuevoNombre}"`);
+  if(nuevoInicio!==p.inicio) cambios.push(`Inicio: ${p.inicio}â†’${nuevoInicio}`);
+  if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)}â†’${pagoLabel(nuevoPago)}`);
+  if(p.duracion!==nuevaDuracion) cambios.push(`DuraciÃ³n: ${p.duracion||45}â†’${nuevaDuracion} min`);
+  if(p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto? 'sÃ­':'no'}â†’${nuevaPrimeraSinCosto? 'sÃ­':'no'}`);
+  if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==p.statusNote) cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'}â†’${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?` â€” ${nuevoStatusNote}`:''}`);
+  if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear) cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear}â†’${nuevasCancelWeeksTerapeuta} semanas/aÃ±o`);
+  if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear) cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear}â†’${nuevasCancelWeeksPaciente} semanas/aÃ±o`);
+  if(diasVigentes.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`DÃ­as: [${diasVigentes.map(d=>DIAS[d]).join(',')}]â†’[${diasSel.map(d=>DIAS[d]).join(',')}]`);
+  if(noFixedVigente!==noFixedSchedule) cambios.push(`Horario fijo: ${noFixedVigente?'no':'sÃ­'}â†’${noFixedSchedule?'no':'sÃ­'}`);
+  diasSel.forEach(i=>{const horaAntes=horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i);if(nuevasHoras[i]!==horaAntes) cambios.push(`${DIAS[i]}: ${horaAntes}â†’${nuevasHoras[i]}`);});
 
   const diasAntes=diasVigentes.slice().sort().join(',');
   const diasNuevos=diasSel.slice().sort().join(',');
@@ -3644,15 +3683,15 @@ function guardarNuevaTarifa(id){
   const p=patients.find(x=>x.id===id);
   const monto=parseInt(document.getElementById('e-tarifa-nueva').value)||0;
   const desde=document.getElementById('e-tarifa-desde').value;
-  if(!monto||monto<=0){alert('Escribe una tarifa válida');return}
+  if(!monto||monto<=0){alert('Escribe una tarifa vÃ¡lida');return}
   const tv=tarifaVigente(p);
   if(!p.tarifas) p.tarifas=[{monto:p.tarifa,desde:p.inicio,hasta:null}];
   p.tarifas[0].hasta=desde;p.tarifas.unshift({monto,desde,hasta:null});p.tarifa=monto;
   if(p.adeudo>0){
-    const resp=confirm(`Adeudo $${p.adeudo.toLocaleString('es-MX')}.\nOK → tarifa anterior ($${tv})\nCancelar → recalcular ($${monto})`);
-    if(!resp){const ses=p.adeudo/tv;p.adeudo=Math.round(ses*monto);addLog(p,'tarifa',`Tarifa $${tv}→$${monto} desde ${desde}. Adeudo recalculado: $${p.adeudo.toLocaleString('es-MX')}`);}
-    else addLog(p,'tarifa',`Tarifa $${tv}→$${monto} desde ${desde}. Adeudo previo mantenido`);
-  } else addLog(p,'tarifa',`Tarifa $${tv}→$${monto}/sesión desde ${desde}`);
+    const resp=confirm(`Adeudo $${p.adeudo.toLocaleString('es-MX')}.\nOK â†’ tarifa anterior ($${tv})\nCancelar â†’ recalcular ($${monto})`);
+    if(!resp){const ses=p.adeudo/tv;p.adeudo=Math.round(ses*monto);addLog(p,'tarifa',`Tarifa $${tv}â†’$${monto} desde ${desde}. Adeudo recalculado: $${p.adeudo.toLocaleString('es-MX')}`);}
+    else addLog(p,'tarifa',`Tarifa $${tv}â†’$${monto} desde ${desde}. Adeudo previo mantenido`);
+  } else addLog(p,'tarifa',`Tarifa $${tv}â†’$${monto}/sesiÃ³n desde ${desde}`);
   saveState();
   curTab='tarifas';renderDetalle(p);
 }
@@ -3668,7 +3707,7 @@ function regPago(id,inputId,dateInputId,methodInputId){
   saveState();
 }
 
-// ── REPOSICIÓN MODAL ─────────────────────────────────────────
+// â”€â”€ REPOSICIÃ“N MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function abrirReposicion(){
   const p=patients.find(x=>x.id===curId);
   if(!ensurePatientActiveForScheduling(p)) return;
@@ -3680,12 +3719,12 @@ function abrirReposicion(){
     const fecha=new Date(lunSig);fecha.setDate(lunSig.getDate()+i);
     return `<option value="${fmt(fecha)}">${nombre} ${fmt(fecha)}</option>`;
   }).join('');
-  document.getElementById('modal-title').textContent='Reposición de sesión';
+  document.getElementById('modal-title').textContent='ReposiciÃ³n de sesiÃ³n';
   document.getElementById('modal-body').innerHTML=`
     <p style="font-size:13px;color:var(--ink-light);margin-bottom:1rem;line-height:1.5">Solo se puede agendar dentro de la semana siguiente.</p>
     <div class="form-grid">
-      <div class="form-group form-full"><label class="form-label">Sesión original que se repone</label><input class="form-input" id="rep-original" type="date" value="${today()}"></div>
-      <div class="form-group"><label class="form-label">Día de reposición</label><select class="form-input" id="rep-dia">${opcionesDias}</select></div>
+      <div class="form-group form-full"><label class="form-label">SesiÃ³n original que se repone</label><input class="form-input" id="rep-original" type="date" value="${today()}"></div>
+      <div class="form-group"><label class="form-label">DÃ­a de reposiciÃ³n</label><select class="form-input" id="rep-dia">${opcionesDias}</select></div>
       <div class="form-group"><label class="form-label">Hora</label><input class="form-input" id="rep-hora" type="time" value="${p.hora}"></div>
       <div class="form-group form-full"><label class="form-label">Nota (opcional)</label><input class="form-input" id="rep-nota" placeholder="Ej: acordado por WhatsApp"></div>
     </div>
@@ -3731,12 +3770,12 @@ function confirmarReposicion(id){
     });
   }
 
-  addLog(p,'reposicion',`Repo: ${fechaRepo} (repone ${fechaOrig})${nota?' — '+nota:''}`);
+  addLog(p,'reposicion',`Repo: ${fechaRepo} (repone ${fechaOrig})${nota?' â€” '+nota:''}`);
   saveState();
   closeModal();curTab='sesiones';exposeSesMap(p);renderDetalle(p);updateSidebarBadge();
 }
 
-// ── SEMANA ───────────────────────────────────────────────────
+// â”€â”€ SEMANA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderSemana(){
   const activos=activePatients();
   const base=new Date((semanaBaseDate||today())+'T12:00');
@@ -3751,7 +3790,7 @@ function renderSemana(){
       .map(s=>({
         pNombre:p.nombre,
         hora:s.hora||horaDiaFecha(p,fechaStr)||'99:99',
-        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">↩ ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
+        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">â†© ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
       }))
     );
     return [...slots,...repos].sort((a,b)=>{
@@ -3783,9 +3822,9 @@ function renderSemana(){
           <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
         </div>
         <div class="week-nav">
-          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">← Anterior</button>
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">â† Anterior</button>
           <span class="week-period">${MESES[month]} ${year}</span>
-          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente →</button>
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente â†’</button>
         </div>
       </div>
       <div class="month-scroll">
@@ -3812,9 +3851,9 @@ function renderSemana(){
         <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
       </div>
       <div class="week-nav">
-        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">← Anterior</button>
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">â† Anterior</button>
         <span class="week-period">${weekLabel}</span>
-        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente →</button>
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente â†’</button>
       </div>
     </div>
     <div class="week-grid">${cols}</div>`;
@@ -3834,7 +3873,7 @@ function moveSemanaRange(delta){
   renderSemana();
 }
 
-// ── RESUMEN ──────────────────────────────────────────────────
+// â”€â”€ RESUMEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderResumen(){
   const activos=activePatients();
   const hoy=new Date();
@@ -3860,7 +3899,7 @@ function renderResumen(){
     <div class="res-cards">
       <div class="rcard"><div class="rnum">${sem}</div><div class="rlabel">Esta semana</div></div>
       <div class="rcard"><div class="rnum">${mes}</div><div class="rlabel">Este mes</div><div class="rsub">${hoy.toLocaleString('es-MX',{month:'long'})}</div></div>
-      <div class="rcard"><div class="rnum">${anio}</div><div class="rlabel">Este año ${hoy.getFullYear()}</div></div>
+      <div class="rcard"><div class="rnum">${anio}</div><div class="rlabel">Este aÃ±o ${hoy.getFullYear()}</div></div>
     </div>
     <div class="dsec" style="background:white;margin-bottom:1rem">
       <div class="sec-title-row">
@@ -3868,22 +3907,22 @@ function renderResumen(){
         <div class="period-switch">
           <button class="period-btn${resumenPeriod==='semana'?' active':''}" onclick="setResumenPeriod('semana')">Semana</button>
           <button class="period-btn${resumenPeriod==='mes'?' active':''}" onclick="setResumenPeriod('mes')">Mes</button>
-          <button class="period-btn${resumenPeriod==='anio'?' active':''}" onclick="setResumenPeriod('anio')">Año</button>
+          <button class="period-btn${resumenPeriod==='anio'?' active':''}" onclick="setResumenPeriod('anio')">AÃ±o</button>
         </div>
       </div>
       <div class="drow"><span class="dkey">Sesiones dadas ${textoPeriodo(resumenPeriod)}</span><span class="dval">${activeCount}</span></div>
     </div>
-    <div class="dsec" style="background:white"><div class="sec-title">Sesiones por mes — ${hoy.getFullYear()}</div><div class="bar-chart">${bars}</div></div>
+    <div class="dsec" style="background:white"><div class="sec-title">Sesiones por mes â€” ${hoy.getFullYear()}</div><div class="bar-chart">${bars}</div></div>
     <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Por paciente</div>
       ${activos.map(p=>{
         const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
         const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
-        return `<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total · ${np} ${textoPeriodo(resumenPeriod)}</span></div>`;
+        return `<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total Â· ${np} ${textoPeriodo(resumenPeriod)}</span></div>`;
       }).join('')}
     </div>`;
 }
 
-// ── PROSPECTADO ──────────────────────────────────────────────
+// â”€â”€ PROSPECTADO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderProspectado(){
   const activos=activePatients();
   const hoy=new Date();const y=hoy.getFullYear(),m=hoy.getMonth();
@@ -3904,7 +3943,7 @@ function renderProspectado(){
         <div class="pr-left">
           <div class="person-avatar" style="width:28px;height:28px"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
           <div><div style="font-size:13px;font-weight:500;color:var(--ink);font-family:'Lora',serif">${p.nombre}</div>
-          <div style="font-size:11px;color:var(--ink-light)">${numSes} sesiones en ${MESES[m]} · ${diasHoras} · $${tv.toLocaleString('es-MX')}/ses</div></div>
+          <div style="font-size:11px;color:var(--ink-light)">${numSes} sesiones en ${MESES[m]} Â· ${diasHoras} Â· $${tv.toLocaleString('es-MX')}/ses</div></div>
         </div>
         <div class="pr-nums">
           <span style="color:var(--ink-light)">Prosp: <strong style="color:var(--ink)">$${prosp.toLocaleString('es-MX')}</strong></span>
@@ -3913,13 +3952,13 @@ function renderProspectado(){
         </div>
       </div>
       <div class="pr-bar-wrap"><div class="pr-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <div class="pr-bar-note">${pct}% adeudado · ${pagoLabel(p.pago)}</div>
+      <div class="pr-bar-note">${pct}% adeudado Â· ${pagoLabel(p.pago)}</div>
     </div>`;
   }).join('');
   document.getElementById('prosp-content').innerHTML=`
     <div class="prosp-banner">
       <img src="${axoProsp(ratio)}" class="prosp-axo" alt="">
-      <div style="flex:1"><div class="prosp-head">${MESES[m]} ${y} — sesiones por horario real</div>
+      <div style="flex:1"><div class="prosp-head">${MESES[m]} ${y} â€” sesiones por horario real</div>
         <div class="prosp-nums">
           <div><div class="pn-val col-white">$${totalProsp.toLocaleString('es-MX')}</div><div class="pn-label col-white">prospectado ideal</div></div>
           <div><div class="pn-val col-red">$${totalDeuda.toLocaleString('es-MX')}</div><div class="pn-label col-white">adeudo actual</div></div>
@@ -3927,13 +3966,13 @@ function renderProspectado(){
         </div>
       </div>
     </div>
-    <div class="dsec" style="background:white"><div class="sec-title">Desglose — ${MESES[m]}</div>${rowsHtml}</div>
-    <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Metodología</div>
-      <p style="font-size:13px;color:var(--ink-light);line-height:1.6">Cuenta los días exactos del mes en que caen los horarios de cada paciente. Sin promedios.</p>
+    <div class="dsec" style="background:white"><div class="sec-title">Desglose â€” ${MESES[m]}</div>${rowsHtml}</div>
+    <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">MetodologÃ­a</div>
+      <p style="font-size:13px;color:var(--ink-light);line-height:1.6">Cuenta los dÃ­as exactos del mes en que caen los horarios de cada paciente. Sin promedios.</p>
     </div>`;
 }
 
-// ── MODAL NUEVO PACIENTE ─────────────────────────────────────
+// â”€â”€ MODAL NUEVO PACIENTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let newPatDias=[];
 function openModalNuevo(){
   newPatDias=[];
@@ -3942,25 +3981,25 @@ function openModalNuevo(){
     <div class="form-grid">
       <div class="form-group form-full"><label class="form-label">Nombre completo</label><input class="form-input" id="fn" type="text" autofocus></div>
       <div class="form-group"><label class="form-label">Fecha de inicio</label><input class="form-input" id="fi" type="date" value="${today()}"></div>
-      <div class="form-group"><label class="form-label">Modalidad de pago</label><select class="form-input" id="fp"><option value="sesion">Por sesión</option><option value="mensual">Mensual</option><option value="quincenal">Quincenal</option><option value="inicio">Inicio de mes</option></select></div>
-      <div class="form-group form-full"><label class="form-label" style="margin-bottom:8px">Días fijos de sesión</label>
+      <div class="form-group"><label class="form-label">Modalidad de pago</label><select class="form-input" id="fp"><option value="sesion">Por sesiÃ³n</option><option value="mensual">Mensual</option><option value="quincenal">Quincenal</option><option value="inicio">Inicio de mes</option></select></div>
+      <div class="form-group form-full"><label class="form-label" style="margin-bottom:8px">DÃ­as fijos de sesiÃ³n</label>
         <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <input type="checkbox" id="f-no-fixed" onchange="toggleNoFixedNuevo(this.checked)">
           <label class="form-label" for="f-no-fixed" style="margin:0">Sin horario fijo</label>
         </div>
         <div class="days-row" id="new-days-wrap">${DIAS.map((d,i)=>`<button class="day-btn" onclick="toggleDayNuevo(this,${i})" data-d="${i}">${d}</button>`).join('')}</div>
       </div>
-      <div class="form-group form-full" id="new-hours-wrap"><label class="form-label">Hora por día</label>
-        <div id="new-horas-container" style="margin-top:6px"><p style="font-size:12px;color:var(--ink-light)">Selecciona los días para asignar horas.</p></div>
+      <div class="form-group form-full" id="new-hours-wrap"><label class="form-label">Hora por dÃ­a</label>
+        <div id="new-horas-container" style="margin-top:6px"><p style="font-size:12px;color:var(--ink-light)">Selecciona los dÃ­as para asignar horas.</p></div>
       </div>
-      <div class="form-group"><label class="form-label">Duración por sesión</label>
+      <div class="form-group"><label class="form-label">DuraciÃ³n por sesiÃ³n</label>
         <select class="form-input" id="fduracion">${durationOptionsHtml(45)}</select>
       </div>
       <div class="form-group" style="display:flex;align-items:center;gap:8px">
         <input type="checkbox" id="ffirstfree">
-        <label class="form-label" for="ffirstfree" style="margin:0">Primera sesión sin costo</label>
+        <label class="form-label" for="ffirstfree" style="margin:0">Primera sesiÃ³n sin costo</label>
       </div>
-      <div class="form-group"><label class="form-label">Tarifa por sesión ($)</label><input class="form-input" id="ft" type="number" min="50" step="50" placeholder="800"></div>
+      <div class="form-group"><label class="form-label">Tarifa por sesiÃ³n ($)</label><input class="form-input" id="ft" type="number" min="50" step="50" placeholder="800"></div>
     </div>
     <div class="modal-footer"><button class="btn-sec" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="guardarNuevo()">Guardar paciente</button></div>`;
   document.getElementById('modal-overlay').classList.add('open');
@@ -3982,7 +4021,7 @@ function toggleDayNuevo(btn,i){
   } else {
     newPatDias=newPatDias.filter(d=>d!==i);
     const row=document.getElementById('new-hora-row-'+i);if(row)row.remove();
-    if(!newPatDias.length)container.innerHTML=`<p style="font-size:12px;color:var(--ink-light)">Selecciona los días para asignar horas.</p>`;
+    if(!newPatDias.length)container.innerHTML=`<p style="font-size:12px;color:var(--ink-light)">Selecciona los dÃ­as para asignar horas.</p>`;
   }
 }
 function toggleNoFixedNuevo(checked){
@@ -3999,7 +4038,7 @@ function guardarNuevo(){
   const nombre=document.getElementById('fn').value.trim();
   if(!nombre){alert('Escribe el nombre');return}
   const noFixedSchedule=document.getElementById('f-no-fixed').checked;
-  if(!noFixedSchedule&&!newPatDias.length){alert('Selecciona al menos un día o activa "Sin horario fijo"');return}
+  if(!noFixedSchedule&&!newPatDias.length){alert('Selecciona al menos un dÃ­a o activa "Sin horario fijo"');return}
   const tarifa=parseInt(document.getElementById('ft').value)||0;
   const inicio=document.getElementById('fi').value;
   const pago=document.getElementById('fp').value;
@@ -4026,7 +4065,7 @@ function guardarNuevo(){
     pausas:[],
     pagado:0,adeudo:adeudoInicial,sesiones:sesionesIniciales,pagos:[],notas:[],
     tarifas:[{monto:tarifa,desde:inicio,hasta:null}],
-    cambios:[{fecha:today(),tipo:'datos',desc:`Expediente creado${inicio?` · Primera sesión registrada como asistió (${inicio})`:''}`}]
+    cambios:[{fecha:today(),tipo:'datos',desc:`Expediente creado${inicio?` Â· Primera sesiÃ³n registrada como asistiÃ³ (${inicio})`:''}`}]
   });
   saveState();
   closeModal();renderPatients();
@@ -4036,16 +4075,16 @@ function openUnplannedSessionModal(){
   const todayStr=today();
   const activos=activePatients();
   if(!activos.length){
-    alert('No hay pacientes activos para agregar sesión.');
+    alert('No hay pacientes activos para agregar sesiÃ³n.');
     return;
   }
-  document.getElementById('modal-title').textContent='Agregar sesión no prevista';
+  document.getElementById('modal-title').textContent='Agregar sesiÃ³n no prevista';
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
       <div class="form-group form-full">
         <label class="form-label">Paciente</label>
         <select class="form-input" id="unplanned-patient">
-          <option value="">—  Selecciona un paciente  —</option>
+          <option value="">â€”  Selecciona un paciente  â€”</option>
           ${activos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('')}
         </select>
       </div>
@@ -4056,7 +4095,7 @@ function openUnplannedSessionModal(){
     </div>
     <div class="modal-footer" style="margin-top:1rem">
       <button class="btn-sec" onclick="closeModal()">Cancelar</button>
-      <button class="btn-primary" onclick="saveUnplannedSession()">Agregar sesión</button>
+      <button class="btn-primary" onclick="saveUnplannedSession()">Agregar sesiÃ³n</button>
     </div>
   `;
   document.getElementById('modal-overlay').classList.add('open');
@@ -4081,11 +4120,11 @@ function saveUnplannedSession(){
     hora:hora,
     tipo:'asistio'
   });
-  addLog(p,'sesiones',`Sesión no prevista registrada a las ${hora}`);
+  addLog(p,'sesiones',`SesiÃ³n no prevista registrada a las ${hora}`);
   saveState();
   closeModal();
   renderHoy();
-  alert('Sesión no prevista agregada.');
+  alert('SesiÃ³n no prevista agregada.');
 }
 
 function closeModal(){pendingGeneralSave=null;document.getElementById('modal-overlay').classList.remove('open')}
@@ -4093,12 +4132,16 @@ function closeModalOut(e){ /* overlay click no cierra modal */ }
 
 applyStore(getEmptyStore());
 setSidebarUser(null);
-setSyncStatus('Esperando inicio de sesión');
+setSyncStatus('Esperando inicio de sesiÃ³n');
 initFirebase().catch(err=>{
   console.error(err);
-  showAuthMessage('No pude inicializar Firebase. Revisa la configuración del proyecto.', 'error');
+  showAuthMessage('No pude inicializar Firebase. Revisa la configuraciÃ³n del proyecto.', 'error');
 });
 
 </script>
 </body>
 </html>
+
+
+
+
