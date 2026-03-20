@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Axo-lotl · Consulta</title>
+<link rel="icon" type="image/svg+xml" href="./Assets/Branding/Logo-Reducido-Alt.svg">
+<link rel="alternate icon" type="image/png" href="./Assets/Branding/Redes-PNG/Redes-Color1.png">
+<link rel="apple-touch-icon" href="./Assets/Branding/Redes-PNG/Redes-Color1.png">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 
@@ -124,8 +127,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 /* ── CALENDARIO ── */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.875rem}
 .cal-nav-title{font-family:'Lora',serif;font-size:15px;font-weight:600;color:var(--ink);text-transform:capitalize}
-.cal-nav-btn{background:none;border:1px solid #ddd;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:15px;color:var(--ink-light)}
-.cal-nav-btn:hover{background:var(--bg)}
+.cal-nav-btn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;background:white;border:1px solid rgba(56,70,81,.14);border-radius:999px;padding:0;cursor:pointer;font-size:18px;font-weight:600;color:var(--ink);box-shadow:0 4px 14px rgba(56,70,81,.08);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease,background .15s ease}
+.cal-nav-btn:hover{background:var(--cream);border-color:rgba(185,93,55,.28);box-shadow:0 8px 18px rgba(56,70,81,.12);transform:translateY(-1px)}
+.cal-nav-btn:active{transform:translateY(0)}
+.cal-nav-btn svg{display:block;width:14px;height:14px;stroke:currentColor;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .cal-dow{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;padding:4px 0;text-transform:uppercase;letter-spacing:.04em}
 .cal-day{min-height:52px;border-radius:8px;padding:4px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
@@ -270,9 +275,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 
 /* ── TABS ── */
 .dtabs{display:flex;gap:0;border-bottom:2px solid #f0eeec;margin-bottom:1rem;overflow-x:auto}
-.dtab{background:none;border:none;padding:.625rem 1rem;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap}
+.dtab{background:none;border:none;padding:.625rem 1rem;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .dtab:hover{color:var(--ink)}
 .dtab.active{color:var(--terra);border-bottom-color:var(--terra);font-weight:500}
+.dtab svg{display:block;width:13px;height:13px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;overflow:visible}
 .dtab-panel{display:none}.dtab-panel.active{display:block}
 
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--ink-light);font-size:13px}
@@ -809,9 +815,9 @@ function buildCalendar(p){
 
   return `
     <div class="cal-nav">
-      <button class="cal-nav-btn" onclick="calPrev(${p.id})">‹</button>
+      <button class="cal-nav-btn" onclick="calPrev(${p.id})" aria-label="Mes anterior"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M10 3 5 8l5 5"></path></svg></button>
       <span class="cal-nav-title">${MESES[calMonth]} ${calYear}</span>
-      <button class="cal-nav-btn" onclick="calNext(${p.id})">›</button>
+      <button class="cal-nav-btn" onclick="calNext(${p.id})" aria-label="Mes siguiente"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6 3 11 8l-5 5"></path></svg></button>
     </div>
     ${alertaCal}
     <div class="cal-grid">${cells}</div>
@@ -906,7 +912,7 @@ function renderDetalle(p){
       <button class="dtab" data-tab="pagos" onclick="switchTab('pagos')">Pagos</button>
       <button class="dtab" data-tab="tarifas" onclick="switchTab('tarifas')">Tarifas</button>
       <button class="dtab" data-tab="bitacora" onclick="switchTab('bitacora')">Bitácora</button>
-      <button class="dtab" data-tab="editar" onclick="switchTab('editar')">✏ Editar</button>
+      <button class="dtab" data-tab="editar" onclick="switchTab('editar')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M11.5 2.5a1.4 1.4 0 0 1 2 2L6 12l-3 .8.8-3 7.7-7.3"></path><path d="M10.5 3.5 12.5 5.5"></path></svg>Editar</button>
     </div>
 
     <!-- Calendario -->

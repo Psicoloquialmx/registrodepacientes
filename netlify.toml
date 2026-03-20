@@ -9,6 +9,11 @@
     Cache-Control = "no-cache, no-store, must-revalidate"
 
 [[headers]]
+  for = "/favicon.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
   for = "/Assets/Branding/Logo-Reducido-Alt.svg"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
