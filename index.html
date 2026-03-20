@@ -944,7 +944,7 @@ function sesionesEnMes(p,year,month){
 }
 function ingresoProspMes(p,year,month){
   const hoy=new Date();
-  return sesionesEnMes(p,year?hoy.getFullYear(),month?hoy.getMonth())*tarifaVigente(p);
+  return sesionesEnMes(p,year??hoy.getFullYear(),month??hoy.getMonth())*tarifaVigente(p);
 }
 function sesionesPendientes(p){
   const hoy=new Date();
@@ -4140,6 +4140,7 @@ initFirebase().catch(err=>{
 </script>
 </body>
 </html>
+
 
 
 
