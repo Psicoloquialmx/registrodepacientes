@@ -836,16 +836,26 @@ function tarifaEnFecha(p,fechaStr){
 function isChargeableSessionType(tipo){
   return tipo==='asistio'||tipo==='falta'||tipo==='reposicion'||tipo==='extra';
 }
+function isSessionCountedAsGiven(s){
+  if(!s) return false;
+  if(s.tipo==='reposicion') return !s.repoRespuesta||s.repoRespuesta==='asistio';
+  return s.tipo==='asistio'||s.tipo==='extra';
+}
+function isChargeableSessionRecord(s){
+  if(!s) return false;
+  if(s.tipo==='reposicion') return s.repoRespuesta!=='cancelada';
+  return isChargeableSessionType(s.tipo);
+}
 function getFirstFreeSessionId(p){
   if(!p?.primeraSinCosto) return null;
   const sesiones=(p.sesiones||[])
-    .filter(s=>!s.skipped&&!s.noCharge&&isChargeableSessionType(s.tipo))
+    .filter(s=>!s.skipped&&!s.noCharge&&isChargeableSessionRecord(s))
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||String(a.hora||'').localeCompare(String(b.hora||''))||String(a.id||'').localeCompare(String(b.id||'')));
   return sesiones[0]?.id||null;
 }
 function isSessionBillableForDebt(p,s,firstFreeId=null){
   if(!s||s.skipped||s.noCharge) return false;
-  if(!isChargeableSessionType(s.tipo)) return false;
+  if(!isChargeableSessionRecord(s)) return false;
   if(firstFreeId&&s.id===firstFreeId) return false;
   return true;
 }
@@ -1726,7 +1736,7 @@ function getPeriodBounds(period,baseDate){
 }
 
 function sesionesDadasEnRango(p,start,end){
-  const cs=s=>(s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra');
+  const cs=s=>isSessionCountedAsGiven(s);
   return p.sesiones.filter(s=>{
     const d=new Date(s.fecha+'T12:00');
     return cs(s) && d>=start && d<=end;
@@ -1857,7 +1867,7 @@ function renderStats(){
   const hoy=new Date();
   const lun=new Date(hoy);lun.setDate(hoy.getDate()-((hoy.getDay()+6)%7));lun.setHours(0,0,0,0);
   const dom=new Date(lun);dom.setDate(lun.getDate()+6);dom.setHours(23,59,59,999);
-  const cs=s=>(s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra');
+  const cs=s=>isSessionCountedAsGiven(s);
   const sem=activos.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d>=lun&&d<=dom}).length,0);
   const mes=activos.reduce((a,p)=>a+p.sesiones.filter(s=>{const d=new Date(s.fecha+'T12:00');return cs(s)&&d.getMonth()===hoy.getMonth()&&d.getFullYear()===hoy.getFullYear()}).length,0);
   const pendT=totalPendientesHoy();
@@ -1880,7 +1890,7 @@ function renderPatients(){
   const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><img class="alert-icon" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Alerta"><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
   const searchHtml=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."><div style="font-size:12px;color:var(--ink-light)">${activos.length} resultado${activos.length!==1?'s':''}</div></div>`;
   el.innerHTML=searchHtml+alertaHtml+activos.map(p=>{
-    const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
+    const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
     const tv=tarifaVigente(p);
     const pend=sesionesPendientes(p).length;
     const ultimaSesion=[...p.sesiones].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
@@ -2633,7 +2643,7 @@ function exportPatientSummary(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   normalizePatient(p);
-  const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
+  const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
   const faltas=p.sesiones.filter(s=>s.tipo==='falta').length;
   const cancels=p.sesiones.filter(s=>s.tipo==='cancelada').length;
   const repos=p.sesiones.filter(s=>s.tipo==='reposicion').length;
@@ -2692,7 +2702,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   }
   if(!ensurePatientActiveForScheduling(p)) return;
   const hora=horaDiaFecha(p,dateStr);
-  const tipoActual=ses?ses.tipo:null;
+  const tipoActual=ses?(ses.tipo==='reposicion'?(ses.repoRespuesta||'reposicion'):ses.tipo):null;
 
   // ¿Esta sesión tiene reposición vinculada (o es una reposición)?
   const esRepo=ses&&ses.tipo==='reposicion';
@@ -3051,6 +3061,18 @@ function registrarDesdePop(pid,dateStr,tipo){
   }
 
   if(existing){
+    if(existing.tipo==='reposicion'&&tipo!=='reposicion'){
+      const prev=existing.repoRespuesta||'';
+      if(prev===tipo){closePopover();return;}
+      existing.repoRespuesta=tipo;
+      addLog(p,'reposicion',`Reposición ${dateStr}: ${prev||'sin respuesta'} -> ${tipo}`);
+      closePopover();
+      exposeSesMap(p);
+      renderDetalle(p);
+      updateSidebarBadge();
+      saveState();
+      return;
+    }
     const ant=existing.tipo;
     if(ant===tipo){closePopover();return;}
     if(p.pago==='sesion'){
@@ -3193,8 +3215,14 @@ function buildCalendar(p){
 
     let pip='';
     if(ses){
-      const icons={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013',reposicion:'\u21BB',extra:'\u2713'}[ses.tipo]||'?';
-      const baseLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'Asistió'}[ses.tipo]||ses.tipo;
+      let icons={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013',reposicion:'\u21BB',extra:'\u2713'}[ses.tipo]||'?';
+      let baseLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'Asistió'}[ses.tipo]||ses.tipo;
+      if(ses.tipo==='reposicion'&&ses.repoRespuesta){
+        const respLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Cancelé yo'}[ses.repoRespuesta]||ses.repoRespuesta;
+        const respIcon={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013'}[ses.repoRespuesta]||'';
+        icons=`\u21BB${respIcon?` ${respIcon}`:''}`;
+        baseLabel=`Reposi. · ${respLabel}`;
+      }
       const firstFree=firstFreeId&&ses.id===firstFreeId;
       const label=firstFree?(baseLabel+' (1ra sin costo)'):baseLabel;
       const hasRepo=ses.tipo==='reposicion'||(ses.tipo==='falta'&&ses.repoId);
@@ -3256,7 +3284,7 @@ function calNext(pid){
 function renderDetalle(p){
   normalizePatient(p);
   exposeSesMap(p);
-  const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
+  const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
   const faltas=p.sesiones.filter(s=>s.tipo==='falta').length;
   const cancels=p.sesiones.filter(s=>s.tipo==='cancelada').length;
   const repos=p.sesiones.filter(s=>s.tipo==='reposicion').length;
@@ -4012,7 +4040,7 @@ function renderResumen(){
   const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const pm=Array(12).fill(0);
   activos.forEach(p=>p.sesiones.forEach(s=>{
-    if(s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra'){
+    if(isSessionCountedAsGiven(s)){
       const d=new Date(s.fecha+'T12:00');
       if(d.getFullYear()===hoy.getFullYear()) pm[d.getMonth()]++;
     }
@@ -4039,7 +4067,7 @@ function renderResumen(){
     <div class="dsec" style="background:white"><div class="sec-title">Sesiones por mes  -  ${hoy.getFullYear()}</div><div class="bar-chart">${bars}</div></div>
     <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Por paciente</div>
       ${activos.map(p=>{
-        const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
+        const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
         const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
         return `<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total · ${np} ${textoPeriodo(resumenPeriod)}</span></div>`;
       }).join('')}
