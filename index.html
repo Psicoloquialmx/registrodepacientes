@@ -2791,13 +2791,15 @@ function showReposicionPicker(pid,dateStr){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!ensurePatientActiveForScheduling(p)) return;
   const defaultHora=horaDiaFecha(p,dateStr);
+  const currentSes=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped && s.tipo!=='reprogramada');
+  const canUndoLastMove=!!(currentSes&&currentSes.tipo==='reposicion'&&currentSes.fromDate&&(currentSes.moveCreatedByLastMove||currentSes.movePrevTipo!==undefined));
   document.getElementById('modal-title').textContent='Reposición de sesión';
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Fecha destino</label><input class="form-input" id="rep-calc-fecha" type="date" value="${dateStr}"></div>
       <div class="form-group"><label class="form-label">Hora destino</label><input class="form-input" id="rep-calc-hora" type="time" value="${defaultHora}"></div>
     </div>
-    <div class="modal-footer"><button class="btn-sec" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="confirmarReposicionDesdePopover(${pid},'${dateStr}')">Confirmar</button></div>`;
+    <div class="modal-footer">${canUndoLastMove?`<button class="btn-sec" onclick="undoLastReposicionMove(${pid},'${dateStr}')">Deshacer ultimo movimiento</button>`:''}<button class="btn-sec" onclick="closeModal()">Cancelar</button><button class="btn-primary" onclick="confirmarReposicionDesdePopover(${pid},'${dateStr}')">Confirmar</button></div>`;
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -2830,10 +2832,12 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
   const source=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped);
   if(source){
     if(p.pago==='sesion'&&(source.tipo==='asistio'||source.tipo==='falta'||source.tipo==='extra')) p.adeudo=Math.max(0,p.adeudo-tv);
+    source.originalTipo=source.tipo;
     source.skipped=true;
     source.tipo='reprogramada';
     source.movedTo=nuevaIso;
     source.movedTime=nuevaHora;
+    delete source.moveCreatedByLastMove;
     addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
   } else {
     p.sesiones.push({
@@ -2841,9 +2845,11 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
       num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,
       fecha:dateStr,
       tipo:'reprogramada',
+      originalTipo:null,
       skipped:true,
       movedTo:nuevaIso,
       movedTime:nuevaHora,
+      moveCreatedByLastMove:true,
       hora:horaDiaFecha(p,dateStr)
     });
     addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
@@ -2851,16 +2857,68 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
   let target=p.sesiones.find(s=>s.fecha===nuevaIso && s.tipo!=='reprogramada');
   if(target){
     if(p.pago==='sesion'&&(target.tipo==='asistio'||target.tipo==='falta'||target.tipo==='extra')) p.adeudo=Math.max(0,p.adeudo-tv);
+    target.movePrevTipo=target.tipo;
+    target.movePrevHora=target.hora;
     target.tipo='reposicion';
     target.hora=nuevaHora;
+    target.fromDate=dateStr;
+    delete target.moveCreatedByLastMove;
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:nuevaIso,tipo:'reposicion',hora:nuevaHora});
+    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:nuevaIso,tipo:'reposicion',hora:nuevaHora,fromDate:dateStr,moveCreatedByLastMove:true});
   }
   saveState();
   exposeSesMap(p);
   renderDetalle(p);
   updateSidebarBadge();
+}
+
+function undoLastReposicionMove(pid,targetDateStr){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const target=p.sesiones.find(s=>s.fecha===targetDateStr && s.tipo==='reposicion' && s.fromDate && (s.moveCreatedByLastMove||s.movePrevTipo!==undefined));
+  if(!target){
+    alert('No hay un movimiento reciente para deshacer en esta reposición.');
+    return;
+  }
+  const sourceDate=target.fromDate;
+  const source=p.sesiones.find(s=>s.fecha===sourceDate && s.movedTo===targetDateStr && (s.skipped||s.tipo==='reprogramada'));
+  if(!source){
+    alert('No encontré la sesión original para deshacer el movimiento.');
+    return;
+  }
+
+  if(target.moveCreatedByLastMove){
+    p.sesiones=p.sesiones.filter(s=>s.id!==target.id);
+  } else {
+    target.tipo=target.movePrevTipo;
+    if(target.movePrevHora!==undefined){
+      if(target.movePrevHora) target.hora=target.movePrevHora;
+      else delete target.hora;
+    }
+    delete target.fromDate;
+    delete target.movePrevTipo;
+    delete target.movePrevHora;
+  }
+  delete target.moveCreatedByLastMove;
+
+  if(source.moveCreatedByLastMove){
+    p.sesiones=p.sesiones.filter(s=>s.id!==source.id);
+  } else {
+    source.tipo=source.originalTipo;
+    delete source.skipped;
+    delete source.movedTo;
+    delete source.movedTime;
+    delete source.originalTipo;
+  }
+  delete source.moveCreatedByLastMove;
+
+  addLog(p,'reposicion',`Movimiento deshecho: ${sourceDate} ← ${targetDateStr}`);
+  closeModal();
+  exposeSesMap(p);
+  renderDetalle(p);
+  updateSidebarBadge();
+  saveState();
 }
 
 // Mover sesión de reposición (o la reposición asociada a una falta) a otra fecha
