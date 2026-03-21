@@ -970,7 +970,7 @@ function sesionesPendientes(p){
   for(let d=1;d<=Math.min(todayNum,daysInMonth);d++){
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     if(!isFixedScheduledOnDate(p,dateStr)) continue;
-    if(p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr && s.skipped)) continue;
+    if(p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr && (s.skipped||s.replaced||s.tipo==='reprogramada'))) continue;
     if(!p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
   }
   return pending;
@@ -3079,7 +3079,8 @@ function buildCalendar(p){
     const isToday=dateStr===todayStr;
     const isFuture=dateStr>todayStr;
     let ses=sesMap[dateStr];
-    if(ses && ses.skipped) ses=null;
+    const movedSes=ses&&(ses.skipped||ses.replaced||ses.tipo==='reprogramada')?ses:null;
+    if(movedSes) ses=null;
     const horaBase=isProg?horaDiaFecha(p,dateStr):null;
     const horaSesion=ses?.hora||horaBase;
     const horaRango=horaSesion?timeRangeLabel(horaSesion,p.duracion||45):null;
@@ -3087,7 +3088,7 @@ function buildCalendar(p){
 
     let classes='cal-day';
     if(isProg) classes+=' is-programado';
-    if(ses) classes+=' has-session';
+    if(ses||movedSes) classes+=' has-session';
 
     let pip='';
     if(ses){
@@ -3095,9 +3096,11 @@ function buildCalendar(p){
       const baseLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'Asistió'}[ses.tipo]||ses.tipo;
       const firstFree=firstFreeId&&ses.id===firstFreeId;
       const label=firstFree?(baseLabel+' (1ra sin costo)'):baseLabel;
-      // Mostrar indicador de reposición movible
       const hasRepo=ses.tipo==='reposicion'||(ses.tipo==='falta'&&ses.repoId);
       pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' &#8635;':''}</div>`;
+    } else if(movedSes){
+      const movedLabel=movedSes.movedTo?`Reag. → ${displayDate(movedSes.movedTo)}${movedSes.movedTime?' '+movedSes.movedTime:''}`:'Reagendada';
+      pip=`<div class="cal-pip reposicion" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para ver'}">↪ ${movedLabel}</div>`;
     } else if((isProg||isFlexibleDate)&&!isFuture&&!beforeStart){
       pip=isInactive?`<div class="cal-pip sin-registro" title="Paciente inactivo">Sin reg.</div>`:`<div class="cal-pip sin-registro" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sin registrar">? Sin reg.</div>`;
     } else if(!isFlexibleDate&&!isProg&&!isFuture&&!beforeStart){
