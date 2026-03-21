@@ -2730,6 +2730,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
         </div>
       </div>
       <div class="ses-popover-footer">
+        <button class="btn-danger" onclick="deleteReagendadaResponse('${pid}','${ses.id}')">Borrar respuesta</button>
         <button class="popover-close" onclick="closePopover()">Cerrar</button>
       </div>`;
     const rect=anchorEl.getBoundingClientRect();
@@ -3065,6 +3066,37 @@ function registrarDesdePop(pid,dateStr,tipo){
     if(tipo==='falta') addLog(p,'datos',`Falta del paciente: ${dateStr}`);
   }
 
+  closePopover();
+  exposeSesMap(p);
+  renderDetalle(p);
+  updateSidebarBadge();
+  saveState();
+}
+
+function deleteReagendadaResponse(pid,sid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const source=p.sesiones.find(s=>s.id===sid);
+  if(!source||!(source.skipped||source.tipo==='reprogramada')) return;
+
+  const sourceDate=source.fecha;
+  const targetDate=source.movedTo;
+  const targetTime=source.movedTime;
+
+  p.sesiones=p.sesiones.filter(s=>s.id!==source.id);
+
+  if(targetDate){
+    const linkedIdx=p.sesiones.findIndex(s=>
+      s.tipo==='reposicion'&&s.fecha===targetDate&&
+      (s.fromDate===sourceDate||(!s.fromDate&&targetTime&&s.hora===targetTime))
+    );
+    if(linkedIdx!==-1) p.sesiones.splice(linkedIdx,1);
+  }
+
+  let c=0;
+  p.sesiones.forEach(s=>{if(s.tipo!=='cancelada'){c++;s.num=c;}});
+
+  addLog(p,'reposicion',`Respuesta reagendada borrada: ${sourceDate}${targetDate?` → ${targetDate}`:''}`);
   closePopover();
   exposeSesMap(p);
   renderDetalle(p);
