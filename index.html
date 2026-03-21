@@ -2836,6 +2836,16 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
     source.movedTime=nuevaHora;
     addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
   } else {
+    p.sesiones.push({
+      id:'s'+(nextSesId++),
+      num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,
+      fecha:dateStr,
+      tipo:'reprogramada',
+      skipped:true,
+      movedTo:nuevaIso,
+      movedTime:nuevaHora,
+      hora:horaDiaFecha(p,dateStr)
+    });
     addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
   }
   let target=p.sesiones.find(s=>s.fecha===nuevaIso && s.tipo!=='reprogramada');
