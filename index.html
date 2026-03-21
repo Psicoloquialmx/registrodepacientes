@@ -583,7 +583,7 @@ input[type="file"].form-input{cursor:pointer}
               </div>
               <div class="form-group">
                 <label class="form-label">Cantidad</label>
-                <input class="form-input" id="quick-pay-amount" type="number" min="1" placeholder="0">
+                <input class="form-input" id="quick-pay-amount" type="number" min="1" step="1" placeholder="0">
               </div>
               <div class="form-group">
                 <label class="form-label">Forma de pago</label>
@@ -1088,6 +1088,7 @@ function normalizePatient(p){
   if(!p.notas) p.notas=[];
   if(!p.cambios) p.cambios=[];
   if(!p.tarifas) p.tarifas=[{monto:p.tarifa||0,desde:p.inicio,hasta:null}];
+  p.pideFactura=(p.pideFactura===true||p.pideFactura==='si'||p.pideFactura===1);
   p.therapistCancelWeeksPerYear=Number.isFinite(Number(p.therapistCancelWeeksPerYear))?Number(p.therapistCancelWeeksPerYear):Number.isFinite(Number(p.cancelWeeksPerYear))?Number(p.cancelWeeksPerYear):DEFAULT_THERAPIST_CANCEL_WEEKS;
   p.patientAbsenceWeeksPerYear=Number.isFinite(Number(p.patientAbsenceWeeksPerYear))?Number(p.patientAbsenceWeeksPerYear):0;
   p.status=(p.status==='inactive')?'inactive':'active';
@@ -2165,7 +2166,7 @@ function renderHoy(){
           </div>
           <div class="today-pay-row" id="today-amount-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
             <label for="today-amt-${p.id}" style="font-size:12px;color:var(--ink-light)">Monto</label>
-            <input class="inp-sm" style="width:92px" id="today-amt-${p.id}" type="number" value="${r.autoPay?r.autoPay.monto:tv}">
+            <input class="inp-sm" style="width:92px" id="today-amt-${p.id}" type="number" min="1" step="${Math.max(1,tv)}" value="${r.autoPay?r.autoPay.monto:tv}">
           </div>
           <div class="today-pay-row" id="today-method-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
             <label for="today-method-${p.id}" style="font-size:12px;color:var(--ink-light)">Forma de pago</label>
@@ -2197,7 +2198,7 @@ function syncQuickPayPatients(){
   if(!actives.length){
     sel.innerHTML='<option value="">Sin pacientes activos</option>';
     sel.disabled=true;
-    if(amountInput){amountInput.value='';amountInput.disabled=true;}
+    if(amountInput){amountInput.value='';amountInput.step='1';amountInput.disabled=true;}
     return;
   }
   sel.disabled=false;
@@ -2205,10 +2206,18 @@ function syncQuickPayPatients(){
   sel.innerHTML=actives.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
   if(currentValue&&actives.some(p=>String(p.id)===String(currentValue))) sel.value=currentValue;
   const selected=actives.find(p=>String(p.id)===String(sel.value))||actives[0];
-  if(selected&&amountInput&&!amountInput.value) amountInput.value=tarifaVigente(selected);
+  if(selected&&amountInput){
+    const stepVal=Math.max(1,tarifaVigente(selected)||1);
+    amountInput.step=String(stepVal);
+    if(!amountInput.value) amountInput.value=stepVal;
+  }
   sel.onchange=()=>{
     const pp=patients.find(x=>String(x.id)===String(sel.value));
-    if(pp&&amountInput) amountInput.value=tarifaVigente(pp);
+    if(pp&&amountInput){
+      const stepVal=Math.max(1,tarifaVigente(pp)||1);
+      amountInput.step=String(stepVal);
+      amountInput.value=stepVal;
+    }
   };
 }
 
@@ -2233,7 +2242,9 @@ function registerQuickPay(){
   saveState();
   const drawer=document.getElementById('quick-pay-drawer');
   if(drawer) drawer.open=false;
-  amountInput.value=tarifaVigente(p);
+  const stepVal=Math.max(1,tarifaVigente(p)||1);
+  amountInput.step=String(stepVal);
+  amountInput.value=stepVal;
   renderHoy();
   if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
 }
@@ -3463,7 +3474,7 @@ function renderDetalle(p){
           </div>
           <div class="reg-row">
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Registrar pago ($)</div>
-            <input class="inp-sm" type="number" id="pay-in" value="${tv}"></div>
+            <input class="inp-sm" type="number" id="pay-in" min="1" step="${Math.max(1,tv)}" value="${tv}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
             <input class="inp-sm" type="date" id="pay-date" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
@@ -3484,7 +3495,7 @@ function renderDetalle(p){
           <div class="pay-log">${payLog}</div>
           <div class="reg-row" style="margin-top:1rem">
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Monto ($)</div>
-            <input class="inp-sm" type="number" id="pay-in2" value="${tv}"></div>
+            <input class="inp-sm" type="number" id="pay-in2" min="1" step="${Math.max(1,tv)}" value="${tv}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
             <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
@@ -3612,6 +3623,14 @@ function buildEditPanel(p){
           <div class="form-group" style="display:flex;align-items:center;gap:8px">
             <input type="checkbox" id="e-primera-sin-costo" ${p.primeraSinCosto?'checked':''}>
             <label class="form-label" for="e-primera-sin-costo" style="margin:0">Primera sesión sin costo</label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">¿Solicita factura?</label>
+            <div class="yn-toggle" id="e-factura-toggle">
+              <button type="button" class="yn-btn${p.pideFactura?' active':''}" onclick="setFacturaToggle('si')">Sí</button>
+              <button type="button" class="yn-btn${!p.pideFactura?' active':''}" onclick="setFacturaToggle('no')">No</button>
+            </div>
+            <input type="hidden" id="e-pide-factura" value="${p.pideFactura?'si':'no'}">
           </div>
         </div>
         <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarSeccionDatos(${p.id})">Guardar datos generales</button></div>
@@ -3787,6 +3806,7 @@ function guardarSeccionDatos(id){
   const nuevoPago=document.getElementById('e-pago').value;
   const nuevaDuracion=parseInt(document.getElementById('e-duracion').value)||45;
   const nuevaPrimeraSinCosto=document.getElementById('e-primera-sin-costo').checked;
+  const nuevoPideFactura=(document.getElementById('e-pide-factura')?.value||'no')==='si';
   if(!nuevoNombre){alert('El nombre no puede estar vacío');return;}
   if(!nuevoInicio){alert('La fecha de inicio es requerida');return;}
   if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}" → "${nuevoNombre}"`);
@@ -3802,16 +3822,29 @@ function guardarSeccionDatos(id){
   if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)} → ${pagoLabel(nuevoPago)}`);
   if((p.duracion||45)!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45} → ${nuevaDuracion} min`);
   if(!!p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto?'sí':'no'} → ${nuevaPrimeraSinCosto?'sí':'no'}`);
+  if(!!p.pideFactura!==nuevoPideFactura) cambios.push(`Factura: ${p.pideFactura?'sí':'no'} → ${nuevoPideFactura?'sí':'no'}`);
   p.nombre=nuevoNombre;
   p.inicio=nuevoInicio;
   p.pago=nuevoPago;
   p.duracion=nuevaDuracion;
   p.primeraSinCosto=nuevaPrimeraSinCosto;
+  p.pideFactura=nuevoPideFactura;
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   const detNombre=document.getElementById('det-nombre');
   if(detNombre) detNombre.textContent=p.nombre;
   saveState();
   curTab='editar';renderDetalle(p);
+}
+
+function setFacturaToggle(value){
+  const hidden=document.getElementById('e-pide-factura');
+  if(hidden) hidden.value=value==='si'?'si':'no';
+  const wrap=document.getElementById('e-factura-toggle');
+  if(!wrap) return;
+  const btns=[...wrap.querySelectorAll('.yn-btn')];
+  btns.forEach(btn=>btn.classList.remove('active'));
+  const idx=value==='si'?0:1;
+  if(btns[idx]) btns[idx].classList.add('active');
 }
 
 function guardarSeccionEstado(id){
