@@ -884,6 +884,20 @@ function calcBalanceDesde(p,fechaIso){
   const pagos=p.pagos.filter(py=>py.fecha>=fechaIso).reduce((sum,py)=>sum+py.monto,0);
   return{cargos,pagos,saldo:Math.max(0,cargos-pagos)};
 }
+function calcSesionesSinCubrir(p){
+  const firstFreeId=getFirstFreeSessionId(p);
+  const billable=(p.sesiones||[])
+    .filter(s=>isSessionBillableForDebt(p,s,firstFreeId))
+    .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
+  let saldo=(p.pagos||[]).reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+  const sinCubrir=[];
+  for(const s of billable){
+    const costo=tarifaEnFecha(p,s.fecha);
+    if(saldo>=costo){ saldo-=costo; }
+    else{ sinCubrir.push({...s,costo,cubierto:saldo>0?saldo:0}); saldo=0; }
+  }
+  return sinCubrir;
+}
 function shortName(nombre){
   if(!nombre) return '';
   const partes=nombre.trim().split(/\s+/);
@@ -3314,6 +3328,17 @@ function renderDetalle(p){
     <span class="pamt">+$${py.monto.toLocaleString('es-MX')}</span>
     <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">&times;</button>
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
+  // Sesiones sin cubrir
+  const sinCubrir=calcSesionesSinCubrir(p);
+  const _tipoLbl={asistio:'Asistió',falta:'Falta',extra:'Extra',reposicion:'Reposición'};
+  const sinCubrirHtml=sinCubrir.length===0
+    ? `<div style="font-size:13px;color:#2d7a6e;padding:6px 0">✓ Todas las sesiones están cubiertas.</div>`
+    : sinCubrir.map(s=>{
+        let tStr=_tipoLbl[s.tipo]||s.tipo;
+        if(s.tipo==='reposicion'&&s.repoRespuesta) tStr='Reposi. · '+({asistio:'Asistió',falta:'Faltó',cancelada:'Cancelé yo'}[s.repoRespuesta]||s.repoRespuesta);
+        const parcial=s.cubierto>0?` <span style="font-size:11px;color:var(--ink-light)">(${s.cubierto.toLocaleString('es-MX')} cubiertos)</span>`:''; 
+        return `<div class="prow"><span class="pdate">${s.fecha}${s.hora?' · '+s.hora:''} · ${tStr}</span><span style="font-weight:500;color:var(--terra)">$${s.costo.toLocaleString('es-MX')}${parcial}</span></div>`;
+      }).join('');
 
   // Tarifas
   const tarifasHtml=(p.tarifas||[]).map((t,i)=>`<div class="tariff-row">
@@ -3453,17 +3478,26 @@ function renderDetalle(p){
 
     <!-- Pagos -->
     <div class="dtab-panel" id="panel-pagos">
-      <div class="dsec">
-        <div class="sec-title">Historial de pagos</div>
-        <div class="pay-log">${payLog}</div>
-        <div class="reg-row" style="margin-top:1rem">
-          <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Monto ($)</div>
-          <input class="inp-sm" type="number" id="pay-in2" value="${tv}"></div>
-          <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
-          <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
-          <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
-          <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
-          <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2')">Registrar pago</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="dsec">
+          <div class="sec-title">Historial de pagos</div>
+          <div class="pay-log">${payLog}</div>
+          <div class="reg-row" style="margin-top:1rem">
+            <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Monto ($)</div>
+            <input class="inp-sm" type="number" id="pay-in2" value="${tv}"></div>
+            <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
+            <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
+            <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
+            <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
+            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2')">Registrar pago</button>
+          </div>
+        </div>
+        <div class="dsec">
+          <div class="sec-title-row">
+            <span class="sec-title">Sesiones sin cubrir</span>
+            ${sinCubrir.length?`<span class="badge b-debt">${sinCubrir.length} sesión${sinCubrir.length!==1?'es':''}</span>`:`<span class="badge b-ok">Al corriente</span>`}
+          </div>
+          <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:5px">${sinCubrirHtml}</div>
         </div>
       </div>
     </div>
