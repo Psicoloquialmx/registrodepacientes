@@ -2727,7 +2727,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   }
   if(!ensurePatientActiveForScheduling(p)) return;
   const hora=horaDiaFecha(p,dateStr);
-  const tipoActual=ses?(ses.tipo==='reposicion'?(ses.repoRespuesta||'reposicion'):ses.tipo):null;
+  const tipoActual=ses?(ses.tipo==='reposicion'?((ses.repoRespuesta==='falta'&&ses.noCharge)?'falta_nc':(ses.repoRespuesta||'reposicion')):(ses.tipo==='falta'&&ses.noCharge?'falta_nc':ses.tipo)):null;
 
   // ¿Esta sesión tiene reposición vinculada (o es una reposición)?
   const esRepo=ses&&ses.tipo==='reposicion';
@@ -2739,6 +2739,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   const opts=[
     {tipo:'asistio',icon:'\u2713',label:'Asistió'},
     {tipo:'falta',icon:'\u2715',label:'Faltó paciente (sí cuenta)'},
+    {tipo:'falta_nc',icon:'\u2715',label:'Faltó, no genera costo'},
     {tipo:'cancelada',icon:'\u2013',label:'Cancelé yo (sin costo)'},
     {tipo:'reposicion',icon:'\u21BB',label:'Reposición'},
   ];
@@ -2749,7 +2750,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
         <span class="ses-opt-icon">${o.icon}</span> ${o.label}
       </div>`;
     }
-    return `<div class="ses-opt ${o.tipo}${tipoActual===o.tipo?' selected':''}" onclick="registrarDesdePop('${pid}','${dateStr}','${o.tipo}')">
+    return `<div class="ses-opt ${o.tipo==='falta_nc'?'falta':o.tipo}${tipoActual===o.tipo?' selected':''}" onclick="registrarDesdePop('${pid}','${dateStr}','${o.tipo}')">
       <span class="ses-opt-icon">${o.icon}</span> ${o.label}
     </div>`;
   }).join('');
@@ -3007,8 +3008,14 @@ function registrarDesdePop(pid,dateStr,tipo){
   if(!ensurePatientActiveForScheduling(p)) return;
   const tv=tarifaVigente(p);
   const existing=p.sesiones.find(s=>s.fecha===dateStr);
+  const requestedNoCharge=tipo==='falta_nc';
+  const finalTipo=requestedNoCharge?'falta':tipo;
+  const isBillable=(sessionType,sessionNoCharge=false)=>{
+    if(sessionType==='falta'&&sessionNoCharge) return false;
+    return sessionType==='asistio'||sessionType==='falta'||sessionType==='extra';
+  };
 
-  if(tipo==='reposicion'){
+  if(finalTipo==='reposicion'){
     const nuevaFecha=prompt('¿A qué fecha se movió la sesión? (DD-MM-YYYY)', `${dateStr.split('-')[2]}-${dateStr.split('-')[1]}-${dateStr.split('-')[0]}`);
     if(!nuevaFecha){return;}
     if(!/^\d{2}-\d{2}-\d{4}$/.test(nuevaFecha)){
@@ -3086,11 +3093,14 @@ function registrarDesdePop(pid,dateStr,tipo){
   }
 
   if(existing){
-    if(existing.tipo==='reposicion'&&tipo!=='reposicion'){
+    if(existing.tipo==='reposicion'&&finalTipo!=='reposicion'){
       const prev=existing.repoRespuesta||'';
-      if(prev===tipo){closePopover();return;}
-      existing.repoRespuesta=tipo;
-      addLog(p,'reposicion',`Reposición ${dateStr}: ${prev||'sin respuesta'} -> ${tipo}`);
+      const prevNoCharge=!!existing.noCharge;
+      if(prev===finalTipo&&prevNoCharge===requestedNoCharge){closePopover();return;}
+      existing.repoRespuesta=finalTipo;
+      existing.noCharge=requestedNoCharge||finalTipo==='cancelada';
+      if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete existing.noCharge;
+      addLog(p,'reposicion',`Reposición ${dateStr}: ${prev||'sin respuesta'}${prevNoCharge?' (sin costo)':''} -> ${finalTipo}${requestedNoCharge?' (sin costo)':''}`);
       closePopover();
       exposeSesMap(p);
       saveState();
@@ -3099,18 +3109,22 @@ function registrarDesdePop(pid,dateStr,tipo){
       return;
     }
     const ant=existing.tipo;
-    if(ant===tipo){closePopover();return;}
+    const antNoCharge=!!existing.noCharge;
+    if(ant===finalTipo&&antNoCharge===requestedNoCharge){closePopover();return;}
     if(p.pago==='sesion'){
-      if(ant==='asistio'||ant==='falta'||ant==='extra') p.adeudo=Math.max(0,p.adeudo-tv);
-      if(tipo==='asistio'||tipo==='falta'||tipo==='extra') p.adeudo+=tv;
+      if(isBillable(ant,antNoCharge)) p.adeudo=Math.max(0,p.adeudo-tv);
+      if(isBillable(finalTipo,requestedNoCharge)) p.adeudo+=tv;
     }
-    existing.tipo=tipo;
-    if(tipo==='falta'||ant==='falta') addLog(p,'datos',`Sesión ${dateStr}: ${ant} → ${tipo}`);
+    existing.tipo=finalTipo;
+    existing.noCharge=requestedNoCharge||finalTipo==='cancelada';
+    if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete existing.noCharge;
+    if(finalTipo==='falta'||ant==='falta') addLog(p,'datos',`Sesión ${dateStr}: ${ant}${antNoCharge?' (sin costo)':''} → ${finalTipo}${requestedNoCharge?' (sin costo)':''}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo});
-    if(p.pago==='sesion'&&(tipo==='asistio'||tipo==='falta'||tipo==='extra')) p.adeudo+=tv;
-    if(tipo==='falta') addLog(p,'datos',`Falta del paciente: ${dateStr}`);
+    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo:finalTipo,noCharge:requestedNoCharge||finalTipo==='cancelada'});
+    if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete p.sesiones[p.sesiones.length-1].noCharge;
+    if(p.pago==='sesion'&&isBillable(finalTipo,requestedNoCharge)) p.adeudo+=tv;
+    if(finalTipo==='falta') addLog(p,'datos',`Falta del paciente: ${dateStr}${requestedNoCharge?' (sin costo)':''}`);
   }
 
   closePopover();
@@ -3242,11 +3256,12 @@ function buildCalendar(p){
     if(ses){
       let icons={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013',reposicion:'\u21BB',extra:'\u2713'}[ses.tipo]||'?';
       let baseLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'Asistió'}[ses.tipo]||ses.tipo;
+      if(ses.tipo==='falta'&&ses.noCharge) baseLabel='Faltó (sin costo)';
       if(ses.tipo==='reposicion'&&ses.repoRespuesta){
         const respLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Cancelé yo'}[ses.repoRespuesta]||ses.repoRespuesta;
         const respIcon={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013'}[ses.repoRespuesta]||'';
         icons=`\u21BB${respIcon?` ${respIcon}`:''}`;
-        baseLabel=`Reposi. · ${respLabel}`;
+        baseLabel=`Reposi. · ${respLabel}${ses.repoRespuesta==='falta'&&ses.noCharge?' (sin costo)':''}`;
       }
       const firstFree=firstFreeId&&ses.id===firstFreeId;
       const label=firstFree?(baseLabel+' (1ra sin costo)'):baseLabel;
@@ -3286,6 +3301,7 @@ function buildCalendar(p){
     <div class="cal-legend">
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#d4ede8"></div>Asistió</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fde0cc"></div>Faltó paciente</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#fde0cc"></div>Faltó sin costo</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f0eeec"></div>Cancelada por terapeuta</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#ede8f8"></div>Reposición</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#e3f0ff"></div>Nueva sesión fuera de horario</div>
