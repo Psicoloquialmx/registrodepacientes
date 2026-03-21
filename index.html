@@ -3217,7 +3217,7 @@ function renderDetalle(p){
       <button class="dtab" data-tab="pagos" onclick="switchTab('pagos')">Pagos</button>
       <button class="dtab" data-tab="tarifas" onclick="switchTab('tarifas')">Tarifas</button>
       <button class="dtab" data-tab="bitacora" onclick="switchTab('bitacora')">Bitácora</button>
-      <button class="dtab" data-tab="editar" onclick="switchTab('editar')">o Editar</button>
+      <button class="dtab" data-tab="editar" onclick="switchTab('editar')">✎ Editar</button>
     </div>
 
     <!-- Calendario -->
@@ -3821,9 +3821,9 @@ function renderSemana(){
           <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
         </div>
         <div class="week-nav">
-          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">? Anterior</button>
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
           <span class="week-period">${MESES[month]} ${year}</span>
-          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente ?'</button>
+          <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente &rarr;</button>
         </div>
       </div>
       <div class="month-scroll">
@@ -3850,9 +3850,9 @@ function renderSemana(){
         <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
       </div>
       <div class="week-nav">
-        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">? Anterior</button>
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
         <span class="week-period">${weekLabel}</span>
-        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente ?'</button>
+        <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente &rarr;</button>
       </div>
     </div>
     <div class="week-grid">${cols}</div>`;
