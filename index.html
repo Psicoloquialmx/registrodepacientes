@@ -257,7 +257,7 @@ input[type="file"].form-input{cursor:pointer}
   display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#7a4a1e;line-height:1.5;
 }
 .alert-pendientes strong{font-weight:500}
-.alert-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.alert-icon{width:18px;height:18px;flex-shrink:0;margin-top:1px;display:block;object-fit:contain}
 
 /* " - ? POPOVER DE SESI"N " - ? */
 .ses-popover{
@@ -1877,7 +1877,7 @@ function renderPatients(){
   if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="Assets/Axolotl/Angustia-4.svg"><p>Sin pacientes activos.</p></div>`;return}
   const hoy=new Date();
   const pendTotal=totalPendientesHoy();
-  const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">s</span><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
+  const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><img class="alert-icon" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Alerta"><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
   const searchHtml=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."><div style="font-size:12px;color:var(--ink-light)">${activos.length} resultado${activos.length!==1?'s':''}</div></div>`;
   el.innerHTML=searchHtml+alertaHtml+activos.map(p=>{
     const n=p.sesiones.filter(s=>s.tipo==='asistio'||s.tipo==='reposicion'||s.tipo==='extra').length;
@@ -3174,7 +3174,7 @@ function renderDetalle(p){
   const startedThisYear=inicioYear===new Date().getFullYear();
   const useManualMode=startedThisYear && !p.manualEstimateOverride;
 
-  const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><span class="alert-icon">s</span><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
+  const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><img class="alert-icon" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Alerta"><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
 
   // Pagos  -  - sin confirm
   const payLog=[...p.pagos].reverse().map(py=>{const metodo=py.metodo||'efectivo'; return `<div class="prow">
