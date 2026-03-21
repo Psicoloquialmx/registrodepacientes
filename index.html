@@ -3614,6 +3614,7 @@ function buildEditPanel(p){
             <label class="form-label" for="e-primera-sin-costo" style="margin:0">Primera sesión sin costo</label>
           </div>
         </div>
+        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarSeccionDatos(${p.id})">Guardar datos generales</button></div>
       </div>
       <div class="dsec full">
         <div class="sec-title">Estado del proceso</div>
@@ -3636,6 +3637,7 @@ function buildEditPanel(p){
           </div>
           <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-status-note" value="${p.statusNote||''}" placeholder="Ej: suspendió terapia, alta, cierre temporal"></div>
         </div>
+        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarSeccionEstado(${p.id})">Guardar estado</button></div>
       </div>
       <div class="dsec full">
         <div class="sec-title">Días y horas de sesión</div>
@@ -3656,6 +3658,7 @@ function buildEditPanel(p){
           <div class="form-group"><label class="form-label">Ausencias terapeuta al año</label><input class="form-input" id="e-therapist-cancel-weeks" type="number" step="0.5" min="0" value="${p.therapistCancelWeeksPerYear}"></div>
           <div class="form-group"><label class="form-label">Ausencias paciente al año</label><input class="form-input" id="e-patient-absence-weeks" type="number" step="0.5" min="0" value="${p.patientAbsenceWeeksPerYear}"></div>
         </div>
+        <div style="margin-top:.5rem"><button class="btn-primary" onclick="guardarSeccionAusencias(${p.id})">Guardar ausencias</button></div>
         <div class="form-grid" style="margin-top:.75rem">
           <div class="form-group"><label class="form-label">Nueva frecuencia</label><input class="form-input" id="e-freq-veces" type="number" min="1" max="7" value="${freqActual.vecesSemana}"></div>
           <div class="form-group"><label class="form-label">Vigente desde</label><input class="form-input" id="e-freq-desde" type="date" value="${today()}"></div>
@@ -3753,36 +3756,7 @@ function confirmScheduleEffectiveDate(){
 function applyGuardarDatosGenerales(id,payload,desdeHorario=null){
   const p=patients.find(x=>x.id===id);
   if(!p) return;
-  const {
-    nuevoNombre,nuevoInicio,nuevoPago,nuevaDuracion,nuevaPrimeraSinCosto,
-    nuevoStatus,nuevoStatusDate,nuevoStatusReason,nuevoStatusNote,
-    nuevasCancelWeeksTerapeuta,nuevasCancelWeeksPaciente,
-    diasSel,nuevasHoras,noFixedSchedule,
-    cambios,scheduleChanged
-  }=payload;
-
-  const oldInicio=p.inicio;
-  p.nombre=nuevoNombre;
-  p.inicio=nuevoInicio;
-  p.pago=nuevoPago;
-  p.duracion=nuevaDuracion;
-  p.primeraSinCosto=nuevaPrimeraSinCosto;
-  p.status=nuevoStatus;
-  p.statusDate=nuevoStatusDate;
-  p.statusReason=nuevoStatusReason;
-  p.statusNote=nuevoStatusNote;
-  if(nuevoStatus!==p.statusHistory[p.statusHistory.length-1]?.status || nuevoStatusDate!==p.statusHistory[p.statusHistory.length-1]?.fecha || nuevoStatusReason!==p.statusHistory[p.statusHistory.length-1]?.reason || nuevoStatusNote!==p.statusHistory[p.statusHistory.length-1]?.note){
-    p.statusHistory.push({fecha:nuevoStatusDate,status:nuevoStatus,reason:nuevoStatusReason,note:nuevoStatusNote});
-    normalizarStatusHistory(p);
-  }
-  if(!isNaN(nuevasCancelWeeksTerapeuta)) p.therapistCancelWeeksPerYear=nuevasCancelWeeksTerapeuta;
-  if(!isNaN(nuevasCancelWeeksPaciente)) p.patientAbsenceWeeksPerYear=nuevasCancelWeeksPaciente;
-  if(oldInicio!==nuevoInicio){
-    const primera=p.frecuencias[0];
-    if(primera&&primera.desde===oldInicio) primera.desde=nuevoInicio;
-    const horarioInicio=p.scheduleHistory.find(h=>h.desde===oldInicio);
-    if(horarioInicio) horarioInicio.desde=nuevoInicio;
-  }
+  const {diasSel,nuevasHoras,noFixedSchedule,cambios,scheduleChanged}=payload;
   if(scheduleChanged&&desdeHorario){
     const nuevoHorario={desde:desdeHorario,dias:[...diasSel],horas:{...nuevasHoras},noFixedSchedule};
     const idx=(p.scheduleHistory||[]).findIndex(h=>h.desde===desdeHorario);
@@ -3800,9 +3774,85 @@ function applyGuardarDatosGenerales(id,payload,desdeHorario=null){
   if(p.frecuencias.length===1) p.frecuencias[0].vecesSemana=Math.max(1,p.noFixedSchedule?1:(p.dias.length||1));
   normalizarFrecuencias(p);
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
-  document.getElementById('det-nombre').textContent=p.nombre;
   saveState();
-  curTab='bitacora';curBitTab='log';renderDetalle(p);
+  curTab='editar';renderDetalle(p);
+}
+
+function guardarSeccionDatos(id){
+  const p=patients.find(x=>x.id===id);
+  normalizePatient(p);
+  const cambios=[];
+  const nuevoNombre=document.getElementById('e-nombre').value.trim();
+  const nuevoInicio=document.getElementById('e-inicio').value;
+  const nuevoPago=document.getElementById('e-pago').value;
+  const nuevaDuracion=parseInt(document.getElementById('e-duracion').value)||45;
+  const nuevaPrimeraSinCosto=document.getElementById('e-primera-sin-costo').checked;
+  if(!nuevoNombre){alert('El nombre no puede estar vacío');return;}
+  if(!nuevoInicio){alert('La fecha de inicio es requerida');return;}
+  if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}" → "${nuevoNombre}"`);
+  if(nuevoInicio!==p.inicio){
+    cambios.push(`Inicio: ${p.inicio} → ${nuevoInicio}`);
+    const primera=p.frecuencias[0];
+    if(primera&&primera.desde===p.inicio) primera.desde=nuevoInicio;
+    const horarioInicio=p.scheduleHistory.find(h=>h.desde===p.inicio);
+    if(horarioInicio) horarioInicio.desde=nuevoInicio;
+    normalizarFrecuencias(p);
+    normalizarHistorialHorario(p);
+  }
+  if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)} → ${pagoLabel(nuevoPago)}`);
+  if((p.duracion||45)!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45} → ${nuevaDuracion} min`);
+  if(!!p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto?'sí':'no'} → ${nuevaPrimeraSinCosto?'sí':'no'}`);
+  p.nombre=nuevoNombre;
+  p.inicio=nuevoInicio;
+  p.pago=nuevoPago;
+  p.duracion=nuevaDuracion;
+  p.primeraSinCosto=nuevaPrimeraSinCosto;
+  if(cambios.length) addLog(p,'datos',cambios.join(' | '));
+  const detNombre=document.getElementById('det-nombre');
+  if(detNombre) detNombre.textContent=p.nombre;
+  saveState();
+  curTab='editar';renderDetalle(p);
+}
+
+function guardarSeccionEstado(id){
+  const p=patients.find(x=>x.id===id);
+  normalizePatient(p);
+  const cambios=[];
+  const nuevoStatus=document.getElementById('e-status').value;
+  const nuevoStatusDate=document.getElementById('e-status-date').value||today();
+  const nuevoStatusReason=document.getElementById('e-status-reason').value;
+  const nuevoStatusNote=document.getElementById('e-status-note').value.trim();
+  if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==(p.statusNote||'')){
+    cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'} → ${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?` - ${nuevoStatusNote}`:''}`);
+    p.status=nuevoStatus;
+    p.statusDate=nuevoStatusDate;
+    p.statusReason=nuevoStatusReason;
+    p.statusNote=nuevoStatusNote;
+    p.statusHistory.push({fecha:nuevoStatusDate,status:nuevoStatus,reason:nuevoStatusReason,note:nuevoStatusNote});
+    normalizarStatusHistory(p);
+  }
+  if(cambios.length) addLog(p,'datos',cambios.join(' | '));
+  saveState();
+  curTab='editar';renderDetalle(p);
+}
+
+function guardarSeccionAusencias(id){
+  const p=patients.find(x=>x.id===id);
+  normalizePatient(p);
+  const cambios=[];
+  const nuevasCancelWeeksTerapeuta=parseFloat(document.getElementById('e-therapist-cancel-weeks').value);
+  const nuevasCancelWeeksPaciente=parseFloat(document.getElementById('e-patient-absence-weeks').value);
+  if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear){
+    cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear} → ${nuevasCancelWeeksTerapeuta} sem/año`);
+    p.therapistCancelWeeksPerYear=nuevasCancelWeeksTerapeuta;
+  }
+  if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear){
+    cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear} → ${nuevasCancelWeeksPaciente} sem/año`);
+    p.patientAbsenceWeeksPerYear=nuevasCancelWeeksPaciente;
+  }
+  if(cambios.length) addLog(p,'datos',cambios.join(' | '));
+  saveState();
+  curTab='editar';renderDetalle(p);
 }
 
 function guardarDatosGenerales(id){
@@ -3819,29 +3869,9 @@ function guardarDatosGenerales(id){
   const nuevasHoras={};
   diasSel.forEach(i=>{const inp=document.getElementById('hora-'+i);nuevasHoras[i]=inp?(inp.value||'00:00'):(horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i));});
   const cambios=[];
-  const nuevoNombre=document.getElementById('e-nombre').value.trim();
-  const nuevoInicio=document.getElementById('e-inicio').value;
-  const nuevoPago=document.getElementById('e-pago').value;
-  const nuevaDuracion=parseInt(document.getElementById('e-duracion').value)||45;
-  const nuevaPrimeraSinCosto=document.getElementById('e-primera-sin-costo').checked;
-  const nuevoStatus=document.getElementById('e-status').value;
-  const nuevoStatusDate=document.getElementById('e-status-date').value||today();
-  const nuevoStatusReason=document.getElementById('e-status-reason').value;
-  const nuevoStatusNote=document.getElementById('e-status-note').value.trim();
-  const nuevasCancelWeeksTerapeuta=parseFloat(document.getElementById('e-therapist-cancel-weeks').value);
-  const nuevasCancelWeeksPaciente=parseFloat(document.getElementById('e-patient-absence-weeks').value);
-  if(nuevoNombre!==p.nombre) cambios.push(`Nombre: "${p.nombre}"?'"${nuevoNombre}"`);
-  if(nuevoInicio!==p.inicio) cambios.push(`Inicio: ${p.inicio} → ${nuevoInicio}`);
-  if(nuevoPago!==p.pago) cambios.push(`Modalidad: ${pagoLabel(p.pago)} → ${pagoLabel(nuevoPago)}`);
-  if(p.duracion!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45} → ${nuevaDuracion} min`);
-  if(p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto? 'sí':'no'} → ${nuevaPrimeraSinCosto? 'sí':'no'}`);
-  if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==p.statusNote) cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'} → ${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?`  -  ${nuevoStatusNote}`:''}`);
-  if(!isNaN(nuevasCancelWeeksTerapeuta)&&nuevasCancelWeeksTerapeuta!==p.therapistCancelWeeksPerYear) cambios.push(`Ausencias terapeuta: ${p.therapistCancelWeeksPerYear} → ${nuevasCancelWeeksTerapeuta} semanas/año`);
-  if(!isNaN(nuevasCancelWeeksPaciente)&&nuevasCancelWeeksPaciente!==p.patientAbsenceWeeksPerYear) cambios.push(`Ausencias paciente: ${p.patientAbsenceWeeksPerYear} → ${nuevasCancelWeeksPaciente} semanas/año`);
-  if(diasVigentes.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${diasVigentes.map(d=>DIAS[d]).join(',')}]?'[${diasSel.map(d=>DIAS[d]).join(',')}]`);
+  if(diasVigentes.slice().sort().join(',')!==diasSel.slice().sort().join(',')) cambios.push(`Días: [${diasVigentes.map(d=>DIAS[d]).join(',')}] → [${diasSel.map(d=>DIAS[d]).join(',')}]`);
   if(noFixedVigente!==noFixedSchedule) cambios.push(`Horario fijo: ${noFixedVigente?'no':'sí'} → ${noFixedSchedule?'no':'sí'}`);
   diasSel.forEach(i=>{const horaAntes=horasVigentes[i]!==undefined?horasVigentes[i]:horaDia(p,i);if(nuevasHoras[i]!==horaAntes) cambios.push(`${DIAS[i]}: ${horaAntes} → ${nuevasHoras[i]}`);});
-
   const diasAntes=diasVigentes.slice().sort().join(',');
   const diasNuevos=diasSel.slice().sort().join(',');
   const horasChanged=diasSel.some(i=>{
@@ -3850,13 +3880,10 @@ function guardarDatosGenerales(id){
   });
   const scheduleChanged=noFixedVigente!==noFixedSchedule||diasAntes!==diasNuevos||horasChanged;
   const payload={
-    nuevoNombre,nuevoInicio,nuevoPago,nuevaDuracion,nuevaPrimeraSinCosto,
-    nuevoStatus,nuevoStatusDate,nuevoStatusReason,nuevoStatusNote,
-    nuevasCancelWeeksTerapeuta,nuevasCancelWeeksPaciente,
     diasSel,nuevasHoras,noFixedSchedule,
     cambios:[...cambios],scheduleChanged,
-    minDate:nuevoInicio,
-    suggestedDate:(today()>nuevoInicio?today():nuevoInicio)
+    minDate:p.inicio,
+    suggestedDate:(today()>p.inicio?today():p.inicio)
   };
   if(scheduleChanged){
     openScheduleEffectiveDateModal(id,payload);
