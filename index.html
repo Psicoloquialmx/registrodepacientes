@@ -2991,9 +2991,9 @@ function confirmarMoveRepo(pid,sesId){
   }
   closePopover();
   exposeSesMap(p);
+  saveState();
   renderDetalle(p);
   updateSidebarBadge();
-  saveState();
 }
 
 // " - ? REGISTRAR DESDE POPOVER " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -3093,9 +3093,9 @@ function registrarDesdePop(pid,dateStr,tipo){
       addLog(p,'reposicion',`Reposición ${dateStr}: ${prev||'sin respuesta'} -> ${tipo}`);
       closePopover();
       exposeSesMap(p);
+      saveState();
       renderDetalle(p);
       updateSidebarBadge();
-      saveState();
       return;
     }
     const ant=existing.tipo;
@@ -3115,9 +3115,9 @@ function registrarDesdePop(pid,dateStr,tipo){
 
   closePopover();
   exposeSesMap(p);
+  saveState();
   renderDetalle(p);
   updateSidebarBadge();
-  saveState();
 }
 
 function deleteReagendadaResponse(pid,sid){
@@ -3146,9 +3146,9 @@ function deleteReagendadaResponse(pid,sid){
   addLog(p,'reposicion',`Respuesta reagendada borrada: ${sourceDate}${targetDate?` → ${targetDate}`:''}`);
   closePopover();
   exposeSesMap(p);
+  saveState();
   renderDetalle(p);
   updateSidebarBadge();
-  saveState();
 }
 
 // " - ? ELIMINAR RESPUESTA  -  sin confirm, solo borra la respuesta del día " - ?
@@ -3164,9 +3164,9 @@ function deleteSesionPop(pid,sid){
   let c=0;p.sesiones.forEach(s=>{if(s.tipo!=='cancelada'){c++;s.num=c;}});
   closePopover();
   exposeSesMap(p);
+  saveState();
   renderDetalle(p);
   updateSidebarBadge();
-  saveState();
 }
 
 // " - ? ELIMINAR PAGO  -  sin confirm " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -3177,8 +3177,8 @@ function deletePago(pid,payId){
   p.pagado-=pay.monto;p.adeudo+=pay.monto;
   addLog(p,'datos',`Pago eliminado: $${pay.monto.toLocaleString('es-MX')} del ${pay.fecha}`);
   p.pagos=p.pagos.filter(x=>x.id!==payId);
-  renderDetalle(p);
   saveState();
+  renderDetalle(p);
 }
 
 function deletePatient(pid){
@@ -3949,8 +3949,8 @@ function regPago(id,inputId,dateInputId,methodInputId){
   const metodo=document.getElementById(methodInputId)?.value||'transferencia';
   p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo});
   p.pagado+=m;p.adeudo=Math.max(0,p.adeudo-m);
-  renderDetalle(p);
   saveState();
+  renderDetalle(p);
 }
 
 // " - ? REPOSICI"N MODAL " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
