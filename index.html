@@ -589,7 +589,7 @@ input[type="file"].form-input{cursor:pointer}
                 <label class="form-label">Forma de pago</label>
                 <select class="form-input" id="quick-pay-method">
                   <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
+                  <option value="transferencia" selected>Transferencia</option>
                   <option value="paypal">PayPal</option>
                 </select>
               </div>
@@ -2126,7 +2126,7 @@ function renderHoy(){
     const attendedYes=tipoActual==='asistio'||tipoActual==='reposicion'||tipoActual==='extra';
     const chargeOnMiss=attendedYes?true:tipoActual==='falta'?!r.ses?.noCharge:false;
     const paidYes=!!r.autoPay;
-    const paidMethod=r.autoPay?.metodo||'efectivo';
+    const paidMethod=r.autoPay?.metodo||'transferencia';
     const esReposicion=tipoActual==='reposicion';
     return `<div class="today-card">
       <div class="today-head">
@@ -3467,7 +3467,7 @@ function renderDetalle(p){
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
             <input class="inp-sm" type="date" id="pay-date" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
-            <select class="inp-sm" id="pay-method"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
+            <select class="inp-sm" id="pay-method"><option value="efectivo">Efectivo</option><option value="transferencia" selected>Transferencia</option><option value="paypal">PayPal</option></select></div>
             <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in','pay-date','pay-method')">Registrar</button>
           </div>
         </div>
@@ -3488,7 +3488,7 @@ function renderDetalle(p){
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha</div>
             <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
-            <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="paypal">PayPal</option></select></div>
+            <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia" selected>Transferencia</option><option value="paypal">PayPal</option></select></div>
             <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2')">Registrar pago</button>
           </div>
         </div>
@@ -3913,7 +3913,7 @@ function regPago(id,inputId,dateInputId,methodInputId){
   const p=patients.find(x=>x.id===id);
   const m=parseInt(document.getElementById(inputId).value)||tarifaVigente(p);
   const fecha=document.getElementById(dateInputId)?.value||today();
-  const metodo=document.getElementById(methodInputId)?.value||'efectivo';
+  const metodo=document.getElementById(methodInputId)?.value||'transferencia';
   p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo});
   p.pagado+=m;p.adeudo=Math.max(0,p.adeudo-m);
   renderDetalle(p);
