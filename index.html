@@ -85,6 +85,12 @@ body.auth-locked .auth-screen{display:flex}
 .page-title{font-family:'Lora',serif;font-size:18px;font-weight:600;color:var(--ink)}
 .page-sub{font-size:12px;color:var(--ink-light);margin-top:1px}
 .content{padding:1.5rem 1.75rem;flex:1;overflow-y:auto;background:var(--bg);padding-left:calc(1.75rem + env(safe-area-inset-left,0px));padding-right:calc(1.75rem + env(safe-area-inset-right,0px));padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))}
+.today-nav-shell{padding:1rem 1.75rem 0;background:var(--bg);padding-left:calc(1.75rem + env(safe-area-inset-left,0px));padding-right:calc(1.75rem + env(safe-area-inset-right,0px))}
+.today-nav-bar{background:white;border:1px solid var(--ink-border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.today-nav-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.today-nav-kicker{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-light)}
+.today-nav-title{font-size:15px;font-weight:600;color:var(--ink)}
+.today-nav-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .view{display:none}.view.active{display:block}
 
 /* " - ? BUTTONS " - ? */
@@ -450,6 +456,9 @@ input[type="file"].form-input{cursor:pointer}
   .topbar{padding:.75rem 1rem}
   .topbar-left{flex-direction:row;align-items:center;gap:.6rem}
   .topbar{flex-wrap:wrap;align-items:flex-start}
+  .today-nav-shell{padding:1rem 1rem 0;padding-left:calc(1rem + env(safe-area-inset-left,0px));padding-right:calc(1rem + env(safe-area-inset-right,0px))}
+  .today-nav-bar{padding:.9rem 1rem}
+  .today-nav-actions{width:100%;justify-content:flex-start}
   #view-hoy .quick-pay{width:100%}
   #view-hoy .quick-pay-toggle{width:100%;justify-content:center;border-radius:10px}
   #view-hoy .quick-pay-panel{position:static;width:100%;margin-top:8px;box-shadow:none}
@@ -592,6 +601,7 @@ input[type="file"].form-input{cursor:pointer}
           </div>
         </details>
       </div>
+      <div class="today-nav-shell"><div id="today-nav-bar" class="today-nav-bar"></div></div>
       <div class="content" id="hoy-content"></div>
     </div>
     <div id="view-pacientes" class="view">
@@ -2013,10 +2023,14 @@ function saveTherapistProfile(){
 
 function renderHoy(){
   const el=document.getElementById('hoy-content');
+  const nav=document.getElementById('today-nav-bar');
   if(!el) return;
   syncQuickPayPatients();
   const todayStr=getTodayViewDate();
   const viewLabel=getTodayViewLabel();
+  if(nav){
+    nav.innerHTML=`<div class="today-nav-copy"><div class="today-nav-kicker">Vista de agenda</div><div class="today-nav-title">${viewLabel}</div></div><div class="today-nav-actions"><button class="${todayViewOffset===-1?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=-1;renderHoy()">Ayer</button><button class="${todayViewOffset===0?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=0;renderHoy()">Hoy</button><button class="${todayViewOffset===1?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=1;renderHoy()">Mañana</button></div>`;
+  }
   const nowDow=(new Date(todayStr+'T12:00').getDay()+6)%7;
   const rows=[];
   activePatients().forEach(p=>{
@@ -2038,11 +2052,11 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="dsec"><div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="${todayViewOffset===-1?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=-1;renderHoy()">Ayer</button><button class="${todayViewOffset===0?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=0;renderHoy()">Hoy</button><button class="${todayViewOffset===1?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=1;renderHoy()">Mañana</button></div><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p></div>`;
+    el.innerHTML=`<div class="dsec"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p></div>`;
     return;
   }
 
-  el.innerHTML=`<div class="dsec" style="margin-bottom:10px"><div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:12px"><button class="${todayViewOffset===-1?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=-1;renderHoy()">Ayer</button><button class="${todayViewOffset===0?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=0;renderHoy()">Hoy</button><button class="${todayViewOffset===1?'btn-primary':'btn-sec'} btn-sm" onclick="todayViewOffset=1;renderHoy()">Mañana</button></div><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">${viewLabel}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Revisa y registra las sesiones de la fecha seleccionada.</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div></div>
+  el.innerHTML=`<div class="dsec" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">${viewLabel}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Revisa y registra las sesiones de la fecha seleccionada.</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
     if(r.movedFrom){
