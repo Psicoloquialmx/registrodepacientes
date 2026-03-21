@@ -791,7 +791,7 @@ const PATIENT_PROFILE_IMG='Assets/Axolotl/Normal-2.svg';
 
 // " - ? Helpers " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function pagoLabel(p){return{sesion:'Por sesión',mensual:'Mensual',quincenal:'Quincenal',inicio:'Inicio de mes'}[p]||p}
-function today(){return new Date().toISOString().split('T')[0]}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function shiftIsoDate(isoDate,delta){const base=new Date(isoDate+'T12:00');base.setDate(base.getDate()+delta);return base.toISOString().split('T')[0]}
 function getTodayViewDate(){return shiftIsoDate(today(),todayViewOffset)}
 function getTodayViewLabel(){const dateStr=getTodayViewDate();if(todayViewOffset===-1)return'Ayer · '+displayDate(dateStr);if(todayViewOffset===0)return'Hoy · '+displayDate(dateStr);if(todayViewOffset===1)return'Mañana · '+displayDate(dateStr);return displayDate(dateStr)}
