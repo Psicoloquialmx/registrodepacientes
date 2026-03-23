@@ -876,10 +876,7 @@ function recomputePatientDebt(p){
   if(!p) return 0;
   const pagosTotal=(p.pagos||[]).reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   p.pagado=pagosTotal;
-  if(p.pago!=='sesion'){
-    p.adeudo=Math.max(0,p.adeudo||0);
-    return p.adeudo;
-  }
+  
   const firstFreeId=getFirstFreeSessionId(p);
   const cutoffDate=p.paidUpToDate||null;
   const cargos=(p.sesiones||[]).reduce((sum,s)=>{
