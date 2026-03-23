@@ -360,11 +360,14 @@ input[type="file"].form-input{cursor:pointer}
 .rnum{font-family:'Lora',serif;font-size:38px;font-weight:600;color:var(--ink)}
 .rlabel{font-size:13px;color:var(--ink-light);margin-top:4px}
 .rsub{font-size:12px;color:var(--sage-dark);margin-top:3px}
-.bar-chart{display:flex;align-items:flex-end;gap:4px;height:72px;margin-top:.75rem}
-.bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
-.bbar{background:var(--sage-soft);border-radius:3px 3px 0 0;width:100%;min-height:3px}
+.bar-chart{display:flex;align-items:flex-end;gap:4px;height:100px;margin-top:.75rem;padding-top:22px;position:relative}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:0;position:relative}
+.bbar{background:var(--sage-soft);border-radius:3px 3px 0 0;width:100%;min-height:3px;position:relative}
 .bbar.cur{background:var(--sage-dark)}
-.blabel{font-size:10px;color:var(--ink-light)}.bval{font-size:10px;color:var(--ink-light)}
+.blabel{font-size:10px;color:var(--ink-light);margin-top:4px;white-space:nowrap}
+.bval{font-size:10px;color:var(--ink);font-weight:600;position:absolute;top:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;display:none}
+.bcol:hover .bval{display:block}
+.bval.bval-show{display:block}
 
 /* " - ? PROSPECTADO " - ? */
 .prosp-banner{background:var(--ink);border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1.5rem;overflow:hidden}
@@ -927,6 +930,39 @@ function shortName(nombre){
   const apellidos=partes.slice(1);
   const inicial=apellidos[0][0]?apellidos[0][0].toUpperCase():'';
   return `${primer} ${inicial}.`;
+}
+function getConfidentialName(p, allPatients){
+  if(!p||!p.nombre) return '';
+  const partes=p.nombre.trim().split(/\s+/);
+  if(partes.length===1) return partes[0];
+  
+  const nombre=partes[0];
+  const apellido=partes.slice(1).join(' ');
+  
+  // Buscar colisiones: mismo nombre + misma primera letra del apellido
+  const similares=(allPatients||[]).filter(autre=>{
+    if(autre.id===p.id) return false;
+    const autrePartes=autre.nombre.trim().split(/\s+/);
+    if(autrePartes.length<2) return false;
+    return autrePartes[0]===nombre && autrePartes.slice(1).join(' ')[0]===apellido[0];
+  });
+  
+  // Si hay colisiones, determinar cuántas letras del apellido mostrar
+  if(similares.length>0){
+    let letrasNecesarias=2;
+    let hayConflicto=true;
+    while(hayConflicto && letrasNecesarias<=apellido.length){
+      hayConflicto=similares.some(autre=>{
+        const autreApellido=autre.nombre.trim().split(/\s+/).slice(1).join(' ');
+        return autreApellido.substring(0, letrasNecesarias)===apellido.substring(0, letrasNecesarias);
+      });
+      if(hayConflicto) letrasNecesarias++;
+    }
+    return `${nombre} ${apellido.substring(0, letrasNecesarias)}.`;
+  }
+  
+  // Sin colisiones: mostrar solo primera letra
+  return `${nombre} ${apellido[0]}.`;
 }
 function addLog(p,tipo,desc){
   if(!p.cambios) p.cambios=[];
@@ -1801,6 +1837,20 @@ function sesionesDadasEnRango(p,start,end){
   }).length;
 }
 
+function faltasEnRango(p,start,end){
+  return p.sesiones.filter(s=>{
+    const d=new Date(s.fecha+'T12:00');
+    return s.tipo==='falta' && d>=start && d<=end;
+  }).length;
+}
+
+function cancelacionesTerapeutaEnRango(p,start,end){
+  return p.sesiones.filter(s=>{
+    const d=new Date(s.fecha+'T12:00');
+    return s.therapistCancel && d>=start && d<=end;
+  }).length;
+}
+
 function sesionesProgramadasEntreFechas(p,startDate,endDate){
   const start=new Date(startDate+'T12:00');
   const end=new Date(endDate+'T12:00');
@@ -2150,7 +2200,7 @@ function renderHoy(){
       const sk=r.skippedSes;
       const reschLabel=sk?.movedTo?new Date(sk.movedTo+'T12:00').toLocaleDateString('es-MX',{weekday:'short',day:'2-digit',month:'short'})+(sk.movedTime?' '+sk.movedTime:''):''
       return `<div class="today-card">
-        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
+        <div class="today-head"><div><div class="today-name">${getConfidentialName(p, activePatients())}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
         <div class="today-form" style="padding-top:4px">
           <div class="today-status-label">Reagendada${reschLabel?' \u2192 '+reschLabel:''}</div>
           <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="cancelTodayReposicion(${p.id})">Cancelar reposición</button>
@@ -2159,7 +2209,7 @@ function renderHoy(){
     }
     if(r.ses?.therapistCancel){
       return `<div class="today-card">
-        <div class="today-head"><div><div class="today-name">${p.nombre}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
+        <div class="today-head"><div><div class="today-name">${getConfidentialName(p, activePatients())}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
         <div class="today-form" style="padding-top:4px">
           <div class="today-status-label">Cancelación del terapeuta</div>
           <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="undoTerapeutaCancel(${p.id})">Deshacer</button>
@@ -2170,7 +2220,7 @@ function renderHoy(){
       return `<div class="today-card">
         <div class="today-head">
           <div>
-            <div class="today-name">${p.nombre}</div>
+            <div class="today-name">${getConfidentialName(p, activePatients())}</div>
             <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'}</div>
           </div>
           <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
@@ -2194,7 +2244,7 @@ function renderHoy(){
     return `<div class="today-card">
       <div class="today-head">
         <div>
-          <div class="today-name">${p.nombre}${esReposicion?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
+          <div class="today-name">${getConfidentialName(p, activePatients())}${esReposicion?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
           <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} · ${pagoLabel(p.pago)}</div>
         </div>
         <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
@@ -2632,6 +2682,15 @@ function switchBitTab(t){
 function setResumenPeriod(period){
   resumenPeriod=period;
   renderResumen();
+}
+
+function toggleResumenPorPaciente(){
+  const content=document.getElementById('resumen-por-paciente-content');
+  const title=document.getElementById('resumen-por-paciente-title');
+  if(!content||!title) return;
+  const isOpen=content.style.display!=='none';
+  content.style.display=isOpen?'none':'block';
+  title.textContent=(isOpen?'▶':'▼')+' Por paciente';
 }
 
 function setDetallePeriod(period){
@@ -3597,7 +3656,7 @@ function renderDetalle(p){
             <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Calcular desde</div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
               <input class="inp-sm" type="date" id="deuda-desde-in" value="${p.deudaDesde||p.inicio}" onchange="updateDeudaDesdeDisplay(${p.id})" style="width:160px">
-              <button class="btn-sec btn-sm" onclick="guardarDeudaDesde(${p.id})">Guardar fecha</button>
+              <button class="btn-primary btn-sm" onclick="guardarDeudaDesde(${p.id})">Guardar fecha</button>
               ${p.deudaDesde?`<button class="btn-ghost" style="font-size:11px" onclick="resetDeudaDesde(${p.id})">Restablecer inicio</button>`:''}
             </div>
           </div>
@@ -3653,7 +3712,7 @@ function renderDetalle(p){
             <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha cutoff</div>
             <input class="inp-sm" type="date" id="paid-up-to-date-in" value="${p.paidUpToDate||''}" onchange="updatePaidUpToDateDisplay(${p.id})" style="width:160px">
           </div>
-          <button class="btn-sec btn-sm" onclick="guardarPaidUpToDate(${p.id})" style="align-self:flex-end">Guardar fecha</button>
+          <button class="btn-primary btn-sm" onclick="guardarPaidUpToDate(${p.id})" style="align-self:flex-end">Guardar fecha</button>
           ${p.paidUpToDate?`<button class="btn-ghost" style="font-size:11px;align-self:flex-end" onclick="resetPaidUpToDate(${p.id})">Restablecer</button>`:''}
         </div>
         ${p.paidUpToDate?`<div style="padding:8px;background:rgba(165,196,188,0.15);border-left:3px solid #a5c4bc;font-size:12px;color:var(--ink)">Al corriente con pagos hasta: <strong>${displayDate(p.paidUpToDate)}</strong> · Adeudo en ${displayDate(p.paidUpToDate)}: <strong id="puto-adeudo-preview-${p.id}">$${p.adeudo.toLocaleString('es-MX')}</strong></div>`:''}
@@ -4326,16 +4385,41 @@ function renderResumen(){
   const anio=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,anioBounds.start,anioBounds.end),0);
   const activeBounds=getPeriodBounds(resumenPeriod,hoy);
   const activeCount=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,activeBounds.start,activeBounds.end),0);
-  const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const pm=Array(12).fill(0);
-  activos.forEach(p=>p.sesiones.forEach(s=>{
-    if(isSessionCountedAsGiven(s)){
-      const d=new Date(s.fecha+'T12:00');
-      if(d.getFullYear()===hoy.getFullYear()) pm[d.getMonth()]++;
-    }
-  }));
-  const mx=Math.max(...pm,1);
-  const bars=meses.map((m,i)=>`<div class="bcol"><div class="bval">${pm[i]||''}</div><div class="bbar${i===hoy.getMonth()?' cur':''}" style="height:${Math.max(3,Math.round(pm[i]/mx*60))}px"></div><div class="blabel">${m}</div></div>`).join('');
+  // --- Build chart data based on resumenPeriod ---
+  let chartTitle='',chartCols=[];
+  if(resumenPeriod==='anio'){
+    const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const pm=Array(12).fill(0);
+    activos.forEach(p=>p.sesiones.forEach(s=>{
+      if(isSessionCountedAsGiven(s)){const d=new Date(s.fecha+'T12:00');if(d.getFullYear()===hoy.getFullYear()) pm[d.getMonth()]++;}
+    }));
+    chartTitle=`Sesiones por mes — ${hoy.getFullYear()}`;
+    chartCols=pm.map((v,i)=>({label:meses[i],value:v,cur:i===hoy.getMonth()}));
+  } else if(resumenPeriod==='mes'){
+    const year=hoy.getFullYear(),month=hoy.getMonth();
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const pd=Array(daysInMonth).fill(0);
+    activos.forEach(p=>p.sesiones.forEach(s=>{
+      if(isSessionCountedAsGiven(s)){const d=new Date(s.fecha+'T12:00');if(d.getFullYear()===year&&d.getMonth()===month) pd[d.getDate()-1]++;}
+    }));
+    chartTitle=`Sesiones por día — ${hoy.toLocaleString('es-MX',{month:'long',year:'numeric'})}`;
+    chartCols=pd.map((v,i)=>({label:String(i+1),value:v,cur:(i+1)===hoy.getDate()}));
+  } else {
+    const dow=(hoy.getDay()+6)%7;
+    const diasLabels=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    const weekDates=Array(7).fill(null).map((_,i)=>{const d=new Date(hoy);d.setDate(hoy.getDate()-dow+i);return d.toISOString().split('T')[0];});
+    chartTitle=`Sesiones esta semana`;
+    chartCols=weekDates.map((dateStr,i)=>{
+      let v=0;activos.forEach(p=>p.sesiones.forEach(s=>{if(isSessionCountedAsGiven(s)&&s.fecha.split(' ')[0]===dateStr) v++;}));
+      return{label:diasLabels[i],value:v,cur:dateStr===today()};
+    });
+  }
+  const mx=Math.max(...chartCols.map(c=>c.value),1);
+  const barGap=resumenPeriod==='mes'?'2px':resumenPeriod==='semana'?'8px':'4px';
+  const bars=chartCols.map(c=>{
+    const h=Math.max(3,Math.round(c.value/mx*80));
+    return `<div class="bcol"><div class="bval">${c.value>0?c.value:''}</div><div class="bbar${c.cur?' cur':''}" style="height:${h}px"></div><div class="blabel">${c.label}</div></div>`;
+  }).join('');
   document.getElementById('resumen-content').innerHTML=`
     <div class="res-cards">
       <div class="rcard"><div class="rnum">${sem}</div><div class="rlabel">Esta semana</div></div>
@@ -4353,13 +4437,20 @@ function renderResumen(){
       </div>
       <div class="drow"><span class="dkey">Sesiones dadas ${textoPeriodo(resumenPeriod)}</span><span class="dval">${activeCount}</span></div>
     </div>
-    <div class="dsec" style="background:white"><div class="sec-title">Sesiones por mes  -  ${hoy.getFullYear()}</div><div class="bar-chart">${bars}</div></div>
-    <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Por paciente</div>
-      ${activos.map(p=>{
-        const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
-        const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
-        return `<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total · ${np} ${textoPeriodo(resumenPeriod)}</span></div>`;
-      }).join('')}
+    <div class="dsec" style="background:white"><div class="sec-title">${chartTitle}</div><div class="bar-chart" style="gap:${barGap}">${bars}</div></div>
+    <div class="dsec" style="background:white;margin-top:1rem">
+      <div class="sec-title-row" style="cursor:pointer" onclick="toggleResumenPorPaciente()">
+        <span class="sec-title" id="resumen-por-paciente-title">▶ Por paciente</span>
+      </div>
+      <div id="resumen-por-paciente-content" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid #ede9e6">
+        ${activos.map(p=>{
+          const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
+          const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
+          const faltas=faltasEnRango(p,activeBounds.start,activeBounds.end);
+          const cancels=cancelacionesTerapeutaEnRango(p,activeBounds.start,activeBounds.end);
+          return `<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total · ${np} ${textoPeriodo(resumenPeriod)}${faltas>0?' · Faltas: '+faltas:''}${cancels>0?' · Canceladas: '+cancels:''}</span></div>`;
+        }).join('')}
+      </div>
     </div>`;
 }
 
