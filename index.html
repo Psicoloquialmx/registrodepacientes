@@ -12,8 +12,6 @@
 
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  /* Brand guide:
-     - Primary structure/text: #384651
      - Primary actions/CTA: #b95d37
      - Functional calm states: #a5c4bc
      - Soft attention accents: #f7cce8
@@ -270,7 +268,7 @@ input[type="file"].form-input{cursor:pointer}
   position:fixed;z-index:300;
   background:white;border:1px solid #ddd;border-radius:12px;
   box-shadow:0 8px 32px rgba(30,42,50,.18);
-  padding:1rem;width:220px;
+  padding:1rem;width:260px;box-sizing:border-box;overflow:hidden;
 }
 .ses-popover-title{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:.75rem;font-family:'Lora',serif}
 .ses-popover-opts{display:flex;flex-direction:column;gap:6px}
@@ -285,7 +283,7 @@ input[type="file"].form-input{cursor:pointer}
 .ses-opt.cancelada{color:#6a8494}.ses-opt.cancelada.selected{background:#f0eeec}
 .ses-opt.reposicion{color:#5a3d9e}.ses-opt.reposicion.selected{background:#ede8f8}
 .ses-opt-icon{width:16px;text-align:center;font-size:12px}
-.ses-popover-footer{margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0eeec;display:flex;justify-content:space-between;align-items:center}
+.ses-popover-footer{margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f0eeec;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
 .popover-close{background:none;border:none;cursor:pointer;font-size:12px;color:var(--ink-light);font-family:'DM Sans',sans-serif}
 
 /* " - ? ACCIONES RÁPIDAS " - ? */
@@ -302,9 +300,10 @@ input[type="file"].form-input{cursor:pointer}
 .pa-num{font-family:'Lora',serif;font-size:22px;font-weight:600}
 .pa-debt{color:var(--terra)}.pa-paid{color:var(--ink)}.pa-rate{color:var(--ink)}
 .pay-log{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
-.prow{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--bg);border-radius:8px;font-size:13px}
-.pdate{color:var(--ink-light)}.pamt{font-weight:500;color:#2d7a6e}
-.pdel{background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;padding:0 2px;line-height:1}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;align-items:center;column-gap:10px;padding:6px 10px;background:var(--bg);border-radius:8px;font-size:13px}
+.pdate{color:var(--ink-light);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pamt{font-weight:500;color:#2d7a6e;text-align:right;min-width:104px;font-variant-numeric:tabular-nums}
+.pdel{background:none;border:none;cursor:pointer;color:#ccc;font-size:14px;padding:0 2px;line-height:1;justify-self:end}
 .pdel:hover{color:#c0392b}
 .deuda-desde-row{margin-bottom:.75rem}
 .reg-row{display:flex;gap:8px;align-items:flex-end;margin-top:.75rem}
@@ -568,7 +567,7 @@ input[type="file"].form-input{cursor:pointer}
       <button class="nav-item active" onclick="showView('hoy')" id="nav-hoy"><span class="nav-ico">&#128197;</span> Hoy</button>
       <button class="nav-item" onclick="showView('pacientes')" id="nav-pacientes"><span class="nav-ico">&#128101;</span> Pacientes</button>
       <button class="nav-item" onclick="showView('inactivos')" id="nav-inactivos"><span class="nav-ico">&#128683;</span> Pacientes inactivos</button>
-      <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">&#128198;</span> Semana</button>
+      <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">&#128198;</span> Calendario</button>
     </div>
     <div class="nav-section">
       <div class="nav-label">Finanzas</div>
@@ -642,7 +641,7 @@ input[type="file"].form-input{cursor:pointer}
       <div class="content" id="det-content"></div>
     </div>
     <div id="view-semana" class="view">
-      <div class="topbar"><div class="topbar-left"><div class="page-title">Semana</div><div class="page-sub">Espacios fijos de consulta</div></div></div>
+      <div class="topbar"><div class="topbar-left"><div class="page-title">Calendario</div><div class="page-sub">Espacios fijos de consulta</div></div></div>
       <div class="content" id="semana-content"></div>
     </div>
     <div id="view-resumen" class="view">
@@ -882,8 +881,11 @@ function recomputePatientDebt(p){
     return p.adeudo;
   }
   const firstFreeId=getFirstFreeSessionId(p);
+  const cutoffDate=p.paidUpToDate||null;
   const cargos=(p.sesiones||[]).reduce((sum,s)=>{
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return sum;
+    // Exclude sessions before paidUpToDate cutoff
+    if(cutoffDate&&s.fecha<cutoffDate) return sum;
     return sum+tarifaEnFecha(p,s.fecha);
   },0);
   p.adeudo=Math.max(0,cargos-pagosTotal);
@@ -892,16 +894,24 @@ function recomputePatientDebt(p){
 function calcBalanceDesde(p,fechaIso){
   if(!fechaIso) return{cargos:p.adeudo+p.pagado,pagos:p.pagado,saldo:p.adeudo};
   const firstFreeId=getFirstFreeSessionId(p);
+  const cutoffDate=p.paidUpToDate||null;
+  const effectiveStartDate=cutoffDate&&cutoffDate>fechaIso?cutoffDate:fechaIso;
   const cargos=p.sesiones
-    .filter(s=>s.fecha>=fechaIso&&isSessionBillableForDebt(p,s,firstFreeId))
+    .filter(s=>s.fecha>=effectiveStartDate&&isSessionBillableForDebt(p,s,firstFreeId))
     .reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
-  const pagos=p.pagos.filter(py=>py.fecha>=fechaIso).reduce((sum,py)=>sum+py.monto,0);
+  const pagos=p.pagos.filter(py=>py.fecha>=effectiveStartDate).reduce((sum,py)=>sum+py.monto,0);
   return{cargos,pagos,saldo:Math.max(0,cargos-pagos)};
 }
 function calcSesionesSinCubrir(p){
   const firstFreeId=getFirstFreeSessionId(p);
+  const cutoffDate=p.paidUpToDate||null;
   const billable=(p.sesiones||[])
-    .filter(s=>isSessionBillableForDebt(p,s,firstFreeId))
+    .filter(s=>{
+      if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
+      // Exclude sessions before paidUpToDate cutoff
+      if(cutoffDate&&s.fecha<cutoffDate) return false;
+      return true;
+    })
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
   let saldo=(p.pagos||[]).reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   const sinCubrir=[];
@@ -996,18 +1006,21 @@ function scheduleSummary(p,useFull=false){
 }
 function sesionesEnMes(p,year,month){
   const daysInMonth=new Date(year,month+1,0).getDate();
+  const cutoffDate=p.paidUpToDate||null;
   let scheduled=0;
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    // Exclude days before paidUpToDate cutoff
+    if(cutoffDate&&dateStr<cutoffDate) continue;
     if(isFixedScheduledOnDate(p,dateStr)) scheduled++;
   }
   const monthDates=n=>{
     const d=new Date(n.fecha+'T12:00');
     return d.getFullYear()===year && d.getMonth()===month;
   };
-  const reprogramadas=p.sesiones.filter(s=>s.tipo==='reprogramada' && monthDates(s)).length;
-  const canceladas=p.sesiones.filter(s=>s.tipo==='cancelada' && monthDates(s)).length;
-  const reposiciones=p.sesiones.filter(s=>s.tipo==='reposicion' && monthDates(s)).length;
+  const reprogramadas=p.sesiones.filter(s=>s.tipo==='reprogramada' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
+  const canceladas=p.sesiones.filter(s=>s.tipo==='cancelada' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
+  const reposiciones=p.sesiones.filter(s=>s.tipo==='reposicion' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
   // Agrega reposiciones y quita reprogramaciones/cancelaciones de la programación original
   return Math.max(0, scheduled - reprogramadas - canceladas + reposiciones);
 }
@@ -1189,14 +1202,14 @@ function getTimelineEvents(p){
   const eventos=[];
   eventos.push({fecha:p.inicio,tipo:'datos',desc:'Inicio de tratamiento'});
   (p.frecuencias||[]).forEach(f=>eventos.push({fecha:f.desde,tipo:'horario',desc:`Frecuencia: ${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana`}));
-  (p.pausas||[]).forEach(pp=>eventos.push({fecha:pp.desde,tipo:'horario',desc:`${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${pp.actor}: ${pp.desde} → ${pp.hasta}${pp.nota?`  -  ${pp.nota}`:''}`}));
+  (p.pausas||[]).forEach(pp=>eventos.push({fecha:pp.desde,tipo:'horario',desc:`${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} de ${pp.actor}: ${displayDate(pp.desde)} → ${displayDate(pp.hasta)}${pp.nota?`  -  ${pp.nota}`:''}`}));
   (p.statusHistory||[]).forEach(ev=>eventos.push({fecha:ev.fecha,tipo:'datos',desc:`${ev.status==='inactive'?'Paciente inactivo':'Reingreso / activo'}: ${statusReasonLabel(ev.reason)}${ev.note?`  -  ${ev.note}`:''}`}));
   return eventos.sort((a,b)=>b.fecha.localeCompare(a.fecha));
 }
 
 function buildTimelineHTML(p){
   const eventos=getTimelineEvents(p);
-  const rows=eventos.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(ev=>`<div class="log-row"><span class="log-date">${ev.fecha}</span><span class="log-desc">${ev.desc}</span><span class="log-tag ${ev.tipo==='horario'?'lt-horario':'lt-datos'}">${ev.tipo==='horario'?'ritmo':'estado'}</span></div>`).join('');
+  const rows=eventos.sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(ev=>`<div class="log-row"><span class="log-date">${displayDate(ev.fecha)}</span><span class="log-desc">${ev.desc}</span><span class="log-tag ${ev.tipo==='horario'?'lt-horario':'lt-datos'}">${ev.tipo==='horario'?'ritmo':'estado'}</span></div>`).join('');
   return rows||'<div class="timeline-empty">Sin eventos relevantes.</div>';
 }
 
@@ -1956,6 +1969,7 @@ function renderPatients(){
   const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><img class="alert-icon" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Alerta"><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
   const searchHtml=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."><div style="font-size:12px;color:var(--ink-light)">${activos.length} resultado${activos.length!==1?'s':''}</div></div>`;
   el.innerHTML=searchHtml+alertaHtml+activos.map(p=>{
+    recomputePatientDebt(p);
     const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
     const tv=tarifaVigente(p);
     const pend=sesionesPendientes(p).length;
@@ -1990,7 +2004,7 @@ function renderInactivePatients(){
     <div class="person-avatar"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
     <div class="p-info">
       <div class="p-name">${shortName(p.nombre)}</div>
-      <div class="p-meta">${statusReasonLabel(p.statusReason)} · Inactivo desde ${p.statusDate}${p.statusNote?` · ${p.statusNote}`:''}</div>
+      <div class="p-meta">${statusReasonLabel(p.statusReason)} · Inactivo desde ${displayDate(p.statusDate)}${p.statusNote?` · ${p.statusNote}`:''}</div>
     </div>
     <div class="p-badges"><span class="badge b-day">${statusReasonLabel(p.statusReason)}</span></div>
   </div>`).join('');
@@ -2599,7 +2613,7 @@ function showDetalle(id,opts){
   if(activeView&&activeView!=='detalle') lastPatientListView=activeView;
   const hoy=new Date();calYear=hoy.getFullYear();calMonth=hoy.getMonth();
   document.getElementById('det-nombre').textContent=p.nombre;
-  document.getElementById('det-sub').textContent=p.status==='inactive'?`${statusReasonLabel(p.statusReason)} desde ${p.statusDate}`:`En tratamiento desde ${p.inicio}`;
+  document.getElementById('det-sub').textContent=p.status==='inactive'?`${statusReasonLabel(p.statusReason)} desde ${displayDate(p.statusDate)}`:`En tratamiento desde ${displayDate(p.inicio)}`;
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('view-detalle').classList.add('active');
@@ -2654,6 +2668,47 @@ function resetDeudaDesde(pid){
   if(!p) return;
   delete p.deudaDesde;
   addLog(p,'datos','Fecha de cálculo de deuda restablecida al inicio de tratamiento');
+  saveState();
+  renderDetalle(p);
+}
+
+function updatePaidUpToDateDisplay(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  normalizePatient(p);
+  const fecha=document.getElementById('paid-up-to-date-in')?.value||'';
+  const deudaAntes=p.adeudo;
+  if(fecha){
+    // Temporarily set paidUpToDate to preview the impact
+    const prevPaidUpToDate=p.paidUpToDate;
+    p.paidUpToDate=fecha;
+    recomputePatientDebt(p);
+    const deudaDespues=p.adeudo;
+    p.paidUpToDate=prevPaidUpToDate;
+    recomputePatientDebt(p);
+    const s=document.getElementById('puto-adeudo-preview-'+pid);
+    if(s) s.textContent='$'+deudaDespues.toLocaleString('es-MX');
+  }
+}
+
+function guardarPaidUpToDate(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const fecha=document.getElementById('paid-up-to-date-in')?.value;
+  if(!fecha) return;
+  p.paidUpToDate=fecha;
+  recomputePatientDebt(p);
+  addLog(p,'datos',`Al corriente con pagos hasta ${displayDate(fecha)} (sesiones anteriores excluidas de adeudo y prospecciones)`);
+  saveState();
+  renderDetalle(p);
+}
+
+function resetPaidUpToDate(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  delete p.paidUpToDate;
+  recomputePatientDebt(p);
+  addLog(p,'datos','Cutoff de pagos restabelecido  -  todas las sesiones cuentan hacia adeudo y prospecciones');
   saveState();
   renderDetalle(p);
 }
@@ -2822,7 +2877,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
 
   if(isSourceRepo){
     pop.innerHTML=`
-      <div class="ses-popover-title">${dateStr} · ${hora}</div>
+      <div class="ses-popover-title">${displayDate(dateStr)} · ${hora}</div>
       <div class="ses-popover-opts">
         <div class="ses-opt selected" style="cursor:default;background:#f0f0f0;color:#707070">
           ${isSourceText}
@@ -2839,7 +2894,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
       </div>`;
     const rect=anchorEl.getBoundingClientRect();
     let top=rect.bottom+6,left=rect.left;
-    if(left+240>window.innerWidth) left=window.innerWidth-248;
+    if(left+268>window.innerWidth) left=window.innerWidth-268;
     if(top+340>window.innerHeight) top=rect.top-350;
     pop.style.cssText=`display:block;top:${top}px;left:${left}px`;
     document.getElementById('popover-bg').style.display='block';
@@ -2847,7 +2902,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
   }
 
   pop.innerHTML=`
-    <div class="ses-popover-title">${dateStr} · ${hora}</div>
+    <div class="ses-popover-title">${displayDate(dateStr)} · ${hora}</div>
     <div class="ses-popover-opts">
       ${optsHtml}
       ${repoAsociada?`<div class="ses-opt-move" onclick="toggleMoveRepo('${pid}','${dateStr}','${ses.id}')">&#8635; Mover ${esRepo?'esta reposición':'la reposición'} a otra fecha
@@ -2873,7 +2928,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
 
   const rect=anchorEl.getBoundingClientRect();
   let top=rect.bottom+6,left=rect.left;
-  if(left+240>window.innerWidth) left=window.innerWidth-248;
+  if(left+268>window.innerWidth) left=window.innerWidth-268;
   if(top+340>window.innerHeight) top=rect.top-350;
   pop.style.cssText=`display:block;top:${top}px;left:${left}px`;
   document.getElementById('popover-bg').style.display='block';
@@ -3352,7 +3407,7 @@ function buildCalendar(p){
   const nPend=pendientes.size;
   const alertaCal=!isFlexible&&nPend>0?`<div style="background:#f7e4f1;border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:7px 12px;font-size:12px;color:#b95d37;margin-bottom:.75rem">&#9888; ${nPend} sesión${nPend!==1?'es':''} sin registrar en ${MESES[calMonth]}. Haz clic en las celdas <span style="background:white;border:1.5px dashed rgba(56,70,81,.25);padding:1px 5px;border-radius:4px;font-size:11px">? Sin reg.</span> para llenarlas.</div>`:'';
   const flexibleAlert=isFlexible?`<div style="background:rgba(165,196,188,.24);border:1px solid rgba(165,196,188,.56);border-radius:8px;padding:7px 12px;font-size:12px;color:#384651;margin-bottom:.75rem">Paciente sin horario fijo: puedes registrar sesiones en cualquier día pasado desde el inicio del tratamiento.</div>`:'';
-  const inactiveAlert=isInactive?`<div style="background:#f7e4f1;border:1px solid rgba(247,204,232,.9);border-radius:8px;padding:7px 12px;font-size:12px;color:#6a8494;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. Las fechas desde ${p.statusDate} aparecen atenuadas y ya no cuentan como sesiones pendientes.</div>`:'';
+  const inactiveAlert=isInactive?`<div style="background:#f7e4f1;border:1px solid rgba(247,204,232,.9);border-radius:8px;padding:7px 12px;font-size:12px;color:#6a8494;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. Las fechas desde ${displayDate(p.statusDate)} aparecen atenuadas y ya no cuentan como sesiones pendientes.</div>`:'';
 
   return `
     <div class="cal-nav">
@@ -3417,7 +3472,7 @@ function renderDetalle(p){
 
   // Pagos  -  - sin confirm
   const payLog=[...p.pagos].reverse().map(py=>{const metodo=py.metodo||'efectivo'; return `<div class="prow">
-    <span class="pdate">${py.fecha} · ${metodo}</span>
+    <span class="pdate">${displayDate(py.fecha)} · ${metodo}</span>
     <span class="pamt">+$${py.monto.toLocaleString('es-MX')}</span>
     <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">&times;</button>
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
@@ -3430,12 +3485,12 @@ function renderDetalle(p){
         let tStr=_tipoLbl[s.tipo]||s.tipo;
         if(s.tipo==='reposicion'&&s.repoRespuesta) tStr='Reposi. · '+({asistio:'Asistió',falta:'Faltó',cancelada:'Cancelé yo'}[s.repoRespuesta]||s.repoRespuesta);
         const parcial=s.cubierto>0?` <span style="font-size:11px;color:var(--ink-light)">(${s.cubierto.toLocaleString('es-MX')} cubiertos)</span>`:''; 
-        return `<div class="prow"><span class="pdate">${s.fecha}${s.hora?' · '+s.hora:''} · ${tStr}</span><span style="font-weight:500;color:var(--terra)">$${s.costo.toLocaleString('es-MX')}${parcial}</span></div>`;
+        return `<div class="prow"><span class="pdate">${displayDate(s.fecha)}${s.hora?' · '+s.hora:''} · ${tStr}</span><span style="font-weight:500;color:var(--terra)">$${s.costo.toLocaleString('es-MX')}${parcial}</span></div>`;
       }).join('');
 
   // Tarifas
   const tarifasHtml=(p.tarifas||[]).map((t,i)=>`<div class="tariff-row">
-    <span class="tariff-period">${t.desde} → ${t.hasta||'(vigente)'}</span>
+    <span class="tariff-period">${displayDate(t.desde)} → ${t.hasta?displayDate(t.hasta):'(vigente)'}</span>
     <span class="tariff-amount">$${t.monto.toLocaleString('es-MX')}/sesión</span>
     ${i===0&&!t.hasta?'<span class="tariff-current">vigente</span>':''}
   </div>`).join('');
@@ -3443,7 +3498,7 @@ function renderDetalle(p){
   // Bitácora  -  log de cambios
   const logTagClass={tarifa:'lt-tarifa',horario:'lt-horario',datos:'lt-datos',reposicion:'lt-reposicion'};
   const logHtml=(p.cambios||[]).map(c=>`<div class="log-row">
-    <span class="log-date">${c.fecha}</span>
+    <span class="log-date">${displayDate(c.fecha)}</span>
     <span class="log-desc">${c.desc}</span>
     <span class="log-tag ${logTagClass[c.tipo]||'lt-datos'}">${c.tipo}</span>
   </div>`).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin cambios.</div>';
@@ -3458,7 +3513,7 @@ function renderDetalle(p){
         <span style="margin-left:6px" class="nota-tag nt-${n.tag}">${tagLabels[n.tag]||n.tag}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <span class="nota-fecha">${n.fecha}</span>
+        <span class="nota-fecha">${displayDate(n.fecha)}</span>
         <button class="nota-del" onclick="deleteNota('${p.id}','${n.id}')" title="Eliminar nota">&times;</button>
       </div>
     </div>
@@ -3503,7 +3558,7 @@ function renderDetalle(p){
               <button class="period-btn${detallePeriod==='anio'?' active':''}" onclick="setDetallePeriod('anio')">Año</button>
             </div>
           </div>
-          <div class="drow"><span class="dkey">Inicio tratamiento</span><span class="dval">${p.inicio}</span></div>
+          <div class="drow"><span class="dkey">Inicio tratamiento</span><span class="dval">${displayDate(p.inicio)}</span></div>
           <div class="drow"><span class="dkey">Sesiones asistidas</span><span class="dval">${n}</span></div>
           <div class="drow"><span class="dkey">Sesiones ${textoPeriodo(detallePeriod)}</span><span class="dval">${sesionesPeriodo}</span></div>
           <div class="drow"><span class="dkey">Faltas del paciente</span><span class="dval">${faltas}</span></div>
@@ -3544,7 +3599,7 @@ function renderDetalle(p){
           <div class="deuda-desde-row">
             <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Calcular desde</div>
             <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <input class="inp-sm" type="date" id="deuda-desde-in" value="${p.deudaDesde||p.inicio}" onchange="updateDeudaDesdeDisplay(${p.id})">
+              <input class="inp-sm" type="date" id="deuda-desde-in" value="${p.deudaDesde||p.inicio}" onchange="updateDeudaDesdeDisplay(${p.id})" style="width:160px">
               <button class="btn-sec btn-sm" onclick="guardarDeudaDesde(${p.id})">Guardar fecha</button>
               ${p.deudaDesde?`<button class="btn-ghost" style="font-size:11px" onclick="resetDeudaDesde(${p.id})">Restablecer inicio</button>`:''}
             </div>
@@ -3592,6 +3647,19 @@ function renderDetalle(p){
           </div>
           <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:5px">${sinCubrirHtml}</div>
         </div>
+      </div>
+      <div class="dsec full" style="margin-top:1rem">
+        <div class="sec-title">Al corriente con pagos hasta</div>
+        <p style="font-size:12px;color:var(--ink-light);margin-bottom:1rem;line-height:1.5">Usar esta fecha para marcar un punto de corte contable. Sesiones anteriores no contarán hacia adeudo ni prospecciones, permitiendo un registro limpio de datos históricos.</p>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+          <div>
+            <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha cutoff</div>
+            <input class="inp-sm" type="date" id="paid-up-to-date-in" value="${p.paidUpToDate||''}" onchange="updatePaidUpToDateDisplay(${p.id})" style="width:160px">
+          </div>
+          <button class="btn-sec btn-sm" onclick="guardarPaidUpToDate(${p.id})" style="align-self:flex-end">Guardar fecha</button>
+          ${p.paidUpToDate?`<button class="btn-ghost" style="font-size:11px;align-self:flex-end" onclick="resetPaidUpToDate(${p.id})">Restablecer</button>`:''}
+        </div>
+        ${p.paidUpToDate?`<div style="padding:8px;background:rgba(165,196,188,0.15);border-left:3px solid #a5c4bc;font-size:12px;color:var(--ink)">Al corriente con pagos hasta: <strong>${displayDate(p.paidUpToDate)}</strong> · Adeudo en ${displayDate(p.paidUpToDate)}: <strong id="puto-adeudo-preview-${p.id}">$${p.adeudo.toLocaleString('es-MX')}</strong></div>`:''}
       </div>
     </div>
 
@@ -3645,7 +3713,6 @@ function renderDetalle(p){
     <div class="dtab-panel" id="panel-editar">${editHtml}</div>
   `;
   switchTab(curTab);
-  // Restaurar sub-tab de bitácora si aplica
   if(curTab==='bitacora') switchBitTab(curBitTab);
 }
 
@@ -4143,7 +4210,12 @@ function renderSemana(){
   const activos=activePatients();
   const base=new Date((semanaBaseDate||today())+'T12:00');
   const dayEntries=(fechaStr,dow)=>{
-    const slots=activos.filter(p=>isFixedScheduledOnDate(p,fechaStr)).map(p=>({
+    const slots=patients.filter(p=>{
+      if(isFixedScheduledOnDate(p,fechaStr)) return true;
+      // Paciente inactivo: mostrar igual si tuvo sesión registrada en esa fecha
+      if(p.status==='inactive' && p.sesiones.some(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
+      return false;
+    }).map(p=>({
       pNombre:p.nombre,
       hora:horaDiaFecha(p,fechaStr)||'99:99',
       html:(()=>{
@@ -4157,7 +4229,7 @@ function renderSemana(){
         return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div>${markerHtml}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
       })()
     }));
-    const repos=activos.flatMap(p=>p.sesiones
+    const repos=patients.flatMap(p=>p.sesiones
       .filter(s=>s.tipo==='reposicion'&&s.fecha===fechaStr)
       .map(s=>({
         pNombre:p.nombre,
