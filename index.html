@@ -334,6 +334,8 @@ input[type="file"].form-input{cursor:pointer}
 .wslot{background:var(--sage-soft);color:var(--ink);border-radius:6px;padding:5px 6px;font-size:11px;margin-bottom:4px;cursor:pointer;line-height:1.4}
 .wslot:hover{background:rgba(165,196,188,.45)}
 .wslot.repo{background:var(--cream);color:var(--ink)}
+.wslot.moved-source{background:rgba(247,228,241,.7);border:1px dashed rgba(90,61,158,.35);color:var(--ink)}
+.wslot.moved-source:hover{background:rgba(247,228,241,.92)}
 .wslot-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .wslot-mark{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:999px;background:rgba(56,70,81,.12);color:var(--ink);font-size:10px;line-height:1;flex-shrink:0}
 .wslot-mark.ok{background:#d4ede8;color:#1d6b5e}
@@ -1263,6 +1265,7 @@ let pendingGeneralSave=null;
 let lastPatientListView='pacientes';
 let currentAppView='hoy';
 let exitBackArmedUntil=0;
+let editSaveFeedback=null;
 let inactiveFilter='all';
 let activeSearch='';
 let inactiveSearch='';
@@ -1904,6 +1907,24 @@ function updateSidebarBadge(){
     if(existing) existing.textContent=total;
     else{const b=document.createElement('span');b.className='nav-badge';b.textContent=total;document.getElementById('nav-pacientes').appendChild(b);}
   } else if(existing) existing.remove();
+}
+
+function refreshAfterSessionMutation(p){
+  if(!p) return;
+  exposeSesMap(p);
+  saveState();
+  updateSidebarBadge();
+  if(currentAppView==='semana'){
+    renderSemana();
+    return;
+  }
+  if(currentAppView==='hoy'){
+    renderHoy();
+    return;
+  }
+  if(document.getElementById('view-detalle')?.classList.contains('active')&&curId===p.id){
+    renderDetalle(p);
+  }
 }
 
 // " - ? STATS " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -2967,10 +2988,7 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:nuevaIso,tipo:'reposicion',hora:nuevaHora,fromDate:dateStr,moveCreatedByLastMove:true});
   }
-  saveState();
-  exposeSesMap(p);
-  renderDetalle(p);
-  updateSidebarBadge();
+  refreshAfterSessionMutation(p);
 }
 
 function undoLastReposicionMove(pid,targetDateStr){
@@ -3015,10 +3033,7 @@ function undoLastReposicionMove(pid,targetDateStr){
 
   addLog(p,'reposicion',`Movimiento deshecho: ${sourceDate} ← ${targetDateStr}`);
   closeModal();
-  exposeSesMap(p);
-  renderDetalle(p);
-  updateSidebarBadge();
-  saveState();
+  refreshAfterSessionMutation(p);
 }
 
 // Mover sesión de reposición (o la reposición asociada a una falta) a otra fecha
@@ -3054,10 +3069,7 @@ function confirmarMoveRepo(pid,sesId){
     }
   }
   closePopover();
-  exposeSesMap(p);
-  saveState();
-  renderDetalle(p);
-  updateSidebarBadge();
+  refreshAfterSessionMutation(p);
 }
 
 // " - ? REGISTRAR DESDE POPOVER " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -3147,11 +3159,8 @@ function registrarDesdePop(pid,dateStr,tipo){
       });
     }
 
-    saveState();
     closePopover();
-    exposeSesMap(p);
-    renderDetalle(p);
-    updateSidebarBadge();
+    refreshAfterSessionMutation(p);
     return;
   }
 
@@ -3165,10 +3174,7 @@ function registrarDesdePop(pid,dateStr,tipo){
       if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete existing.noCharge;
       addLog(p,'reposicion',`Reposición ${dateStr}: ${prev||'sin respuesta'}${prevNoCharge?' (sin costo)':''} -> ${finalTipo}${requestedNoCharge?' (sin costo)':''}`);
       closePopover();
-      exposeSesMap(p);
-      saveState();
-      renderDetalle(p);
-      updateSidebarBadge();
+      refreshAfterSessionMutation(p);
       return;
     }
     const ant=existing.tipo;
@@ -3191,10 +3197,7 @@ function registrarDesdePop(pid,dateStr,tipo){
   }
 
   closePopover();
-  exposeSesMap(p);
-  saveState();
-  renderDetalle(p);
-  updateSidebarBadge();
+  refreshAfterSessionMutation(p);
 }
 
 function deleteReagendadaResponse(pid,sid){
@@ -3222,10 +3225,7 @@ function deleteReagendadaResponse(pid,sid){
 
   addLog(p,'reposicion',`Respuesta reagendada borrada: ${sourceDate}${targetDate?` → ${targetDate}`:''}`);
   closePopover();
-  exposeSesMap(p);
-  saveState();
-  renderDetalle(p);
-  updateSidebarBadge();
+  refreshAfterSessionMutation(p);
 }
 
 // " - ? ELIMINAR RESPUESTA  -  sin confirm, solo borra la respuesta del día " - ?
@@ -3240,10 +3240,7 @@ function deleteSesionPop(pid,sid){
   p.sesiones=p.sesiones.filter(s=>s.id!==sid);
   let c=0;p.sesiones.forEach(s=>{if(s.tipo!=='cancelada'){c++;s.num=c;}});
   closePopover();
-  exposeSesMap(p);
-  saveState();
-  renderDetalle(p);
-  updateSidebarBadge();
+  refreshAfterSessionMutation(p);
 }
 
 // " - ? ELIMINAR PAGO  -  sin confirm " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -3671,6 +3668,28 @@ function deleteNota(pid,nid){
   if(curTab==='bitacora') switchBitTab('notas');
 }
 
+function getEditSaveButtonLabel(pid,key,defaultLabel,savedLabel){
+  if(editSaveFeedback&&editSaveFeedback.pid===pid&&editSaveFeedback.key===key&&editSaveFeedback.until>Date.now()) return savedLabel;
+  return defaultLabel;
+}
+
+function setEditSaveFeedback(pid,key){
+  const savedLabels={
+    datos:'Datos guardados',
+    estado:'Estado guardado',
+    cambios:'Cambios guardados',
+    ausencias:'Ausencias guardadas'
+  };
+  editSaveFeedback={pid,key,until:Date.now()+1800};
+  clearTimeout(setEditSaveFeedback._timer);
+  setEditSaveFeedback._timer=setTimeout(()=>{
+    if(editSaveFeedback&&editSaveFeedback.pid===pid&&editSaveFeedback.key===key) editSaveFeedback=null;
+    const currentPatient=patients.find(x=>x.id===curId);
+    if(currentPatient&&curTab==='editar'&&curId===pid&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(currentPatient);
+  },1850);
+  return savedLabels[key]||'Guardado';
+}
+
 // " - ? EDIT PANEL " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function buildEditPanel(p){
   normalizePatient(p);
@@ -3718,7 +3737,7 @@ function buildEditPanel(p){
             <input type="hidden" id="e-pide-factura" value="${p.pideFactura?'si':'no'}">
           </div>
         </div>
-        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarSeccionDatos(${p.id})">Guardar datos generales</button></div>
+        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarSeccionDatos(${p.id})">${getEditSaveButtonLabel(p.id,'datos','Guardar datos generales','Datos guardados')}</button></div>
       </div>
       <div class="dsec full">
         <div class="sec-title">Estado del proceso</div>
@@ -3741,7 +3760,7 @@ function buildEditPanel(p){
           </div>
           <div class="form-group form-full"><label class="form-label">Nota</label><input class="form-input" id="e-status-note" value="${p.statusNote||''}" placeholder="Ej: suspendió terapia, alta, cierre temporal"></div>
         </div>
-        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarSeccionEstado(${p.id})">Guardar estado</button></div>
+        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarSeccionEstado(${p.id})">${getEditSaveButtonLabel(p.id,'estado','Guardar estado','Estado guardado')}</button></div>
       </div>
       <div class="dsec full">
         <div class="sec-title">Días y horas de sesión</div>
@@ -3753,7 +3772,7 @@ function buildEditPanel(p){
         <div class="days-row" id="e-dias">${diasBtns}</div></div>
         <div id="e-fixed-hours-wrap" style="${baseNoFixed?'display:none;':''}"><div id="e-horas-container">${horasRows}</div></div>
         <div class="alert-box" id="e-fixed-alert" style="${baseNoFixed?'display:none;':''}">Al guardar cambios de horario, se te pedirá la fecha a partir de la cual aplica para conservar el historial previo.</div>
-        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarDatosGenerales(${p.id})">Guardar cambios</button></div>
+        <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarDatosGenerales(${p.id})">${getEditSaveButtonLabel(p.id,'cambios','Guardar cambios','Cambios guardados')}</button></div>
       </div>
       <div class="dsec full">
         <div class="sec-title">Frecuencia y ajuste fino</div>
@@ -3762,7 +3781,7 @@ function buildEditPanel(p){
           <div class="form-group"><label class="form-label">Ausencias terapeuta al año</label><input class="form-input" id="e-therapist-cancel-weeks" type="number" step="0.5" min="0" value="${p.therapistCancelWeeksPerYear}"></div>
           <div class="form-group"><label class="form-label">Ausencias paciente al año</label><input class="form-input" id="e-patient-absence-weeks" type="number" step="0.5" min="0" value="${p.patientAbsenceWeeksPerYear}"></div>
         </div>
-        <div style="margin-top:.5rem"><button class="btn-primary" onclick="guardarSeccionAusencias(${p.id})">Guardar ausencias</button></div>
+        <div style="margin-top:.5rem"><button class="btn-primary" onclick="guardarSeccionAusencias(${p.id})">${getEditSaveButtonLabel(p.id,'ausencias','Guardar ausencias','Ausencias guardadas')}</button></div>
         <div class="form-grid" style="margin-top:.75rem">
           <div class="form-group"><label class="form-label">Nueva frecuencia</label><input class="form-input" id="e-freq-veces" type="number" min="1" max="7" value="${freqActual.vecesSemana}"></div>
           <div class="form-group"><label class="form-label">Vigente desde</label><input class="form-input" id="e-freq-desde" type="date" value="${today()}"></div>
@@ -3879,6 +3898,7 @@ function applyGuardarDatosGenerales(id,payload,desdeHorario=null){
   normalizarFrecuencias(p);
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   saveState();
+  setEditSaveFeedback(p.id,'cambios');
   curTab='editar';renderDetalle(p);
 }
 
@@ -3918,6 +3938,7 @@ function guardarSeccionDatos(id){
   const detNombre=document.getElementById('det-nombre');
   if(detNombre) detNombre.textContent=p.nombre;
   saveState();
+  setEditSaveFeedback(p.id,'datos');
   curTab='editar';renderDetalle(p);
 }
 
@@ -3951,6 +3972,7 @@ function guardarSeccionEstado(id){
   }
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   saveState();
+  setEditSaveFeedback(p.id,'estado');
   curTab='editar';renderDetalle(p);
 }
 
@@ -3970,6 +3992,7 @@ function guardarSeccionAusencias(id){
   }
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   saveState();
+  setEditSaveFeedback(p.id,'ausencias');
   curTab='editar';renderDetalle(p);
 }
 
@@ -4125,8 +4148,13 @@ function renderSemana(){
       hora:horaDiaFecha(p,fechaStr)||'99:99',
       html:(()=>{
         const sesRegistrada=p.sesiones.find(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
+        const sesMovida=p.sesiones.find(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'));
         const markerClass=getWeekSlotMarkerClass(sesRegistrada);
-        return `<div class="wslot" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div>${sesRegistrada?`<span class="wslot-mark ${markerClass}" title="Sesión registrada">&#10003;</span>`:''}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
+        const slotClass=sesMovida?'wslot moved-source':'wslot';
+        const markerHtml=sesMovida
+          ?'<span class="wslot-mark repo" title="Sesión reagendada">&#8635;</span>'
+          :(sesRegistrada?`<span class="wslot-mark ${markerClass}" title="Sesión registrada">&#10003;</span>`:'');
+        return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div>${markerHtml}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
       })()
     }));
     const repos=activos.flatMap(p=>p.sesiones
