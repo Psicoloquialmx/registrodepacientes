@@ -4440,16 +4440,22 @@ function renderResumen(){
     <div class="dsec" style="background:white"><div class="sec-title">${chartTitle}</div><div class="bar-chart" style="gap:${barGap}">${bars}</div></div>
     <div class="dsec" style="background:white;margin-top:1rem">
       <div class="sec-title-row" style="cursor:pointer" onclick="toggleResumenPorPaciente()">
-        <span class="sec-title" id="resumen-por-paciente-title">▶ Por paciente</span>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span class="sec-title" id="resumen-por-paciente-title">▶ Por paciente</span>
+          <span style="font-size:11px;color:var(--ink-light)">${resumenPeriod==='semana'?'Esta semana':resumenPeriod==='mes'?'Este mes':'Este año'}</span>
+        </div>
       </div>
       <div id="resumen-por-paciente-content" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid #ede9e6">
-        ${activos.map(p=>{
-          const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
-          const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
-          const faltas=faltasEnRango(p,activeBounds.start,activeBounds.end);
-          const cancels=cancelacionesTerapeutaEnRango(p,activeBounds.start,activeBounds.end);
-          return `<div class="drow"><span class="dkey">${p.nombre}</span><span class="dval">${n} total · ${np} ${textoPeriodo(resumenPeriod)}${faltas>0?' · Faltas: '+faltas:''}${cancels>0?' · Canceladas: '+cancels:''}</span></div>`;
-        }).join('')}
+        ${(()=>{
+          const hdr=`<div style="display:grid;grid-template-columns:1fr repeat(3,80px);padding:4px 0 8px;border-bottom:2px solid #ede9e6;margin-bottom:2px;gap:0 8px"><span style="font-size:10px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.5px">Paciente</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Sesiones</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Faltas</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Canceladas</span></div>`;
+          const rows=activos.map(p=>{
+            const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
+            const faltas=faltasEnRango(p,activeBounds.start,activeBounds.end);
+            const cancels=cancelacionesTerapeutaEnRango(p,activeBounds.start,activeBounds.end);
+            return `<div style="display:grid;grid-template-columns:1fr repeat(3,80px);padding:6px 0;border-bottom:1px solid #f5f0ed;align-items:center;gap:0 8px"><span style="font-size:13px;color:var(--ink)">${p.nombre}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums">${np}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:${faltas>0?'#b95d37':'var(--ink-light)'}">${faltas||'—'}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:${cancels>0?'#384651':'var(--ink-light)'}">${cancels||'—'}</span></div>`;
+          }).join('');
+          return hdr+rows;
+        })()}
       </div>
     </div>`;
 }
