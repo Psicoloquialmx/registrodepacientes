@@ -222,12 +222,18 @@ input[type="file"].form-input{cursor:pointer}
 .cal-dow{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;padding:4px 0;text-transform:uppercase;letter-spacing:.04em}
 .cal-day{min-height:52px;border-radius:8px;padding:4px;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
 .cal-day.other-month{opacity:.25}
+.cal-day.inactive-after{background:rgba(247,228,241,.32);opacity:.55}
+.cal-day.inactive-after .cal-day-num,.cal-day.inactive-after .cal-hora{color:#9aa8b1}
+.cal-day.inactive-start{outline:1px solid rgba(185,93,55,.24);outline-offset:-1px}
 .cal-day.has-session{cursor:pointer}
 .cal-day.has-session:hover{background:rgba(165,196,188,.12)}
 .cal-day.is-programado:not(.has-session){cursor:pointer}
 .cal-day.is-programado:not(.has-session):hover{background:rgba(165,196,188,.08)}
+.cal-day.inactive-after.has-session,.cal-day.inactive-after.is-programado:not(.has-session){cursor:default}
+.cal-day.inactive-after.has-session:hover,.cal-day.inactive-after.is-programado:not(.has-session):hover{background:rgba(247,228,241,.32)}
 .cal-day.today .cal-day-num{background:var(--ink);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
 .cal-day-num{font-size:12px;color:var(--ink-light);line-height:1;margin-bottom:1px;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.cal-cut-tag{display:inline-flex;align-items:center;justify-content:center;max-width:90%;padding:1px 6px;border-radius:999px;background:rgba(185,93,55,.14);color:var(--terra);font-size:9px;font-weight:700;letter-spacing:.02em;line-height:1.2;white-space:nowrap}
 /* Pastilla de sesión  -  UNA SOLA por día programado */
 .cal-pip{
   width:90%;height:22px;border-radius:5px;
@@ -328,6 +334,12 @@ input[type="file"].form-input{cursor:pointer}
 .wslot{background:var(--sage-soft);color:var(--ink);border-radius:6px;padding:5px 6px;font-size:11px;margin-bottom:4px;cursor:pointer;line-height:1.4}
 .wslot:hover{background:rgba(165,196,188,.45)}
 .wslot.repo{background:var(--cream);color:var(--ink)}
+.wslot-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wslot-mark{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:999px;background:rgba(56,70,81,.12);color:var(--ink);font-size:10px;line-height:1;flex-shrink:0}
+.wslot-mark.ok{background:#d4ede8;color:#1d6b5e}
+.wslot-mark.miss{background:#fde0cc;color:#a0461a}
+.wslot-mark.cancel{background:#fde0cc;color:#a0461a}
+.wslot-mark.repo{background:#ede8f8;color:#5a3d9e}
 .week-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
 .week-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .week-period{font-size:13px;color:var(--ink-light)}
@@ -930,8 +942,24 @@ function getScheduleAtDate(p,dateStr){
   sorted.forEach(item=>{if(item.desde<=ref) current=item;});
   return current||fallback;
 }
+function getPatientStatusAtDate(p,dateStr){
+  if(!p||!dateStr) return p?.status==='inactive'?'inactive':'active';
+  const history=Array.isArray(p.statusHistory)?[...p.statusHistory].sort((a,b)=>a.fecha.localeCompare(b.fecha)):[];
+  if(!history.length){
+    if(p.status==='inactive'&&p.statusDate&&dateStr>=p.statusDate) return 'inactive';
+    return 'active';
+  }
+  let current='active';
+  history.forEach(ev=>{
+    if(ev&&ev.fecha&&ev.fecha<=dateStr){
+      current=ev.status==='inactive'?'inactive':'active';
+    }
+  });
+  return current;
+}
 function isFixedScheduledOnDate(p,dateStr){
   if(isBeforeTreatmentStart(p,dateStr)) return false;
+  if(getPatientStatusAtDate(p,dateStr)==='inactive') return false;
   const sch=getScheduleAtDate(p,dateStr);
   if(!sch||sch.noFixedSchedule) return false;
   const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
@@ -3269,6 +3297,8 @@ function buildCalendar(p){
   for(let d=1;d<=totalDays;d++){
     const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const beforeStart=isBeforeTreatmentStart(p,dateStr);
+    const isInactiveDate=getPatientStatusAtDate(p,dateStr)==='inactive';
+    const isInactiveStart=!!(p.status==='inactive'&&p.statusDate&&dateStr===p.statusDate);
     const daySessions=p.sesiones.filter(s=>s.fecha.split(' ')[0]===dateStr);
     const movedSes=daySessions.find(s=>s.skipped||s.replaced||s.tipo==='reprogramada')||null;
     const isMovedFrom=!!movedSes;
@@ -3286,6 +3316,8 @@ function buildCalendar(p){
     let classes='cal-day';
     if(isProg) classes+=' is-programado';
     if(ses||movedSes) classes+=' has-session';
+    if(isInactiveDate) classes+=' inactive-after';
+    if(isInactiveStart) classes+=' inactive-start';
 
     let pip='';
     if(ses){
@@ -3313,15 +3345,17 @@ function buildCalendar(p){
       pip=`<div class="cal-prog-dot" title="${horaRango||''}"></div>`;
     }
     const horaLabel=(isProg||ses)?`<div class="cal-hora">${horaRango||''}</div>`:'';
+    const inactiveReasonLabel=isInactiveStart?statusReasonLabel(p.statusReason):'';
+    const cutTag=isInactiveStart?`<div class="cal-cut-tag" title="Inicio de inactividad: ${inactiveReasonLabel}">${inactiveReasonLabel}</div>`:'';
     cells+=`<div class="${classes}${isToday?' today':''}">
-      <div class="cal-day-num">${d}</div>${horaLabel}${pip}
+      <div class="cal-day-num">${d}</div>${cutTag}${horaLabel}${pip}
     </div>`;
   }
 
   const nPend=pendientes.size;
   const alertaCal=!isFlexible&&nPend>0?`<div style="background:#f7e4f1;border:1px solid rgba(185,93,55,.35);border-radius:8px;padding:7px 12px;font-size:12px;color:#b95d37;margin-bottom:.75rem">&#9888; ${nPend} sesión${nPend!==1?'es':''} sin registrar en ${MESES[calMonth]}. Haz clic en las celdas <span style="background:white;border:1.5px dashed rgba(56,70,81,.25);padding:1px 5px;border-radius:4px;font-size:11px">? Sin reg.</span> para llenarlas.</div>`:'';
   const flexibleAlert=isFlexible?`<div style="background:rgba(165,196,188,.24);border:1px solid rgba(165,196,188,.56);border-radius:8px;padding:7px 12px;font-size:12px;color:#384651;margin-bottom:.75rem">Paciente sin horario fijo: puedes registrar sesiones en cualquier día pasado desde el inicio del tratamiento.</div>`:'';
-  const inactiveAlert=isInactive?`<div style="background:#f7e4f1;border:1px solid rgba(247,204,232,.9);border-radius:8px;padding:7px 12px;font-size:12px;color:#6a8494;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. Reactívalo para registrar nuevas sesiones.</div>`:'';
+  const inactiveAlert=isInactive?`<div style="background:#f7e4f1;border:1px solid rgba(247,204,232,.9);border-radius:8px;padding:7px 12px;font-size:12px;color:#6a8494;margin-bottom:.75rem">Paciente inactivo: calendario en solo lectura. Las fechas desde ${p.statusDate} aparecen atenuadas y ya no cuentan como sesiones pendientes.</div>`:'';
 
   return `
     <div class="cal-nav">
@@ -4072,6 +4106,15 @@ function confirmarReposicion(id){
   closeModal();curTab='sesiones';exposeSesMap(p);renderDetalle(p);updateSidebarBadge();
 }
 
+function getWeekSlotMarkerClass(ses){
+  if(!ses) return '';
+  if(ses.tipo==='reposicion') return 'repo';
+  if(ses.tipo==='asistio'||ses.tipo==='extra') return 'ok';
+  if(ses.tipo==='falta') return 'miss';
+  if(ses.tipo==='cancelada') return 'cancel';
+  return '';
+}
+
 // " - ? SEMANA " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderSemana(){
   const activos=activePatients();
@@ -4080,14 +4123,18 @@ function renderSemana(){
     const slots=activos.filter(p=>isFixedScheduledOnDate(p,fechaStr)).map(p=>({
       pNombre:p.nombre,
       hora:horaDiaFecha(p,fechaStr)||'99:99',
-      html:`<div class="wslot" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`
+      html:(()=>{
+        const sesRegistrada=p.sesiones.find(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
+        const markerClass=getWeekSlotMarkerClass(sesRegistrada);
+        return `<div class="wslot" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div>${sesRegistrada?`<span class="wslot-mark ${markerClass}" title="Sesión registrada">&#10003;</span>`:''}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
+      })()
     }));
     const repos=activos.flatMap(p=>p.sesiones
       .filter(s=>s.tipo==='reposicion'&&s.fecha===fechaStr)
       .map(s=>({
         pNombre:p.nombre,
         hora:s.hora||horaDiaFecha(p,fechaStr)||'99:99',
-        html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div style="font-weight:500">&#8635; ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
+        html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div style="font-weight:500">&#8635; ${p.nombre.split(' ')[0]}</div><span class="wslot-mark repo" title="Sesión registrada">&#10003;</span></div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
       }))
     );
     return [...slots,...repos].sort((a,b)=>{
