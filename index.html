@@ -1233,6 +1233,8 @@ let semanaBaseDate=today();
 let todayViewOffset=0;
 let pendingGeneralSave=null;
 let lastPatientListView='pacientes';
+let currentAppView='hoy';
+let exitBackArmedUntil=0;
 let inactiveFilter='all';
 let activeSearch='';
 let inactiveSearch='';
@@ -1659,7 +1661,7 @@ async function handleAuthStateChanged(user){
   await hydrateUserStore(user.uid);
   if(forceProfileSetupOnNextAuth||therapistProfileNeedsSetup()){
     forceProfileSetupOnNextAuth=false;
-    showView('perfil');
+    showView('perfil',{historyMode:'replace'});
     if(therapistProfileNeedsSetup()){
       alert('Antes de continuar, completa tu perfil profesional (nombre y profesión).');
     }
@@ -1667,7 +1669,7 @@ async function handleAuthStateChanged(user){
   }
   let lastView='hoy';
   try{const sv=sessionStorage.getItem('axo_last_view');if(sv&&document.getElementById('view-'+sv)) lastView=sv;}catch(e){}
-  showView(lastView);
+  showView(lastView,{historyMode:'replace'});
 }
 
 async function initFirebase(){
@@ -2501,13 +2503,19 @@ function cancelTodayReposicion(pid){
 }
 
 // " - ? showView " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
-function showView(v){
+function showView(v,opts){
+  const cfg=(opts&&typeof opts==='object')?opts:{};
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   const n=document.getElementById('nav-'+v);if(n) n.classList.add('active');
   closeSidebarMobile();
+  currentAppView=v;
   try{sessionStorage.setItem('axo_last_view',v);}catch(e){}
+  if(!cfg.fromHistory) writeAppHistory(v,cfg.historyMode==='replace'?'replace':'push');
+  if(!cfg.fromHistory&&cfg.historyMode==='replace'&&v!=='detalle'){
+    writeAppHistory(v,'push',{exitGuard:true});
+  }
   
   // Asegurar que todos los topbar-left tengan el botón hamburguesa
   document.querySelectorAll('.view.active .topbar-left').forEach(tl=>{
@@ -2521,7 +2529,7 @@ function showView(v){
     }
   });
   
-  if(v==='pacientes'||v==='inactivos') lastPatientListView=v;
+  if(v!=='detalle') lastPatientListView=v;
   if(v==='hoy') renderHoy();
   if(v==='pacientes') renderPatients();
   if(v==='inactivos') renderInactivePatients();
@@ -2532,16 +2540,22 @@ function showView(v){
 }
 
 // " - ? DETALLE " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
-function showDetalle(id){
+function showDetalle(id,opts){
+  const cfg=(opts&&typeof opts==='object')?opts:{};
   curId=id;curTab='sesiones';curBitTab='log';
   detallePeriod='mes';
   const p=patients.find(x=>x.id===id);
+  if(!p) return;
+  const activeView=(currentAppView&&currentAppView!=='detalle')?currentAppView:((document.querySelector('.view.active')?.id||'view-hoy').replace('view-',''));
+  if(activeView&&activeView!=='detalle') lastPatientListView=activeView;
   const hoy=new Date();calYear=hoy.getFullYear();calMonth=hoy.getMonth();
   document.getElementById('det-nombre').textContent=p.nombre;
   document.getElementById('det-sub').textContent=p.status==='inactive'?`${statusReasonLabel(p.statusReason)} desde ${p.statusDate}`:`En tratamiento desde ${p.inicio}`;
   document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('view-detalle').classList.add('active');
+  currentAppView='detalle';
+  if(!cfg.fromHistory) writeAppHistory('detalle',cfg.historyMode==='replace'?'replace':'push');
   renderDetalle(p);
 }
 function switchTab(t){
@@ -2741,7 +2755,7 @@ function openPopover(pid,dateStr,ses,anchorEl){
     {tipo:'falta',icon:'\u2715',label:'Faltó paciente (sí cuenta)'},
     {tipo:'falta_nc',icon:'\u2715',label:'Faltó, no genera costo'},
     {tipo:'cancelada',icon:'\u2013',label:'Cancelé yo (sin costo)'},
-    {tipo:'reposicion',icon:'\u21BB',label:'Reposición'},
+    {tipo:'reposicion',icon:'&#8635;',label:'Reposición'},
   ];
 
   const optsHtml = opts.map(o=>{
@@ -2766,8 +2780,13 @@ function openPopover(pid,dateStr,ses,anchorEl){
         </div>
       </div>
       <div class="ses-popover-footer">
-        <button class="btn-danger" onclick="deleteReagendadaResponse('${pid}','${ses.id}')">Borrar respuesta</button>
-        <button class="popover-close" onclick="closePopover()">Cerrar</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn-danger" onclick="deleteReagendadaResponse('${pid}','${ses.id}')">Borrar respuesta</button>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn-sec btn-sm" onclick="openPatientFromPopover('${pid}')">Ir al expediente</button>
+          <button class="popover-close" onclick="closePopover()">Cerrar</button>
+        </div>
       </div>`;
     const rect=anchorEl.getBoundingClientRect();
     let top=rect.bottom+6,left=rect.left;
@@ -2794,8 +2813,13 @@ function openPopover(pid,dateStr,ses,anchorEl){
       </div>
     </div>
     <div class="ses-popover-footer">
-      ${ses?`<button class="btn-danger" onclick="deleteSesionPop('${pid}','${ses.id}')">Borrar respuesta</button>`:'<span></span>'}
-      <button class="popover-close" onclick="closePopover()">Cerrar</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${ses?`<button class="btn-danger" onclick="deleteSesionPop('${pid}','${ses.id}')">Borrar respuesta</button>`:'<span></span>'}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-sec btn-sm" onclick="openPatientFromPopover('${pid}')">Ir al expediente</button>
+        <button class="popover-close" onclick="closePopover()">Cerrar</button>
+      </div>
     </div>`;
 
   const rect=anchorEl.getBoundingClientRect();
@@ -2810,6 +2834,17 @@ function closePopover(){
   document.getElementById('ses-popover').style.display='none';
   document.getElementById('popover-bg').style.display='none';
   popoverState={pid:null,dateStr:null,sesId:null};
+}
+
+function openPatientFromPopover(pid){
+  closePopover();
+  showDetalle(parseInt(pid,10));
+}
+
+function openCalendarSessionPopover(pid,dateStr,anchorEl){
+  const map=window[`sesMap_${pid}`]||{};
+  const ses=map[dateStr]||null;
+  openPopover(pid,dateStr,ses,anchorEl);
 }
 
 function toggleMoveRepo(pid,dateStr,sesId){
@@ -3254,13 +3289,13 @@ function buildCalendar(p){
 
     let pip='';
     if(ses){
-      let icons={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013',reposicion:'\u21BB',extra:'\u2713'}[ses.tipo]||'?';
+      let icons={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013',reposicion:'&#8635;',extra:'\u2713'}[ses.tipo]||'?';
       let baseLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Terapeuta',reposicion:'Reposi.',extra:'Asistió'}[ses.tipo]||ses.tipo;
       if(ses.tipo==='falta'&&ses.noCharge) baseLabel='Faltó (sin costo)';
       if(ses.tipo==='reposicion'&&ses.repoRespuesta){
         const respLabel={asistio:'Asistió',falta:'Faltó',cancelada:'Cancelé yo'}[ses.repoRespuesta]||ses.repoRespuesta;
         const respIcon={asistio:'\u2713',falta:'\u2715',cancelada:'\u2013'}[ses.repoRespuesta]||'';
-        icons=`\u21BB${respIcon?` ${respIcon}`:''}`;
+        icons=`&#8635;${respIcon?` ${respIcon}`:''}`;
         baseLabel=`Reposi. · ${respLabel}${ses.repoRespuesta==='falta'&&ses.noCharge?' (sin costo)':''}`;
       }
       const firstFree=firstFreeId&&ses.id===firstFreeId;
@@ -3269,7 +3304,7 @@ function buildCalendar(p){
       pip=`<div class="cal-pip ${ses.tipo}" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para editar'}">${icons} ${label}${hasRepo&&!isInactive?' &#8635;':''}</div>`;
     } else if(movedSes){
       const movedLabel=movedSes.movedTo?`Reag. → ${displayDate(movedSes.movedTo)}${movedSes.movedTime?' '+movedSes.movedTime:''}`:'Reagendada';
-      pip=`<div class="cal-pip reposicion" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para ver'}">↪ ${movedLabel}</div>`;
+      pip=`<div class="cal-pip reposicion" ${isInactive?'':`onclick="openPopover(${p.id},'${dateStr}',sesMap_${p.id}['${dateStr}'],this)"`} title="${isInactive?'Solo lectura':'Clic para ver'}">&#8635; ${movedLabel}</div>`;
     } else if((isProg||isFlexibleDate)&&!isFuture&&!beforeStart){
       pip=isInactive?`<div class="cal-pip sin-registro" title="Paciente inactivo">Sin reg.</div>`:`<div class="cal-pip sin-registro" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sin registrar">? Sin reg.</div>`;
     } else if(!isFlexibleDate&&!isProg&&!isFuture&&!beforeStart){
@@ -4045,14 +4080,14 @@ function renderSemana(){
     const slots=activos.filter(p=>isFixedScheduledOnDate(p,fechaStr)).map(p=>({
       pNombre:p.nombre,
       hora:horaDiaFecha(p,fechaStr)||'99:99',
-      html:`<div class="wslot" onclick="showDetalle(${p.id})"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`
+      html:`<div class="wslot" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`
     }));
     const repos=activos.flatMap(p=>p.sesiones
       .filter(s=>s.tipo==='reposicion'&&s.fecha===fechaStr)
       .map(s=>({
         pNombre:p.nombre,
         hora:s.hora||horaDiaFecha(p,fechaStr)||'99:99',
-        html:`<div class="wslot repo" onclick="showDetalle(${p.id})"><div style="font-weight:500">? ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
+        html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div style="font-weight:500">&#8635; ${p.nombre.split(' ')[0]}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
       }))
     );
     return [...slots,...repos].sort((a,b)=>{
@@ -4391,6 +4426,66 @@ function saveUnplannedSession(){
 
 function closeModal(){pendingGeneralSave=null;document.getElementById('modal-overlay').classList.remove('open')}
 function closeModalOut(e){ /* overlay click no cierra modal */ }
+
+function appHistoryStateForView(v){
+  if(v==='detalle'){
+    return {axoApp:true,view:'detalle',detailId:curId||null,backView:lastPatientListView||'hoy'};
+  }
+  return {axoApp:true,view:v};
+}
+
+function writeAppHistory(v,mode='push',extraState){
+  if(!window.history||typeof history.pushState!=='function') return;
+  const state={...appHistoryStateForView(v),...(extraState||{})};
+  if(mode==='replace'&&typeof history.replaceState==='function') history.replaceState(state,'');
+  else history.pushState(state,'');
+}
+
+function showBackExitHint(){
+  let hint=document.getElementById('app-back-exit-hint');
+  if(!hint){
+    hint=document.createElement('div');
+    hint.id='app-back-exit-hint';
+    hint.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:rgba(56,70,81,.92);color:#fff;padding:9px 14px;border-radius:999px;font-size:12px;z-index:1200;box-shadow:0 8px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .18s';
+    document.body.appendChild(hint);
+  }
+  hint.textContent='Presiona atrás otra vez para salir';
+  hint.style.opacity='1';
+  clearTimeout(hint.__hideTimer);
+  hint.__hideTimer=setTimeout(()=>{hint.style.opacity='0';},1300);
+}
+
+window.addEventListener('popstate',e=>{
+  const state=e.state;
+  if(!state||!state.axoApp) return;
+  const sameNonDetailView=state.view&&state.view!=='detalle'&&state.view===currentAppView&&!state.exitGuard;
+  if(sameNonDetailView){
+    const now=Date.now();
+    if(now<=exitBackArmedUntil){
+      exitBackArmedUntil=0;
+      history.back();
+      return;
+    }
+    exitBackArmedUntil=now+1600;
+    showBackExitHint();
+    writeAppHistory(state.view,'push',{exitGuard:true});
+    return;
+  }
+  exitBackArmedUntil=0;
+  if(state.view==='detalle'){
+    const backView=(state.backView&&document.getElementById('view-'+state.backView))?state.backView:'hoy';
+    lastPatientListView=backView;
+    if(Number.isFinite(Number(state.detailId))){
+      showDetalle(Number(state.detailId),{fromHistory:true});
+      return;
+    }
+    showView(backView,{fromHistory:true});
+    return;
+  }
+  if(state.view&&document.getElementById('view-'+state.view)){
+    showView(state.view,{fromHistory:true});
+  }
+});
 
 applyStore(getEmptyStore());
 setSidebarUser(null);
