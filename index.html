@@ -94,6 +94,8 @@ body.auth-locked .auth-screen{display:flex}
 /* " - ? BUTTONS " - ? */
 .btn-primary{background:var(--terra);color:white;border:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;font-family:'DM Sans',sans-serif;transition:background .15s;white-space:nowrap}
 .btn-primary:hover{background:#9e4f2e}
+.btn-google{background:white;color:var(--ink);border:1px solid #ddd;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
+.btn-google:hover{background:#fafafa;border-color:#cfd6db}
 .btn-sm{padding:6px 12px;font-size:12px}
 .btn-sec{border:1px solid #ddd;background:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink-light);font-family:'DM Sans',sans-serif}
 .btn-sec:hover{background:var(--cream)}
@@ -511,6 +513,10 @@ input[type="file"].form-input{cursor:pointer}
   .reg-row .inp-sm{width:100%}
   .p-head{flex-direction:column;gap:4px}
   .p-meta-inline{text-align:left;white-space:normal}
+  #panel-pagos .prow{grid-template-columns:minmax(0,1fr) auto 18px;grid-template-areas:'date date date' 'amount amount del';row-gap:4px}
+  #panel-pagos .pdate{grid-area:date;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.35}
+  #panel-pagos .pamt{grid-area:amount;min-width:0;text-align:left}
+  #panel-pagos .pdel{grid-area:del}
   .hora-dia-row{flex-wrap:wrap}
   .hora-dia-label{min-width:0}
   .month-calendar{width:840px}
@@ -542,6 +548,9 @@ input[type="file"].form-input{cursor:pointer}
       <div class="auth-actions">
         <button type="button" class="btn-primary" id="auth-submit">Entrar</button>
         <button type="button" class="btn-ghost" id="auth-reset">Recuperar contraseña</button>
+      </div>
+      <div class="auth-actions" style="margin-top:.55rem">
+        <button type="button" class="btn-google" id="auth-google">Continuar con Google</button>
       </div>
       <div class="auth-note" id="auth-setup-note">Configura Firebase para habilitar acceso multiusuario y sincronización.</div>
     </div>
@@ -683,6 +692,7 @@ input[type="file"].form-input{cursor:pointer}
     const nameGroup=document.getElementById('auth-name-group');
     const submitBtn=document.getElementById('auth-submit');
     const resetBtn=document.getElementById('auth-reset');
+    const googleBtn=document.getElementById('auth-google');
     if(loginTab) loginTab.classList.toggle('active',mode==='login');
     if(registerTab) registerTab.classList.toggle('active',mode==='register');
     if(nameGroup) nameGroup.style.display=mode==='register'?'flex':'none';
@@ -728,6 +738,10 @@ input[type="file"].form-input{cursor:pointer}
       if(e) e.preventDefault();
       callWhenReady('sendPasswordReset');
     };
+    const doGoogle=e=>{
+      if(e) e.preventDefault();
+      callWhenReady('signInWithGoogle');
+    };
     const submitOnEnter=e=>{
       if(e.key==='Enter') doSubmit(e);
     };
@@ -753,6 +767,10 @@ input[type="file"].form-input{cursor:pointer}
     if(resetBtn && !resetBtn.dataset.authFallbackBound){
       resetBtn.addEventListener('click',doReset);
       resetBtn.dataset.authFallbackBound='1';
+    }
+    if(googleBtn && !googleBtn.dataset.authFallbackBound){
+      googleBtn.addEventListener('click',doGoogle);
+      googleBtn.dataset.authFallbackBound='1';
     }
     if(pwdInput && !pwdInput.dataset.authFallbackBound){
       pwdInput.addEventListener('keydown',submitOnEnter);
@@ -784,6 +802,11 @@ input[type="file"].form-input{cursor:pointer}
   if(typeof window.sendPasswordReset!=='function'){
     window.sendPasswordReset=function(){
       window.__authActionQueue.push('reset');
+    };
+  }
+  if(typeof window.signInWithGoogle!=='function'){
+    window.signInWithGoogle=function(){
+      window.__authActionQueue.push('google');
     };
   }
 })();
@@ -1322,6 +1345,7 @@ let auth=null;
 let db=null;
 let currentUser=null;
 let therapistProfile={};
+let authSubmitInFlight=false;
 let saveTimer=null;
 let isHydrating=false;
 let firebaseConfigMissing=false;
@@ -1329,6 +1353,7 @@ let forceProfileSetupOnNextAuth=false;
 const INACTIVITY_LOGOUT_MS=10*60*1000;
 let inactivityTimer=null;
 let inactivityHandlersBound=false;
+let lastActivityAt=Date.now();
 const FIREBASE_CONFIG_FALLBACK={
   apiKey:'AIzaSyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI',
   authDomain:'registro-de-pacientes-f729f.firebaseapp.com',
@@ -1458,6 +1483,7 @@ function bindAuthTabs(){
   const registerTab=document.getElementById('auth-tab-register');
   const submitBtn=document.getElementById('auth-submit');
   const resetBtn=document.getElementById('auth-reset');
+  const googleBtn=document.getElementById('auth-google');
   const pwdInput=document.getElementById('auth-password');
   const nameInput=document.getElementById('auth-name');
   if(loginTab && !loginTab.dataset.authMainBound){
@@ -1475,6 +1501,10 @@ function bindAuthTabs(){
   if(resetBtn && !resetBtn.dataset.authMainBound){
     resetBtn.addEventListener('click',sendPasswordReset);
     resetBtn.dataset.authMainBound='1';
+  }
+  if(googleBtn && !googleBtn.dataset.authMainBound){
+    googleBtn.addEventListener('click',signInWithGoogle);
+    googleBtn.dataset.authMainBound='1';
   }
   const submitOnEnter=e=>{
     if(e.key==='Enter') submitAuth();
@@ -1604,7 +1634,17 @@ function unlockApp(){
   document.body.classList.remove('auth-locked');
 }
 
+function setAuthButtonsBusy(isBusy){
+  const submitBtn=document.getElementById('auth-submit');
+  const resetBtn=document.getElementById('auth-reset');
+  const googleBtn=document.getElementById('auth-google');
+  if(submitBtn) submitBtn.disabled=!!isBusy;
+  if(resetBtn) resetBtn.disabled=!!isBusy;
+  if(googleBtn) googleBtn.disabled=!!isBusy;
+}
+
 async function submitAuth(){
+  if(authSubmitInFlight) return;
   if(!firebaseReady||!auth){
     try { await initFirebase(); } catch(err){ console.error(err); }
   }
@@ -1612,15 +1652,22 @@ async function submitAuth(){
     showAuthMessage('No pude inicializar Firebase. Revisa conexión y dominio autorizado.', 'error');
     return;
   }
-  const email=document.getElementById('auth-email').value.trim();
+  const email=document.getElementById('auth-email').value.trim().toLowerCase();
   const password=document.getElementById('auth-password').value;
   const name=document.getElementById('auth-name').value.trim();
   if(!email||!password){showAuthMessage('Escribe correo y contraseña.', 'error');return;}
+  authSubmitInFlight=true;
+  setAuthButtonsBusy(true);
   try {
     showAuthMessage(authMode==='login'?'Iniciando sesión...':'Creando cuenta...', 'info');
     if(authMode==='login'){
       await auth.signInWithEmailAndPassword(email,password);
     } else {
+      const methods=await auth.fetchSignInMethodsForEmail(email);
+      if(Array.isArray(methods)&&methods.length){
+        showAuthMessage('Ese correo ya tiene una cuenta. Inicia sesión o recupera contraseña.', 'error');
+        return;
+      }
       const cred=await auth.createUserWithEmailAndPassword(email,password);
       forceProfileSetupOnNextAuth=true;
       if(name) await cred.user.updateProfile({displayName:name});
@@ -1629,6 +1676,9 @@ async function submitAuth(){
   } catch(err){
     console.error(err);
     showAuthMessage(mapFirebaseError(err), 'error');
+  } finally {
+    authSubmitInFlight=false;
+    setAuthButtonsBusy(false);
   }
 }
 
@@ -1637,24 +1687,56 @@ async function sendPasswordReset(){
     try { await initFirebase(); } catch(err){ console.error(err); }
   }
   if(!firebaseReady||!auth){showAuthMessage('No pude inicializar Firebase para recuperar contraseña.', 'error');return;}
-  const email=document.getElementById('auth-email').value.trim();
+  const email=document.getElementById('auth-email').value.trim().toLowerCase();
   if(!email){showAuthMessage('Escribe tu correo para enviarte un enlace de recuperación.', 'error');return;}
   try {
     await auth.sendPasswordResetEmail(email);
-    showAuthMessage('Te envié un correo para restablecer tu contraseña.', 'info');
+    showAuthMessage('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.', 'info');
   } catch(err){
     console.error(err);
     showAuthMessage(mapFirebaseError(err), 'error');
   }
 }
 
+async function signInWithGoogle(){
+  if(authSubmitInFlight) return;
+  if(!firebaseReady||!auth){
+    try { await initFirebase(); } catch(err){ console.error(err); }
+  }
+  if(!firebaseReady||!auth){
+    showAuthMessage('No pude inicializar Firebase. Revisa conexión y dominio autorizado.', 'error');
+    return;
+  }
+  authSubmitInFlight=true;
+  setAuthButtonsBusy(true);
+  try {
+    showAuthMessage('Abriendo Google...', 'info');
+    const provider=new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:'select_account'});
+    await auth.signInWithPopup(provider);
+    showAuthMessage('');
+  } catch(err){
+    if(err?.code==='auth/popup-blocked'||err?.code==='auth/popup-closed-by-user'){
+      showAuthMessage('No pude abrir la ventana emergente. Intenta de nuevo y permite popups para este sitio.', 'error');
+    } else {
+      console.error(err);
+      showAuthMessage(mapFirebaseError(err), 'error');
+    }
+  } finally {
+    authSubmitInFlight=false;
+    setAuthButtonsBusy(false);
+  }
+}
+
 window.submitAuth=submitAuth;
 window.sendPasswordReset=sendPasswordReset;
+window.signInWithGoogle=signInWithGoogle;
 if(Array.isArray(window.__authActionQueue)&&window.__authActionQueue.length){
   const queued=window.__authActionQueue.splice(0);
   queued.forEach(action=>{
     if(action==='submit') submitAuth();
     if(action==='reset') sendPasswordReset();
+    if(action==='google') signInWithGoogle();
   });
 }
 
@@ -1679,7 +1761,10 @@ function mapFirebaseError(err){
     'auth/weak-password':'La contraseña debe tener al menos 6 caracteres.',
     'auth/missing-password':'Escribe una contraseña.',
     'auth/network-request-failed':'No hubo conexión con Firebase.',
-    'auth/too-many-requests':'Demasiados intentos. Intenta más tarde.'
+    'auth/too-many-requests':'Demasiados intentos. Intenta más tarde.',
+    'auth/account-exists-with-different-credential':'Ese correo ya existe con otro método de acceso.',
+    'auth/popup-closed-by-user':'Se cerró la ventana de inicio con Google.',
+    'auth/popup-blocked':'El navegador bloqueó la ventana emergente de Google.'
   }[code]||(`No pude completar la autenticación. Código: ${code||'desconocido'}`);
 }
 
@@ -1695,29 +1780,52 @@ function clearInactivityLogoutTimer(){
   inactivityTimer=null;
 }
 
+async function signOutDueToInactivity(){
+  if(!auth||!currentUser) return;
+  try {
+    await auth.signOut();
+    showAuthMessage('Sesión cerrada por 10 minutos de inactividad.', 'info');
+    setSyncStatus('Sesión cerrada por inactividad');
+  } catch(err){
+    console.error('No se pudo cerrar sesión por inactividad',err);
+  }
+}
+
+function shouldSignOutForInactivity(){
+  return Date.now()-lastActivityAt>=INACTIVITY_LOGOUT_MS;
+}
+
+function registerUserActivity(){
+  lastActivityAt=Date.now();
+  if(currentUser) scheduleInactivityLogout();
+}
+
 function scheduleInactivityLogout(){
   clearInactivityLogoutTimer();
   if(!currentUser||!auth) return;
   inactivityTimer=setTimeout(async ()=>{
-    try {
-      await auth.signOut();
-      showAuthMessage('Sesión cerrada por 10 minutos de inactividad.', 'info');
-      setSyncStatus('Sesión cerrada por inactividad');
-    } catch(err){
-      console.error('No se pudo cerrar sesión por inactividad',err);
+    if(shouldSignOutForInactivity()){
+      await signOutDueToInactivity();
+      return;
     }
+    scheduleInactivityLogout();
   },INACTIVITY_LOGOUT_MS);
 }
 
 function bindInactivityHandlers(){
   if(inactivityHandlersBound) return;
-  const touch=()=>{
-    if(currentUser) scheduleInactivityLogout();
-  };
+  const touch=()=>registerUserActivity();
   ['mousedown','keydown','keyup','input','touchstart','touchend','pointerdown','scroll','change'].forEach(evt=>{
     document.addEventListener(evt,touch,{passive:true});
   });
   window.addEventListener('focus',touch);
+  document.addEventListener('visibilitychange',()=>{
+    if(!currentUser) return;
+    if(document.visibilityState==='visible'){
+      if(shouldSignOutForInactivity()) signOutDueToInactivity();
+      else scheduleInactivityLogout();
+    }
+  });
   inactivityHandlersBound=true;
 }
 
@@ -1733,6 +1841,7 @@ async function handleAuthStateChanged(user){
     return;
   }
   bindInactivityHandlers();
+  lastActivityAt=Date.now();
   scheduleInactivityLogout();
   unlockApp();
   await hydrateUserStore(user.uid);
@@ -2553,7 +2662,12 @@ function confirmarTodayReposicion(pid){
   const newTime=document.getElementById('rep-today-hora').value;
   if(!newDate||!newTime){alert('Completa fecha y hora');return;}
   const todayStr=getTodayViewDate();
-  if(newDate===todayStr){alert('Elige una fecha distinta a la seleccionada');return;}
+  const sourceExisting=p.sesiones.find(s=>s.fecha===todayStr&&!s.skipped);
+  const sourceHora=(sourceExisting?.hora)||horaDiaFecha(p,todayStr);
+  if(newDate===todayStr&&newTime===sourceHora){
+    alert('Elige una fecha distinta o una hora distinta.');
+    return;
+  }
   if(isBeforeTreatmentStart(p,newDate)){alert(`Fecha anterior al inicio de tratamiento (${p.inicio}).`);return;}
   let source=p.sesiones.find(s=>s.fecha===todayStr&&!s.skipped);
   if(!source){
@@ -2563,6 +2677,17 @@ function confirmarTodayReposicion(pid){
   }
   const billable=t=>t==='asistio'||t==='falta'||t==='extra';
   if(p.pago==='sesion'&&billable(source.tipo)&&!source.noCharge) p.adeudo=Math.max(0,p.adeudo-tarifaVigente(p));
+  if(newDate===todayStr){
+    source.hora=newTime;
+    if(source.tipo!=='reposicion'&&source.tipo!=='cancelada') source.tipo='reposicion';
+    addLog(p,'reposicion',`Sesión ${todayStr} reajustada a ${newTime}`);
+    exposeSesMap(p);
+    saveState();
+    closeModal();
+    renderHoy();
+    if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
+    return;
+  }
   source.originalTipo=source.tipo;
   source.skipped=true;
   source.tipo='reprogramada';
@@ -3047,7 +3172,12 @@ function confirmarReposicionDesdePopover(pid,dateStr){
     alert(`No puedes mover una sesión a una fecha anterior al inicio (${p.inicio}).`);
     return;
   }
-  if(nuevaIso===dateStr){alert('Elige fecha distinta');return;}
+  const sourceSes=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped);
+  const sourceHora=(sourceSes?.hora)||horaDiaFecha(p,dateStr);
+  if(nuevaIso===dateStr&&newTime===sourceHora){
+    alert('Elige una fecha distinta o una hora distinta.');
+    return;
+  }
   doReposicion(pid,dateStr,nuevaIso,newTime);
   closeModal();
 }
@@ -3060,6 +3190,27 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
     return;
   }
   if(!ensurePatientActiveForScheduling(p)) return;
+  if(nuevaIso===dateStr){
+    const sourceSameDay=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped);
+    if(sourceSameDay){
+      sourceSameDay.hora=nuevaHora;
+      if(sourceSameDay.tipo==='reprogramada'){
+        sourceSameDay.tipo=sourceSameDay.originalTipo||'reposicion';
+        delete sourceSameDay.skipped;
+        delete sourceSameDay.movedTo;
+        delete sourceSameDay.movedTime;
+      }
+      if(sourceSameDay.tipo!=='reposicion'&&sourceSameDay.tipo!=='cancelada') sourceSameDay.tipo='reposicion';
+      addLog(p,'reposicion',`Sesión ${dateStr} reagendada en el mismo día a las ${nuevaHora}`);
+      refreshAfterSessionMutation(p);
+      return;
+    }
+    const nSameDay=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
+    p.sesiones.push({id:'s'+(nextSesId++),num:nSameDay,fecha:dateStr,tipo:'reposicion',hora:nuevaHora,fromDate:dateStr});
+    addLog(p,'reposicion',`Sesión ${dateStr} registrada como reposición a las ${nuevaHora}`);
+    refreshAfterSessionMutation(p);
+    return;
+  }
   const tv=tarifaVigente(p);
   const source=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped);
   if(source){
@@ -3214,8 +3365,11 @@ function registrarDesdePop(pid,dateStr,tipo){
       alert(`No puedes mover una sesión a una fecha anterior al inicio (${p.inicio}).`);
       return;
     }
-    if(nuevaIso===dateStr){
-      alert('Elige una fecha distinta para la reposición.');
+    const source=existing;
+    const sourceHora=(source?.hora)||horaDiaFecha(p,dateStr);
+    const nuevaHora=horaDiaFecha(p,nuevaIso);
+    if(nuevaIso===dateStr&&nuevaHora===sourceHora){
+      alert('Elige una fecha distinta o cambia la hora para la reposición.');
       return;
     }
     const FechaObjeto = new Date(`${y}-${m}-${d}T12:00`);
@@ -3224,9 +3378,7 @@ function registrarDesdePop(pid,dateStr,tipo){
       return;
     }
 
-    const source=existing;
-    const sourceHora=horaDiaFecha(p,dateStr);
-    const nuevaHora=horaDiaFecha(p,nuevaIso);
+    const sourceHora=source?.hora||horaDiaFecha(p,dateStr);
     if(source){
       if(p.pago==='sesion' && (source.tipo==='asistio'||source.tipo==='falta'||source.tipo==='extra')){
         p.adeudo=Math.max(0,p.adeudo-tv); // descontar carga previa
@@ -3450,7 +3602,7 @@ function buildCalendar(p){
     } else if(!isFlexibleDate&&!isProg&&!isFuture&&!beforeStart){
       pip=isInactive?'':`<div class="cal-pip nueva" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Agregar nueva sesión">+ Nueva</div>`;
     } else if(isProg&&isFuture){
-      pip=`<div class="cal-prog-dot" title="${horaRango||''}"></div>`;
+      pip=isInactive?`<div class="cal-prog-dot" title="${horaRango||''}"></div>`:`<div class="cal-pip nueva" onclick="openPopover(${p.id},'${dateStr}',null,this)" title="Sesión futura programada · clic para ajustar">Programada</div>`;
     }
     const horaLabel=(isProg||ses)?`<div class="cal-hora">${horaRango||''}</div>`:'';
     const inactiveReasonLabel=isInactiveStart?statusReasonLabel(p.statusReason):'';
