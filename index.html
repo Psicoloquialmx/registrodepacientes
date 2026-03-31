@@ -728,6 +728,7 @@ input[type="file"].form-input{cursor:pointer}
     const registerTab=document.getElementById('auth-tab-register');
     const submitBtn=document.getElementById('auth-submit');
     const resetBtn=document.getElementById('auth-reset');
+    const googleBtn=document.getElementById('auth-google');
     const pwdInput=document.getElementById('auth-password');
     const nameInput=document.getElementById('auth-name');
     const doSubmit=e=>{
@@ -3378,7 +3379,6 @@ function registrarDesdePop(pid,dateStr,tipo){
       return;
     }
 
-    const sourceHora=source?.hora||horaDiaFecha(p,dateStr);
     if(source){
       if(p.pago==='sesion' && (source.tipo==='asistio'||source.tipo==='falta'||source.tipo==='extra')){
         p.adeudo=Math.max(0,p.adeudo-tv); // descontar carga previa
