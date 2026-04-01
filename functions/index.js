@@ -26,6 +26,44 @@ const CALENDAR_CONFIG = {
   encrypt_secret: process.env.ENCRYPT_SECRET || LEGACY_CALENDAR_CONFIG.encrypt_secret || 'axolotl_therapy_calendar_256'
 };
 
+const AGENDA_CALENDAR_NAME = 'Agenda de Pacientes';
+
+/**
+ * Finds the 'Agenda de Pacientes' secondary calendar in the user's account,
+ * or creates it if it doesn't exist yet.
+ */
+async function findOrCreateAgendaCalendar(calendarClient) {
+  // Try to find an existing calendar with the exact name
+  try {
+    const list = await calendarClient.calendarList.list({ maxResults: 250 });
+    const existing = (list.data.items || []).find((c) => c.summary === AGENDA_CALENDAR_NAME);
+    if (existing) return existing.id;
+  } catch (_err) {
+    // If listing fails, fall through and attempt creation
+  }
+
+  // Create the secondary calendar
+  const created = await calendarClient.calendars.insert({
+    requestBody: {
+      summary: AGENDA_CALENDAR_NAME,
+      description: 'Sesiones de pacientes — RegistroPX',
+      timeZone: 'America/Mexico_City',
+    },
+  });
+
+  // Apply a teal/sage color to make it visually distinct
+  try {
+    await calendarClient.calendarList.patch({
+      calendarId: created.data.id,
+      requestBody: { colorId: '8' }, // graphite/blue-ish; options: 1-11
+    });
+  } catch (_err) {
+    // Color is cosmetic — ignore if it fails
+  }
+
+  return created.data.id;
+}
+
 function getOAuthClient() {
   if (!CALENDAR_CONFIG.client_secret) {
     throw new Error('Missing GOOGLE_CLIENT_SECRET environment variable.');
@@ -83,10 +121,26 @@ async function getCalendarClientForUser(uid) {
   const integration = await getGoogleIntegration(uid);
   const oauth2Client = getOAuthClient();
   oauth2Client.setCredentials({ refresh_token: integration.refreshToken });
+  const calendarClient = google.calendar({ version: 'v3', auth: oauth2Client });
+
+  let calendarId = integration.calendarId;
+
+  // Migrate users who were connected before the dedicated calendar feature:
+  // if their stored calendarId is still 'primary', find/create the sub-calendar.
+  if (!calendarId || calendarId === 'primary') {
+    try {
+      calendarId = await findOrCreateAgendaCalendar(calendarClient);
+      await integration.ref.update({ calendarId });
+    } catch (_err) {
+      console.warn('Could not migrate to dedicated calendar, falling back to primary', _err && _err.message);
+      calendarId = 'primary';
+    }
+  }
+
   return {
     oauth2Client,
-    calendar: google.calendar({ version: 'v3', auth: oauth2Client }),
-    calendarId: integration.calendarId,
+    calendar: calendarClient,
+    calendarId,
   };
 }
 
@@ -195,15 +249,24 @@ exports.googleCalendarCallback = functions.https.onRequest(async (req, res) => {
     oauth2Client.setCredentials(tokens);
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-    let primary = null;
+
+    // Get the user's primary email for display purposes
+    let primaryEmail = '';
     try {
       const calendars = await calendar.calendarList.list({ maxResults: 50 });
-      primary = (calendars.data.items || []).find((c) => c.primary) || (calendars.data.items || [])[0] || null;
+      const primary = (calendars.data.items || []).find((c) => c.primary) || null;
+      primaryEmail = primary?.id || ''; // primary calendar id is the user's email
     } catch (_err) {
-      // Some scopes may not allow listing calendars; fallback to default primary calendar.
-      primary = null;
+      // Non-blocking
     }
-    const calendarId = primary?.id || 'primary';
+
+    // Find or create the dedicated 'Agenda de Pacientes' sub-calendar
+    let calendarId = 'primary'; // safe fallback
+    try {
+      calendarId = await findOrCreateAgendaCalendar(calendar);
+    } catch (_err) {
+      console.warn('Could not find/create Agenda de Pacientes calendar, falling back to primary', _err && _err.message);
+    }
 
     const integrationRef = db
       .collection('users')
@@ -217,7 +280,7 @@ exports.googleCalendarCallback = functions.https.onRequest(async (req, res) => {
     const payload = {
       connected: true,
       calendarId,
-      email: primary?.summary || '',
+      email: primaryEmail,
       scope: tokens.scope || '',
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     };
