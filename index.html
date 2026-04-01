@@ -1423,6 +1423,88 @@ async function startGoogleCalendarConnect(){
   }
 }
 
+function parseSessionDateTime(dateStr,timeStr){
+  const safeTime=/^\d{2}:\d{2}$/.test(String(timeStr||''))?timeStr:'10:00';
+  const dt=new Date(`${dateStr}T${safeTime}:00`);
+  if(Number.isNaN(dt.getTime())) return null;
+  return dt;
+}
+
+function buildSessionIsoWindow(dateStr,timeStr,durationMin){
+  const start=parseSessionDateTime(dateStr,timeStr);
+  if(!start) return null;
+  const mins=Math.max(15,parseInt(durationMin,10)||45);
+  const end=new Date(start.getTime()+mins*60*1000);
+  return {startIso:start.toISOString(),endIso:end.toISOString()};
+}
+
+function calendarSessionDescriptionForPatient(p,ses){
+  const tipo=ses?.tipo||'asistio';
+  return `RegistroPX | Paciente: ${p?.nombre||'Paciente'} | Tipo: ${tipo}`;
+}
+
+async function syncSessionToGoogleCalendar(action,p,ses,opts){
+  const options=(opts&&typeof opts==='object')?opts:{};
+  if(!calendarIntegration?.connected||!currentUser||!auth||!p||!ses) return;
+  try {
+    const idToken=await currentUser.getIdToken();
+    if(action==='delete'){
+      const deleteResp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarDeleteSessionProxy`,{
+        method:'POST',
+        headers:{
+          Authorization:`Bearer ${idToken}`,
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+          patientId:p.id,
+          sessionId:ses.id
+        })
+      });
+      if(!deleteResp.ok){
+        const errData=await deleteResp.json().catch(()=>({}));
+        throw new Error(errData?.detail?`${errData?.error||'Delete failed'}: ${errData.detail}`:(errData?.error||'Delete failed'));
+      }
+      return;
+    }
+
+    const dateStr=options.dateStr||ses.fecha;
+    const hora=options.hora||ses.hora||horaDiaFecha(p,dateStr);
+    const windowIso=buildSessionIsoWindow(dateStr,hora,therapistProfile?.defaultSessionDuration||45);
+    if(!windowIso) return;
+
+    const upsertResp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarUpsertSessionProxy`,{
+      method:'POST',
+      headers:{
+        Authorization:`Bearer ${idToken}`,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        patientId:p.id,
+        sessionId:ses.id,
+        title:`Sesion - ${p.nombre||'Paciente'}`,
+        description:calendarSessionDescriptionForPatient(p,ses),
+        startIso:windowIso.startIso,
+        endIso:windowIso.endIso
+      })
+    });
+
+    if(!upsertResp.ok){
+      const errData=await upsertResp.json().catch(()=>({}));
+      throw new Error(errData?.detail?`${errData?.error||'Upsert failed'}: ${errData.detail}`:(errData?.error||'Upsert failed'));
+    }
+  } catch(err){
+    console.warn('Calendar sync failed',err);
+  }
+}
+
+function triggerCalendarUpsert(p,ses,opts){
+  syncSessionToGoogleCalendar('upsert',p,ses,opts);
+}
+
+function triggerCalendarDelete(p,ses){
+  syncSessionToGoogleCalendar('delete',p,ses);
+}
+
 function getDefaultTherapistProfile(){
   return {
     displayName:'',
@@ -2663,6 +2745,7 @@ function saveTodaySession(pid){
   }
 
   ses.todaySaved=true;
+  triggerCalendarUpsert(p,ses,{dateStr, hora:ses.hora||defaultHora});
 
   exposeSesMap(p);
   saveState();
@@ -2693,8 +2776,11 @@ function saveTerapeutaCancel(pid){
     ses.tipo='cancelada';
     ses.noCharge=true;
     ses.therapistCancel=true;
+    triggerCalendarDelete(p,ses);
   } else {
-    p.sesiones.push({id:'s'+(nextSesId++),num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,fecha:dateStr,tipo:'cancelada',noCharge:true,therapistCancel:true,hora:horaDiaFecha(p,dateStr)});
+    const newCancel={id:'s'+(nextSesId++),num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,fecha:dateStr,tipo:'cancelada',noCharge:true,therapistCancel:true,hora:horaDiaFecha(p,dateStr)};
+    p.sesiones.push(newCancel);
+    triggerCalendarDelete(p,newCancel);
   }
   const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===dateStr);
   if(autoPay){
@@ -2712,7 +2798,9 @@ function undoTerapeutaCancel(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   const dateStr=getTodayViewDate();
+  const removed=p.sesiones.find(s=>s.fecha===dateStr&&s.therapistCancel);
   p.sesiones=p.sesiones.filter(s=>!(s.fecha===dateStr&&s.therapistCancel));
+  if(removed) triggerCalendarDelete(p,removed);
   addLog(p,'datos',`Cancelación del terapeuta deshecha: ${dateStr}`);
   exposeSesMap(p);
   saveState();
@@ -2760,6 +2848,7 @@ function confirmarTodayReposicion(pid){
   if(newDate===todayStr){
     source.hora=newTime;
     if(source.tipo!=='reposicion'&&source.tipo!=='cancelada') source.tipo='reposicion';
+    triggerCalendarUpsert(p,source,{dateStr:todayStr,hora:newTime});
     addLog(p,'reposicion',`Sesión ${todayStr} reajustada a ${newTime}`);
     exposeSesMap(p);
     saveState();
@@ -2773,14 +2862,18 @@ function confirmarTodayReposicion(pid){
   source.tipo='reprogramada';
   source.movedTo=newDate;
   source.movedTime=newTime;
+  triggerCalendarDelete(p,source);
   let target=p.sesiones.find(s=>s.fecha===newDate&&!s.skipped&&s.tipo!=='reprogramada');
   if(!target){
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:newDate,tipo:'reposicion',hora:newTime,fromDate:todayStr});
+    const newTarget={id:'s'+(nextSesId++),num:n,fecha:newDate,tipo:'reposicion',hora:newTime,fromDate:todayStr};
+    p.sesiones.push(newTarget);
+    triggerCalendarUpsert(p,newTarget,{dateStr:newDate,hora:newTime});
   } else {
     target.tipo='reposicion';
     target.hora=newTime;
     target.fromDate=todayStr;
+    triggerCalendarUpsert(p,target,{dateStr:newDate,hora:newTime});
   }
   addLog(p,'reposicion',`Sesión ${todayStr} reagendada a ${newDate} ${newTime}`);
   exposeSesMap(p);
@@ -2799,7 +2892,9 @@ function cancelTodayReposicion(pid){
   const targetDate=source.movedTo;
   const targetTime=source.movedTime;
   if(targetDate){
+    const targetSession=p.sesiones.find(s=>s.fecha===targetDate&&s.tipo==='reposicion'&&s.hora===targetTime&&s.fromDate===todayStr);
     p.sesiones=p.sesiones.filter(s=>!(s.fecha===targetDate&&s.tipo==='reposicion'&&s.hora===targetTime&&s.fromDate===todayStr));
+    if(targetSession) triggerCalendarDelete(p,targetSession);
   }
   if(source.originalTipo!==undefined&&source.originalTipo!==null){
     source.tipo=source.originalTipo;
@@ -2807,7 +2902,9 @@ function cancelTodayReposicion(pid){
     delete source.originalTipo;
     delete source.movedTo;
     delete source.movedTime;
+    triggerCalendarUpsert(p,source,{dateStr:todayStr,hora:source.hora||horaDiaFecha(p,todayStr)});
   } else {
+    triggerCalendarDelete(p,source);
     p.sesiones=p.sesiones.filter(s=>s.id!==source.id);
   }
   addLog(p,'reposicion',`Reposición de ${todayStr} cancelada`);
@@ -4882,13 +4979,15 @@ function saveUnplannedSession(){
     alert('No puedes registrar sesiones antes del inicio de tratamiento.');
     return;
   }
-  p.sesiones.push({
+  const newSession={
     id:'s'+(nextSesId++),
     num:Math.max(...p.sesiones.map(s=>s.num||0))+1,
     fecha:todayStr,
     hora:hora,
     tipo:'asistio'
-  });
+  };
+  p.sesiones.push(newSession);
+  triggerCalendarUpsert(p,newSession,{dateStr:todayStr,hora});
   addLog(p,'sesiones',`Sesión no prevista registrada a las ${hora}`);
   saveState();
   closeModal();

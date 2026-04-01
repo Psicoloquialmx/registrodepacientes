@@ -42,6 +42,54 @@ function encryptText(plainText) {
   return `${iv.toString('hex')}.${tag.toString('hex')}.${encrypted.toString('hex')}`;
 }
 
+function decryptText(cipherText) {
+  const key = crypto.createHash('sha256').update(String(CALENDAR_CONFIG.encrypt_secret)).digest();
+  const [ivHex, tagHex, encHex] = String(cipherText || '').split('.');
+  if (!ivHex || !tagHex || !encHex) throw new Error('Invalid encrypted payload');
+  const iv = Buffer.from(ivHex, 'hex');
+  const tag = Buffer.from(tagHex, 'hex');
+  const encrypted = Buffer.from(encHex, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return decrypted.toString('utf8');
+}
+
+function buildSessionKey(uid, patientId, sessionId) {
+  return `${uid}_${String(patientId)}_${String(sessionId)}`.replace(/[^\w-]/g, '_');
+}
+
+async function getGoogleIntegration(uid) {
+  const ref = db
+    .collection('users')
+    .doc(uid)
+    .collection('private')
+    .doc('googleCalendarIntegration');
+
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error('Google Calendar is not connected');
+  const data = snap.data() || {};
+  if (!data.connected) throw new Error('Google Calendar is not connected');
+  if (!data.refreshTokenEncrypted) throw new Error('Missing refresh token');
+
+  return {
+    ref,
+    calendarId: data.calendarId || 'primary',
+    refreshToken: decryptText(data.refreshTokenEncrypted),
+  };
+}
+
+async function getCalendarClientForUser(uid) {
+  const integration = await getGoogleIntegration(uid);
+  const oauth2Client = getOAuthClient();
+  oauth2Client.setCredentials({ refresh_token: integration.refreshToken });
+  return {
+    oauth2Client,
+    calendar: google.calendar({ version: 'v3', auth: oauth2Client }),
+    calendarId: integration.calendarId,
+  };
+}
+
 function decodeBearerToken(req) {
   const authHeader = req.get('x-firebase-auth') || req.get('authorization') || '';
   if (!authHeader.startsWith('Bearer ')) return null;
@@ -60,7 +108,7 @@ async function verifyRequestUser(req) {
 
 function setCors(req, res) {
   res.set('Access-Control-Allow-Origin', CALENDAR_CONFIG.app_url);
-  res.set('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Firebase-Auth');
   if (req.method === 'OPTIONS') {
     res.status(204).send('');
@@ -223,6 +271,160 @@ exports.googleCalendarStatus = functions.https.onRequest(async (req, res) => {
     console.error('googleCalendarStatus error', err);
     return res.status(500).json({
       error: 'Failed to read Google Calendar status',
+      detail: String(err && err.message ? err.message : err),
+    });
+  }
+});
+
+exports.googleCalendarUpsertSession = functions.https.onRequest(async (req, res) => {
+  try {
+    if (setCors(req, res)) return;
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const decoded = await verifyRequestUser(req);
+    if (!decoded || !decoded.uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const body = req.body || {};
+    const patientId = body.patientId;
+    const sessionId = body.sessionId;
+    const title = body.title || 'Sesion';
+    const description = body.description || '';
+    const startIso = body.startIso;
+    const endIso = body.endIso;
+
+    if (!patientId || !sessionId || !startIso || !endIso) {
+      return res.status(400).json({ error: 'Missing required fields: patientId, sessionId, startIso, endIso' });
+    }
+
+    const uid = decoded.uid;
+    const sessionKey = buildSessionKey(uid, patientId, sessionId);
+    const mapDocId = `googleCalendarSessionMap_${sessionKey}`;
+    const mapRef = db.collection('users').doc(uid).collection('private').doc(mapDocId);
+    const mapSnap = await mapRef.get();
+    const mapData = mapSnap.exists ? (mapSnap.data() || {}) : {};
+
+    const { calendar, calendarId } = await getCalendarClientForUser(uid);
+
+    const eventPayload = {
+      summary: title,
+      description,
+      start: { dateTime: startIso, timeZone: 'America/Mexico_City' },
+      end: { dateTime: endIso, timeZone: 'America/Mexico_City' },
+      extendedProperties: {
+        private: {
+          source: 'registropx',
+          sessionKey,
+          patientId: String(patientId),
+          sessionId: String(sessionId),
+        },
+      },
+    };
+
+    let eventId = mapData.eventId || null;
+
+    if (eventId) {
+      try {
+        await calendar.events.update({
+          calendarId,
+          eventId,
+          requestBody: eventPayload,
+        });
+      } catch (e) {
+        const status = e && e.code ? Number(e.code) : 0;
+        if (status === 404) {
+          const created = await calendar.events.insert({
+            calendarId,
+            requestBody: eventPayload,
+          });
+          eventId = created.data.id;
+        } else {
+          throw e;
+        }
+      }
+    } else {
+      const created = await calendar.events.insert({
+        calendarId,
+        requestBody: eventPayload,
+      });
+      eventId = created.data.id;
+    }
+
+    await mapRef.set(
+      {
+        sessionKey,
+        patientId: String(patientId),
+        sessionId: String(sessionId),
+        eventId,
+        calendarId,
+        status: 'linked',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return res.status(200).json({ ok: true, sessionKey, eventId, calendarId });
+  } catch (err) {
+    console.error('googleCalendarUpsertSession error', err);
+    return res.status(500).json({
+      error: 'Failed to upsert calendar session',
+      detail: String(err && err.message ? err.message : err),
+    });
+  }
+});
+
+exports.googleCalendarDeleteSession = functions.https.onRequest(async (req, res) => {
+  try {
+    if (setCors(req, res)) return;
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const decoded = await verifyRequestUser(req);
+    if (!decoded || !decoded.uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const body = req.body || {};
+    const patientId = body.patientId;
+    const sessionId = body.sessionId;
+
+    if (!patientId || !sessionId) {
+      return res.status(400).json({ error: 'Missing required fields: patientId, sessionId' });
+    }
+
+    const uid = decoded.uid;
+    const sessionKey = buildSessionKey(uid, patientId, sessionId);
+    const mapDocId = `googleCalendarSessionMap_${sessionKey}`;
+    const mapRef = db.collection('users').doc(uid).collection('private').doc(mapDocId);
+    const mapSnap = await mapRef.get();
+
+    if (!mapSnap.exists) {
+      return res.status(200).json({ ok: true, deleted: false, reason: 'mapping_not_found' });
+    }
+
+    const mapData = mapSnap.data() || {};
+    const eventId = mapData.eventId || null;
+    const calendarId = mapData.calendarId || 'primary';
+
+    if (eventId) {
+      try {
+        const { calendar } = await getCalendarClientForUser(uid);
+        await calendar.events.delete({ calendarId, eventId });
+      } catch (e) {
+        const status = e && e.code ? Number(e.code) : 0;
+        if (status !== 404) throw e;
+      }
+    }
+
+    await mapRef.set(
+      {
+        status: 'deleted',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    return res.status(200).json({ ok: true, deleted: true, sessionKey });
+  } catch (err) {
+    console.error('googleCalendarDeleteSession error', err);
+    return res.status(500).json({
+      error: 'Failed to delete calendar session',
       detail: String(err && err.message ? err.message : err),
     });
   }
