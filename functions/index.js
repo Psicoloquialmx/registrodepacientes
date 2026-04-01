@@ -6,13 +6,24 @@ const { google } = require('googleapis');
 admin.initializeApp();
 const db = admin.firestore();
 
+function getLegacyCalendarConfig() {
+  try {
+    const cfg = functions.config();
+    return (cfg && cfg.calendar) || {};
+  } catch (_err) {
+    return {};
+  }
+}
+
+const LEGACY_CALENDAR_CONFIG = getLegacyCalendarConfig();
+
 // Config values - use environment variables or defaults
 const CALENDAR_CONFIG = {
-  client_id: process.env.GOOGLE_CLIENT_ID || '327033644024-dcqvtbaa08ki2he4m4jlmfgt6pf8ma8h.apps.googleusercontent.com',
-  client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-  redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'https://registropx.netlify.app/api/google-calendar/callback',
-  app_url: process.env.APP_URL || 'https://registropx.netlify.app',
-  encrypt_secret: process.env.ENCRYPT_SECRET || 'axolotl_therapy_calendar_256'
+  client_id: process.env.GOOGLE_CLIENT_ID || LEGACY_CALENDAR_CONFIG.client_id || '327033644024-dcqvtbaa08ki2he4m4jlmfgt6pf8ma8h.apps.googleusercontent.com',
+  client_secret: process.env.GOOGLE_CLIENT_SECRET || LEGACY_CALENDAR_CONFIG.client_secret || '',
+  redirect_uri: process.env.GOOGLE_REDIRECT_URI || LEGACY_CALENDAR_CONFIG.redirect_uri || 'https://registropx.netlify.app/api/google-calendar/callback',
+  app_url: process.env.APP_URL || LEGACY_CALENDAR_CONFIG.app_url || 'https://registropx.netlify.app',
+  encrypt_secret: process.env.ENCRYPT_SECRET || LEGACY_CALENDAR_CONFIG.encrypt_secret || 'axolotl_therapy_calendar_256'
 };
 
 function getOAuthClient() {
