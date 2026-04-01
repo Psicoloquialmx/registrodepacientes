@@ -1347,14 +1347,17 @@ let db=null;
 let currentUser=null;
 let therapistProfile={};
 let authSubmitInFlight=false;
+let passwordResetInFlight=false;
 let saveTimer=null;
 let isHydrating=false;
 let firebaseConfigMissing=false;
 let forceProfileSetupOnNextAuth=false;
+let calendarIntegration={connected:false,calendarId:'',email:'',updatedAt:null,error:null};
 const INACTIVITY_LOGOUT_MS=10*60*1000;
 let inactivityTimer=null;
 let inactivityHandlersBound=false;
 let lastActivityAt=Date.now();
+const FUNCTIONS_REGION='us-central1';
 const FIREBASE_CONFIG_FALLBACK={
   apiKey:'AIzaSyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI',
   authDomain:'registro-de-pacientes-f729f.firebaseapp.com',
@@ -1363,6 +1366,61 @@ const FIREBASE_CONFIG_FALLBACK={
   messagingSenderId:'327033644024',
   appId:'1:327033644024:web:38299c8aa2cf178207ac0d'
 };
+
+function getProjectId(){
+  const cfg=requiredFirebaseConfig(window.FIREBASE_CONFIG)?window.FIREBASE_CONFIG:FIREBASE_CONFIG_FALLBACK;
+  return cfg.projectId;
+}
+
+function getFunctionsBaseUrl(){
+  return `https://${FUNCTIONS_REGION}-${getProjectId()}.cloudfunctions.net`;
+}
+
+function resetCalendarIntegration(){
+  calendarIntegration={connected:false,calendarId:'',email:'',updatedAt:null,error:null};
+}
+
+async function fetchCalendarIntegrationStatus(){
+  if(!currentUser||!auth) return;
+  try {
+    const idToken=await currentUser.getIdToken();
+    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarStatus`,{
+      method:'GET',
+      headers:{Authorization:`Bearer ${idToken}`}
+    });
+    const data=await resp.json();
+    if(!resp.ok) throw new Error(data?.error||'No se pudo consultar estado de Calendar');
+    calendarIntegration={
+      connected:!!data.connected,
+      calendarId:data.calendarId||'',
+      email:data.email||'',
+      updatedAt:data.updatedAt||null,
+      error:null
+    };
+  } catch(err){
+    calendarIntegration={...calendarIntegration,error:String(err?.message||err)};
+  }
+}
+
+async function startGoogleCalendarConnect(){
+  if(!currentUser||!auth){
+    alert('Necesitas iniciar sesión para conectar Google Calendar.');
+    return;
+  }
+  try {
+    const idToken=await currentUser.getIdToken();
+    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarConnect`,{
+      method:'GET',
+      headers:{Authorization:`Bearer ${idToken}`}
+    });
+    const data=await resp.json();
+    if(!resp.ok||!data?.authUrl) throw new Error(data?.error||'No se pudo iniciar conexión con Calendar');
+    window.location.href=data.authUrl;
+  } catch(err){
+    console.error(err);
+    alert('No pude iniciar la conexión con Google Calendar. Revisa configuración de Functions/OAuth.');
+  }
+}
 
 function getDefaultTherapistProfile(){
   return {
@@ -1684,18 +1742,22 @@ async function submitAuth(){
 }
 
 async function sendPasswordReset(){
+  if(passwordResetInFlight) return;
   if(!firebaseReady||!auth){
     try { await initFirebase(); } catch(err){ console.error(err); }
   }
   if(!firebaseReady||!auth){showAuthMessage('No pude inicializar Firebase para recuperar contraseña.', 'error');return;}
   const email=document.getElementById('auth-email').value.trim().toLowerCase();
   if(!email){showAuthMessage('Escribe tu correo para enviarte un enlace de recuperación.', 'error');return;}
+  passwordResetInFlight=true;
   try {
     await auth.sendPasswordResetEmail(email);
     showAuthMessage('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.', 'info');
   } catch(err){
     console.error(err);
     showAuthMessage(mapFirebaseError(err), 'error');
+  } finally {
+    passwordResetInFlight=false;
   }
 }
 
@@ -1837,6 +1899,7 @@ async function handleAuthStateChanged(user){
   if(!user){
     clearInactivityLogoutTimer();
     applyStore(getEmptyStore());
+    resetCalendarIntegration();
     lockApp();
     setSyncStatus(firebaseConfigMissing?'Configura Firebase':'Esperando inicio de sesión');
     return;
@@ -1846,6 +1909,7 @@ async function handleAuthStateChanged(user){
   scheduleInactivityLogout();
   unlockApp();
   await hydrateUserStore(user.uid);
+  await fetchCalendarIntegrationStatus();
   if(forceProfileSetupOnNextAuth||therapistProfileNeedsSetup()){
     forceProfileSetupOnNextAuth=false;
     showView('perfil',{historyMode:'replace'});
@@ -2169,6 +2233,11 @@ function renderInactivePatients(){
 
 function renderTherapistProfileView(){
   const p=normalizeTherapistProfile(therapistProfile);
+  const calConnected=!!calendarIntegration.connected;
+  const calStatus=calConnected?'Conectado':'No conectado';
+  const calMeta=calConnected
+    ?`${calendarIntegration.email||'Cuenta Google'} · Calendario: ${calendarIntegration.calendarId||'primary'}`
+    :(calendarIntegration.error?`Error: ${calendarIntegration.error}`:'Conecta Google Calendar para sincronizar sesiones automáticamente.');
   const clinicLabel=p.clinicName||'Consultorio no especificado';
   const affiliationLabel=p.clinicAffiliation||'Sin clínica asociada';
   const summaryParts=[p.profession,p.specialty,p.pronouns].filter(Boolean).join(' · ');
@@ -2194,6 +2263,15 @@ function renderTherapistProfileView(){
         <div class="drow"><span class="dkey">Tarifa por defecto</span><span class="dval">$${Number(p.defaultSessionRate).toLocaleString('es-MX')}</span></div>
         <div class="drow"><span class="dkey">Cobro por defecto</span><span class="dval">${pagoLabel(p.defaultPaymentMode)}</span></div>
         <div class="drow"><span class="dkey">Primera sin costo (default)</span><span class="dval">${p.firstSessionNoChargeDefault?'sí':'no'}</span></div>
+        <div style="margin-top:12px;padding:10px;border:1px solid #ede9e6;border-radius:10px;background:#faf9f8">
+          <div style="font-size:11px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Google Calendar</div>
+          <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px">${calStatus}</div>
+          <div style="font-size:12px;color:var(--ink-light);line-height:1.5">${calMeta}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn-primary btn-sm" onclick="startGoogleCalendarConnect()">${calConnected?'Reconectar Calendar':'Conectar Calendar'}</button>
+            <button class="btn-sec btn-sm" onclick="fetchCalendarIntegrationStatus().then(()=>renderTherapistProfileView())">Actualizar estado</button>
+          </div>
+        </div>
       </div>
     </div>
     <div class="dsec" style="margin-top:12px">
