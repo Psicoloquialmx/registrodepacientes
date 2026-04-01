@@ -4940,10 +4940,6 @@ function guardarNuevo(){
 function openUnplannedSessionModal(){
   const todayStr=today();
   const activos=activePatients();
-  if(!activos.length){
-    alert('No hay pacientes activos para agregar sesión.');
-    return;
-  }
   document.getElementById('modal-title').textContent='Agregar sesión no prevista';
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
@@ -4951,8 +4947,13 @@ function openUnplannedSessionModal(){
         <label class="form-label">Paciente</label>
         <select class="form-input" id="unplanned-patient">
           <option value=""> -   Selecciona un paciente   - </option>
+          <option value="__new__">+ Paciente nuevo</option>
           ${activos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('')}
         </select>
+      </div>
+      <div class="form-group form-full" id="unplanned-new-patient-wrap" style="display:none">
+        <label class="form-label">Nombre del paciente nuevo</label>
+        <input class="form-input" id="unplanned-new-name" type="text" placeholder="Ej. Nombre Apellido">
       </div>
       <div class="form-group form-full">
         <label class="form-label">Hora</label>
@@ -4964,17 +4965,69 @@ function openUnplannedSessionModal(){
       <button class="btn-primary" onclick="saveUnplannedSession()">Agregar sesión</button>
     </div>
   `;
+  const patientSelect=document.getElementById('unplanned-patient');
+  if(patientSelect) patientSelect.addEventListener('change',onUnplannedPatientChange);
   document.getElementById('modal-overlay').classList.add('open');
+}
+
+function onUnplannedPatientChange(){
+  const select=document.getElementById('unplanned-patient');
+  const wrap=document.getElementById('unplanned-new-patient-wrap');
+  const input=document.getElementById('unplanned-new-name');
+  const isNew=select&&select.value==='__new__';
+  if(wrap) wrap.style.display=isNew?'':'none';
+  if(input){
+    if(isNew) input.focus();
+    else input.value='';
+  }
+}
+
+function createPatientFromUnplanned(name,startDate){
+  const inicio=startDate||today();
+  const tarifa=Math.max(0,parseInt(therapistProfile?.defaultSessionRate,10)||800);
+  const duracion=Math.max(15,parseInt(therapistProfile?.defaultSessionDuration,10)||45);
+  const pago='sesion';
+  const noFixedSchedule=true;
+  const newPatient={
+    id:nextId++,nombre:name,inicio,dias:[],
+    hora:'10:00',horas:{},
+    tarifa,pago,
+    duracion,primeraSinCosto:false,
+    noFixedSchedule,
+    scheduleHistory:[{desde:inicio,dias:[],horas:{},noFixedSchedule}],
+    status:'active',statusDate:inicio,statusNote:'',
+    statusReason:'otro',
+    statusHistory:[{fecha:inicio,status:'active',reason:'otro',note:'Inicio de tratamiento'}],
+    therapistCancelWeeksPerYear:DEFAULT_THERAPIST_CANCEL_WEEKS,
+    patientAbsenceWeeksPerYear:0,
+    frecuencias:[{desde:inicio,vecesSemana:1}],
+    pausas:[],
+    pagado:0,adeudo:0,sesiones:[],pagos:[],notas:[],
+    tarifas:[{monto:tarifa,desde:inicio,hasta:null}],
+    cambios:[{fecha:today(),tipo:'datos',desc:'Expediente creado desde sesion no prevista'}]
+  };
+  patients.push(newPatient);
+  return newPatient;
 }
 
 function saveUnplannedSession(){
   const pid=document.getElementById('unplanned-patient').value;
+  const newName=(document.getElementById('unplanned-new-name')?.value||'').trim();
   const hora=document.getElementById('unplanned-hora').value;
-  if(!pid){alert('Selecciona un paciente.');return;}
+  if(!pid){alert('Selecciona un paciente o elige "Paciente nuevo".');return;}
   if(!hora){alert('Ingresa una hora.');return;}
-  const p=patients.find(x=>x.id===parseInt(pid));
-  if(!p) return;
   const todayStr=today();
+  let p=null;
+  if(pid==='__new__'){
+    if(!newName){
+      alert('Escribe el nombre del paciente nuevo.');
+      return;
+    }
+    p=createPatientFromUnplanned(newName,todayStr);
+  } else {
+    p=patients.find(x=>x.id===parseInt(pid));
+  }
+  if(!p) return;
   if(isBeforeTreatmentStart(p,todayStr)){
     alert('No puedes registrar sesiones antes del inicio de tratamiento.');
     return;
@@ -4992,7 +5045,7 @@ function saveUnplannedSession(){
   saveState();
   closeModal();
   renderHoy();
-  alert('Sesión no prevista agregada.');
+  alert(pid==='__new__'?'Paciente y sesion no prevista agregados.':'Sesion no prevista agregada.');
 }
 
 function closeModal(){pendingGeneralSave=null;document.getElementById('modal-overlay').classList.remove('open')}
