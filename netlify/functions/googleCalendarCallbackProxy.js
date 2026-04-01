@@ -3,8 +3,9 @@ const { getInvokerToken, getFunctionUrl } = require('./_gcfProxyCommon');
 exports.handler = async (event) => {
   try {
     const query = event.rawQuery || '';
+    const targetBaseUrl = getFunctionUrl('googleCalendarCallback');
     const targetUrl = getFunctionUrl('googleCalendarCallback', query);
-    const invokerAuth = await getInvokerToken(targetUrl);
+    const invokerAuth = await getInvokerToken(targetBaseUrl);
 
     const resp = await fetch(targetUrl, {
       method: 'GET',
