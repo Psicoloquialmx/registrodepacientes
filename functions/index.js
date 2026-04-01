@@ -51,7 +51,11 @@ function decodeBearerToken(req) {
 async function verifyRequestUser(req) {
   const token = decodeBearerToken(req);
   if (!token) return null;
-  return admin.auth().verifyIdToken(token);
+  try {
+    return await admin.auth().verifyIdToken(token);
+  } catch (_err) {
+    return null;
+  }
 }
 
 function setCors(req, res) {
@@ -110,7 +114,10 @@ exports.googleCalendarConnect = functions.https.onRequest(async (req, res) => {
     return res.status(200).json({ authUrl });
   } catch (err) {
     console.error('googleCalendarConnect error', err);
-    return res.status(500).json({ error: 'Failed to start Google Calendar OAuth' });
+    return res.status(500).json({
+      error: 'Failed to start Google Calendar OAuth',
+      detail: String(err && err.message ? err.message : err),
+    });
   }
 });
 
@@ -208,6 +215,9 @@ exports.googleCalendarStatus = functions.https.onRequest(async (req, res) => {
     });
   } catch (err) {
     console.error('googleCalendarStatus error', err);
-    return res.status(500).json({ error: 'Failed to read Google Calendar status' });
+    return res.status(500).json({
+      error: 'Failed to read Google Calendar status',
+      detail: String(err && err.message ? err.message : err),
+    });
   }
 });
