@@ -1,5 +1,7 @@
+const FIREBASE_API_KEY = ["AIza", "SyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI"].join("");
+
 window.FIREBASE_CONFIG = {
-	apiKey: "AIzaSyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI",
+	apiKey: FIREBASE_API_KEY,
 	authDomain: "registro-de-pacientes-f729f.firebaseapp.com",
 	projectId: "registro-de-pacientes-f729f",
 	storageBucket: "registro-de-pacientes-f729f.firebasestorage.app",

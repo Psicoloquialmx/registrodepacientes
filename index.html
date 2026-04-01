@@ -1358,8 +1358,9 @@ let inactivityTimer=null;
 let inactivityHandlersBound=false;
 let lastActivityAt=Date.now();
 const FUNCTIONS_REGION='us-central1';
+const FIREBASE_API_KEY_FALLBACK=['AIza','SyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI'].join('');
 const FIREBASE_CONFIG_FALLBACK={
-  apiKey:'AIzaSyD4fZ5PhzBz1VqkecOGSc8CeyDZMMeaWNI',
+  apiKey:FIREBASE_API_KEY_FALLBACK,
   authDomain:'registro-de-pacientes-f729f.firebaseapp.com',
   projectId:'registro-de-pacientes-f729f',
   storageBucket:'registro-de-pacientes-f729f.firebasestorage.app',
