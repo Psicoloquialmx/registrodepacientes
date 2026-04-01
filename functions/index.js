@@ -6,24 +6,24 @@ const { google } = require('googleapis');
 admin.initializeApp();
 const db = admin.firestore();
 
-function getCalendarConfig() {
-  const cfg = functions.config().calendar || {};
-  const required = ['client_id', 'client_secret', 'redirect_uri', 'app_url', 'encrypt_secret'];
-  const missing = required.filter((k) => !cfg[k]);
-  if (missing.length) {
-    throw new Error(`Missing functions config keys: calendar.${missing.join(', calendar.')}`);
-  }
-  return cfg;
-}
+// Config values - use environment variables or defaults
+const CALENDAR_CONFIG = {
+  client_id: process.env.GOOGLE_CLIENT_ID || '327033644024-dcqvtbaa08ki2he4m4jlmfgt6pf8ma8h.apps.googleusercontent.com',
+  client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+  redirect_uri: process.env.GOOGLE_REDIRECT_URI || 'https://registropx.netlify.app/api/google-calendar/callback',
+  app_url: process.env.APP_URL || 'https://registropx.netlify.app',
+  encrypt_secret: process.env.ENCRYPT_SECRET || 'axolotl_therapy_calendar_256'
+};
 
 function getOAuthClient() {
-  const cfg = getCalendarConfig();
-  return new google.auth.OAuth2(cfg.client_id, cfg.client_secret, cfg.redirect_uri);
+  if (!CALENDAR_CONFIG.client_secret) {
+    throw new Error('Missing GOOGLE_CLIENT_SECRET environment variable.');
+  }
+  return new google.auth.OAuth2(CALENDAR_CONFIG.client_id, CALENDAR_CONFIG.client_secret, CALENDAR_CONFIG.redirect_uri);
 }
 
 function encryptText(plainText) {
-  const cfg = getCalendarConfig();
-  const key = crypto.createHash('sha256').update(String(cfg.encrypt_secret)).digest();
+  const key = crypto.createHash('sha256').update(String(CALENDAR_CONFIG.encrypt_secret)).digest();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
   const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
@@ -32,7 +32,7 @@ function encryptText(plainText) {
 }
 
 function decodeBearerToken(req) {
-  const authHeader = req.get('authorization') || '';
+  const authHeader = req.get('x-firebase-auth') || req.get('authorization') || '';
   if (!authHeader.startsWith('Bearer ')) return null;
   return authHeader.slice('Bearer '.length).trim();
 }
@@ -44,10 +44,9 @@ async function verifyRequestUser(req) {
 }
 
 function setCors(req, res) {
-  const cfg = getCalendarConfig();
-  res.set('Access-Control-Allow-Origin', cfg.app_url);
+  res.set('Access-Control-Allow-Origin', CALENDAR_CONFIG.app_url);
   res.set('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Authorization,Content-Type');
+  res.set('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Firebase-Auth');
   if (req.method === 'OPTIONS') {
     res.status(204).send('');
     return true;
@@ -108,22 +107,21 @@ exports.googleCalendarCallback = functions.https.onRequest(async (req, res) => {
   try {
     if (req.method !== 'GET') return res.status(405).send('Method not allowed');
 
-    const cfg = getCalendarConfig();
     const code = req.query.code;
     const state = req.query.state;
     const error = req.query.error;
 
     if (error) {
-      return res.redirect(`${cfg.app_url}?calendar=error&reason=${encodeURIComponent(String(error))}`);
+      return res.redirect(`${CALENDAR_CONFIG.app_url}?calendar=error&reason=${encodeURIComponent(String(error))}`);
     }
 
     if (!code || !state) {
-      return res.redirect(`${cfg.app_url}?calendar=error&reason=missing_code_or_state`);
+      return res.redirect(`${CALENDAR_CONFIG.app_url}?calendar=error&reason=missing_code_or_state`);
     }
 
     const uid = await consumeOAuthState(String(state));
     if (!uid) {
-      return res.redirect(`${cfg.app_url}?calendar=error&reason=invalid_state`);
+      return res.redirect(`${CALENDAR_CONFIG.app_url}?calendar=error&reason=invalid_state`);
     }
 
     const oauth2Client = getOAuthClient();
@@ -164,12 +162,10 @@ exports.googleCalendarCallback = functions.https.onRequest(async (req, res) => {
 
     await integrationRef.set(payload, { merge: true });
 
-    return res.redirect(`${cfg.app_url}?calendar=connected`);
+    return res.redirect(`${CALENDAR_CONFIG.app_url}?calendar=connected`);
   } catch (err) {
     console.error('googleCalendarCallback error', err);
-    const cfg = functions.config().calendar || {};
-    const appUrl = cfg.app_url || 'https://example.com';
-    return res.redirect(`${appUrl}?calendar=error&reason=callback_failed`);
+    return res.redirect(`${CALENDAR_CONFIG.app_url}?calendar=error&reason=callback_failed`);
   }
 });
 

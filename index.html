@@ -1373,7 +1373,7 @@ function getProjectId(){
 }
 
 function getFunctionsBaseUrl(){
-  return `https://${FUNCTIONS_REGION}-${getProjectId()}.cloudfunctions.net`;
+  return '/.netlify/functions';
 }
 
 function resetCalendarIntegration(){
@@ -1384,7 +1384,7 @@ async function fetchCalendarIntegrationStatus(){
   if(!currentUser||!auth) return;
   try {
     const idToken=await currentUser.getIdToken();
-    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarStatus`,{
+    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarStatusProxy`,{
       method:'GET',
       headers:{Authorization:`Bearer ${idToken}`}
     });
@@ -1409,7 +1409,7 @@ async function startGoogleCalendarConnect(){
   }
   try {
     const idToken=await currentUser.getIdToken();
-    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarConnect`,{
+    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarConnectProxy`,{
       method:'GET',
       headers:{Authorization:`Bearer ${idToken}`}
     });
