@@ -1505,6 +1505,132 @@ function triggerCalendarDelete(p,ses){
   syncSessionToGoogleCalendar('delete',p,ses);
 }
 
+function addDaysToIsoDate(baseIso,days){
+  const dt=new Date(`${baseIso}T12:00:00`);
+  dt.setDate(dt.getDate()+days);
+  return dt.toISOString().split('T')[0];
+}
+
+async function upsertCalendarEventForSession(p,ses,opts){
+  if(!calendarIntegration?.connected||!currentUser||!auth||!p||!ses) return false;
+  const options=(opts&&typeof opts==='object')?opts:{};
+  const dateStr=options.dateStr||ses.fecha;
+  const hora=options.hora||ses.hora||horaDiaFecha(p,dateStr);
+  const windowIso=buildSessionIsoWindow(dateStr,hora,therapistProfile?.defaultSessionDuration||45);
+  if(!windowIso) return false;
+
+  const idToken=await currentUser.getIdToken();
+  const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarUpsertSessionProxy`,{
+    method:'POST',
+    headers:{
+      Authorization:`Bearer ${idToken}`,
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+      patientId:p.id,
+      sessionId:ses.id,
+      title:`Sesion - ${p.nombre||'Paciente'}`,
+      description:calendarSessionDescriptionForPatient(p,ses),
+      startIso:windowIso.startIso,
+      endIso:windowIso.endIso
+    })
+  });
+  if(!resp.ok){
+    const errData=await resp.json().catch(()=>({}));
+    throw new Error(errData?.detail?`${errData?.error||'Upsert failed'}: ${errData.detail}`:(errData?.error||'Upsert failed'));
+  }
+  return true;
+}
+
+function collectFuturePlannedSessionsForSync(maxDays){
+  const days=Math.max(1,Math.min(366,parseInt(maxDays,10)||365));
+  const start=today();
+  const items=[];
+
+  activePatients().forEach(p=>{
+    for(let i=0;i<=days;i++){
+      const dateStr=addDaysToIsoDate(start,i);
+      if(isBeforeTreatmentStart(p,dateStr)) continue;
+      if(getPatientStatusAtDate(p,dateStr)==='inactive') continue;
+
+      const daySessions=(p.sesiones||[]).filter(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr);
+      const existing=daySessions.find(s=>!(s.skipped||s.replaced||s.tipo==='reprogramada'))||null;
+      if(existing&&existing.tipo!=='cancelada'){
+        items.push({p,ses:existing,dateStr,hora:existing.hora||horaDiaFecha(p,dateStr)});
+        continue;
+      }
+
+      const movedSource=daySessions.some(s=>s.skipped||s.replaced||s.tipo==='reprogramada');
+      if(movedSource) continue;
+      if(!isFixedScheduledOnDate(p,dateStr)) continue;
+
+      const virtualSession={
+        id:`plan_${dateStr}`,
+        fecha:dateStr,
+        hora:horaDiaFecha(p,dateStr),
+        tipo:'planeada'
+      };
+      items.push({p,ses:virtualSession,dateStr,hora:virtualSession.hora});
+    }
+  });
+
+  return items;
+}
+
+async function syncPlannedFutureSessionsToGoogleCalendar(){
+  if(!calendarIntegration?.connected){
+    alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
+    return;
+  }
+  if(!currentUser||!auth){
+    alert('Necesitas iniciar sesión para sincronizar.');
+    return;
+  }
+
+  const btn=document.getElementById('btn-sync-future-calendar');
+  if(btn&&btn.dataset.busy==='1') return;
+
+  const toSync=collectFuturePlannedSessionsForSync(365);
+  if(!toSync.length){
+    alert('No hay sesiones futuras planeadas para sincronizar en el próximo año.');
+    return;
+  }
+
+  let ok=0;
+  let fail=0;
+  const originalLabel=btn?btn.textContent:'';
+  if(btn){
+    btn.dataset.busy='1';
+    btn.disabled=true;
+    btn.textContent='Sincronizando...';
+  }
+
+  try {
+    for(let i=0;i<toSync.length;i++){
+      const item=toSync[i];
+      try {
+        await upsertCalendarEventForSession(item.p,item.ses,{dateStr:item.dateStr,hora:item.hora});
+        ok++;
+      } catch(_err){
+        fail++;
+      }
+
+      if(btn&&((i+1)%15===0||i===toSync.length-1)){
+        btn.textContent=`Sincronizando ${i+1}/${toSync.length}...`;
+      }
+    }
+  } finally {
+    if(btn){
+      btn.dataset.busy='0';
+      btn.disabled=false;
+      btn.textContent=originalLabel||'Sincronizar calendario';
+    }
+  }
+
+  if(fail===0) alert(`Sincronizacion completada: ${ok} sesiones futuras enviadas a Google Calendar (horizonte 1 anio).`);
+  else alert(`Sincronizacion completada con incidencias. Exito: ${ok}. Error: ${fail}. Horizonte: 1 anio.`);
+}
+
 function getDefaultTherapistProfile(){
   return {
     displayName:'',
@@ -4648,6 +4774,7 @@ function renderSemana(){
         <div class="period-switch">
           <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
           <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
+          <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 1 anio">Sincronizar calendario</button>
         </div>
         <div class="week-nav">
           <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
@@ -4677,6 +4804,7 @@ function renderSemana(){
       <div class="period-switch">
         <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
         <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
+        <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 1 anio">Sincronizar calendario</button>
       </div>
       <div class="week-nav">
         <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
