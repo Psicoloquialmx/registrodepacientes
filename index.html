@@ -1431,11 +1431,20 @@ function parseSessionDateTime(dateStr,timeStr){
 }
 
 function buildSessionIsoWindow(dateStr,timeStr,durationMin){
-  const start=parseSessionDateTime(dateStr,timeStr);
-  if(!start) return null;
+  // Use naive datetime strings (no Z / UTC offset) so the timeZone field
+  // sent to Google Calendar API ('America/Mexico_City') is respected.
+  const safeTime=/^\d{2}:\d{2}$/.test(String(timeStr||''))?timeStr:'10:00';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr||''))) return null;
   const mins=Math.max(15,parseInt(durationMin,10)||45);
-  const end=new Date(start.getTime()+mins*60*1000);
-  return {startIso:start.toISOString(),endIso:end.toISOString()};
+  const [hh,mm]=safeTime.split(':').map(Number);
+  const startTotal=hh*60+mm;
+  const endTotal=startTotal+mins;
+  const endH=String(Math.floor(endTotal/60)%24).padStart(2,'0');
+  const endM=String(endTotal%60).padStart(2,'0');
+  return {
+    startIso:`${dateStr}T${safeTime}:00`,
+    endIso:`${dateStr}T${endH}:${endM}:00`
+  };
 }
 
 function calendarSessionDescriptionForPatient(p,ses){
@@ -1590,14 +1599,15 @@ async function syncPlannedFutureSessionsToGoogleCalendar(){
   const btn=document.getElementById('btn-sync-future-calendar');
   if(btn&&btn.dataset.busy==='1') return;
 
-  const toSync=collectFuturePlannedSessionsForSync(365);
+  const toSync=collectFuturePlannedSessionsForSync(180);
   if(!toSync.length){
-    alert('No hay sesiones futuras planeadas para sincronizar en el próximo año.');
+    alert('No hay sesiones futuras planeadas para sincronizar en los próximos 6 meses.');
     return;
   }
 
   let ok=0;
   let fail=0;
+  let firstErrorMsg=null;
   const originalLabel=btn?btn.textContent:'';
   if(btn){
     btn.dataset.busy='1';
@@ -1611,11 +1621,14 @@ async function syncPlannedFutureSessionsToGoogleCalendar(){
       try {
         await upsertCalendarEventForSession(item.p,item.ses,{dateStr:item.dateStr,hora:item.hora});
         ok++;
-      } catch(_err){
+      } catch(syncErr){
         fail++;
+        const msg=syncErr?.message||String(syncErr);
+        if(!firstErrorMsg) firstErrorMsg=msg;
+        console.warn('[CalSync] Error en sesión',item?.dateStr,item?.p?.nombre,msg);
       }
 
-      if(btn&&((i+1)%15===0||i===toSync.length-1)){
+      if(btn&&((i+1)%10===0||i===toSync.length-1)){
         btn.textContent=`Sincronizando ${i+1}/${toSync.length}...`;
       }
     }
@@ -1627,8 +1640,11 @@ async function syncPlannedFutureSessionsToGoogleCalendar(){
     }
   }
 
-  if(fail===0) alert(`Sincronizacion completada: ${ok} sesiones futuras enviadas a Google Calendar (horizonte 1 anio).`);
-  else alert(`Sincronizacion completada con incidencias. Exito: ${ok}. Error: ${fail}. Horizonte: 1 anio.`);
+  if(fail===0){
+    alert(`Sincronización completada: ${ok} sesiones futuras enviadas a Google Calendar (horizonte 6 meses).`);
+  } else {
+    alert(`Sincronización completada con incidencias.\nÉxito: ${ok}  |  Error: ${fail}\n\nPrimer error: ${firstErrorMsg||'Desconocido'}\n\nRevisa la consola del navegador (F12) para más detalles.`);
+  }
 }
 
 function getDefaultTherapistProfile(){
@@ -4774,7 +4790,7 @@ function renderSemana(){
         <div class="period-switch">
           <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
           <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
-          <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 1 anio">Sincronizar calendario</button>
+          <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 6 meses">Sincronizar calendario</button>
         </div>
         <div class="week-nav">
           <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
@@ -4804,7 +4820,7 @@ function renderSemana(){
       <div class="period-switch">
         <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
         <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
-        <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 1 anio">Sincronizar calendario</button>
+        <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 6 meses">Sincronizar calendario</button>
       </div>
       <div class="week-nav">
         <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
