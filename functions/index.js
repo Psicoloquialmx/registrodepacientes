@@ -147,8 +147,14 @@ exports.googleCalendarCallback = functions.https.onRequest(async (req, res) => {
     oauth2Client.setCredentials(tokens);
 
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-    const calendars = await calendar.calendarList.list({ maxResults: 50 });
-    const primary = (calendars.data.items || []).find((c) => c.primary) || (calendars.data.items || [])[0];
+    let primary = null;
+    try {
+      const calendars = await calendar.calendarList.list({ maxResults: 50 });
+      primary = (calendars.data.items || []).find((c) => c.primary) || (calendars.data.items || [])[0] || null;
+    } catch (_err) {
+      // Some scopes may not allow listing calendars; fallback to default primary calendar.
+      primary = null;
+    }
     const calendarId = primary?.id || 'primary';
 
     const integrationRef = db
