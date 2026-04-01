@@ -1390,7 +1390,7 @@ async function fetchCalendarIntegrationStatus(){
       headers:{Authorization:`Bearer ${idToken}`}
     });
     const data=await resp.json();
-    if(!resp.ok) throw new Error(data?.error||'No se pudo consultar estado de Calendar');
+    if(!resp.ok) throw new Error(data?.detail?`${data?.error||'No se pudo consultar estado de Calendar'}: ${data.detail}`:(data?.error||'No se pudo consultar estado de Calendar'));
     calendarIntegration={
       connected:!!data.connected,
       calendarId:data.calendarId||'',
@@ -1415,11 +1415,11 @@ async function startGoogleCalendarConnect(){
       headers:{Authorization:`Bearer ${idToken}`}
     });
     const data=await resp.json();
-    if(!resp.ok||!data?.authUrl) throw new Error(data?.error||'No se pudo iniciar conexión con Calendar');
+    if(!resp.ok||!data?.authUrl) throw new Error(data?.detail?`${data?.error||'No se pudo iniciar conexión con Calendar'}: ${data.detail}`:(data?.error||'No se pudo iniciar conexión con Calendar'));
     window.location.href=data.authUrl;
   } catch(err){
     console.error(err);
-    alert('No pude iniciar la conexión con Google Calendar. Revisa configuración de Functions/OAuth.');
+    alert(`No pude iniciar la conexión con Google Calendar. ${String(err?.message||'Revisa configuración de Functions/OAuth.')}`);
   }
 }
 
