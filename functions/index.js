@@ -104,6 +104,39 @@ function buildSessionKey(uid, patientId, sessionId) {
   return `${uid}_${String(patientId)}_${String(sessionId)}`.replace(/[^\w-]/g, '_');
 }
 
+async function deleteEventsBySessionKey(calendar, calendarIds, sessionKey) {
+  let deletedCount = 0;
+  const ids = Array.from(new Set((Array.isArray(calendarIds) ? calendarIds : []).filter(Boolean)));
+
+  for (const calendarId of ids) {
+    try {
+      const listResp = await calendar.events.list({
+        calendarId,
+        privateExtendedProperty: `sessionKey=${sessionKey}`,
+        maxResults: 20,
+        showDeleted: false,
+      });
+
+      const items = listResp.data.items || [];
+      for (const item of items) {
+        if (!item || !item.id) continue;
+        try {
+          await calendar.events.delete({ calendarId, eventId: item.id });
+          deletedCount++;
+        } catch (deleteErr) {
+          const status = deleteErr && deleteErr.code ? Number(deleteErr.code) : 0;
+          if (status !== 404 && status !== 410) throw deleteErr;
+        }
+      }
+    } catch (listErr) {
+      const status = listErr && listErr.code ? Number(listErr.code) : 0;
+      if (status !== 404) throw listErr;
+    }
+  }
+
+  return deletedCount;
+}
+
 async function getGoogleIntegration(uid) {
   const ref = db
     .collection('users')
@@ -496,24 +529,29 @@ exports.googleCalendarDeleteSession = functions.https.onRequest(async (req, res)
     const mapDocId = `googleCalendarSessionMap_${sessionKey}`;
     const mapRef = db.collection('users').doc(uid).collection('private').doc(mapDocId);
     const mapSnap = await mapRef.get();
+    const { calendar, calendarId: activeCalendarId } = await getCalendarClientForUser(uid);
 
-    if (!mapSnap.exists) {
-      return res.status(200).json({ ok: true, deleted: false, reason: 'mapping_not_found' });
-    }
+    let deletedCount = 0;
 
-    const mapData = mapSnap.data() || {};
-    const eventId = mapData.eventId || null;
-    const calendarId = mapData.calendarId || 'primary';
+    if (mapSnap.exists) {
+      const mapData = mapSnap.data() || {};
+      const eventId = mapData.eventId || null;
+      const mappedCalendarId = mapData.calendarId || activeCalendarId || 'primary';
 
-    if (eventId) {
-      try {
-        const { calendar } = await getCalendarClientForUser(uid);
-        await calendar.events.delete({ calendarId, eventId });
-      } catch (e) {
-        const status = e && e.code ? Number(e.code) : 0;
-        if (status !== 404) throw e;
+      if (eventId) {
+        try {
+          await calendar.events.delete({ calendarId: mappedCalendarId, eventId });
+          deletedCount++;
+        } catch (e) {
+          const status = e && e.code ? Number(e.code) : 0;
+          if (status !== 404 && status !== 410) throw e;
+        }
       }
     }
+
+    // Fallback cleanup: if mapping is missing/stale, search by sessionKey in both
+    // the active agenda calendar and the legacy primary calendar.
+    deletedCount += await deleteEventsBySessionKey(calendar, [activeCalendarId, 'primary'], sessionKey);
 
     await mapRef.set(
       {
@@ -523,7 +561,7 @@ exports.googleCalendarDeleteSession = functions.https.onRequest(async (req, res)
       { merge: true }
     );
 
-    return res.status(200).json({ ok: true, deleted: true, sessionKey });
+    return res.status(200).json({ ok: true, deleted: deletedCount > 0, deletedCount, sessionKey });
   } catch (err) {
     console.error('googleCalendarDeleteSession error', err);
     return res.status(500).json({
