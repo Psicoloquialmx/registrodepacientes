@@ -1447,9 +1447,19 @@ function buildSessionIsoWindow(dateStr,timeStr,durationMin){
   };
 }
 
+function patientCalendarLabel(p){
+  const full=String(p?.nombre||'Paciente').trim().replace(/\s+/g,' ');
+  if(!full) return 'Paciente';
+  const parts=full.split(' ');
+  const firstName=parts[0]||'Paciente';
+  const lastName=parts.length>1?(parts[parts.length-1]||''):'';
+  if(!lastName) return firstName;
+  return `${firstName} ${lastName.charAt(0).toUpperCase()}.`;
+}
+
 function calendarSessionDescriptionForPatient(p,ses){
   const tipo=ses?.tipo||'asistio';
-  return `RegistroPX | Paciente: ${p?.nombre||'Paciente'} | Tipo: ${tipo}`;
+  return `RegistroPX | ${patientCalendarLabel(p)} | Tipo: ${tipo}`;
 }
 
 async function syncSessionToGoogleCalendar(action,p,ses,opts){
@@ -1490,7 +1500,7 @@ async function syncSessionToGoogleCalendar(action,p,ses,opts){
       body:JSON.stringify({
         patientId:p.id,
         sessionId:ses.id,
-        title:`Sesion - ${p.nombre||'Paciente'}`,
+        title:patientCalendarLabel(p),
         description:calendarSessionDescriptionForPatient(p,ses),
         startIso:windowIso.startIso,
         endIso:windowIso.endIso
@@ -1538,7 +1548,7 @@ async function upsertCalendarEventForSession(p,ses,opts){
     body:JSON.stringify({
       patientId:p.id,
       sessionId:ses.id,
-      title:`Sesion - ${p.nombre||'Paciente'}`,
+      title:patientCalendarLabel(p),
       description:calendarSessionDescriptionForPatient(p,ses),
       startIso:windowIso.startIso,
       endIso:windowIso.endIso
@@ -1564,7 +1574,7 @@ function collectFuturePlannedSessionsForSync(maxDays){
 
       const daySessions=(p.sesiones||[]).filter(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr);
       const existing=daySessions.find(s=>!(s.skipped||s.replaced||s.tipo==='reprogramada'))||null;
-      if(existing&&existing.tipo!=='cancelada'){
+      if(existing&&existing.tipo!=='cancelada'&&existing.tipo!=='falta'){
         items.push({p,ses:existing,dateStr,hora:existing.hora||horaDiaFecha(p,dateStr)});
         continue;
       }
@@ -2887,7 +2897,8 @@ function saveTodaySession(pid){
   }
 
   ses.todaySaved=true;
-  triggerCalendarUpsert(p,ses,{dateStr, hora:ses.hora||defaultHora});
+  if(tipo==='falta'||tipo==='cancelada') triggerCalendarDelete(p,ses);
+  else triggerCalendarUpsert(p,ses,{dateStr, hora:ses.hora||defaultHora});
 
   exposeSesMap(p);
   saveState();
