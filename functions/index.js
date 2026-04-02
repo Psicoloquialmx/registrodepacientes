@@ -546,17 +546,23 @@ exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res)
     const decoded = await verifyRequestUser(req);
     if (!decoded || !decoded.uid) return res.status(401).json({ error: 'Unauthorized' });
 
+    const body = req.body || {};
+    const maxDeletesRaw = parseInt(body.maxDeletes, 10);
+    const maxDeletes = Math.max(10, Math.min(150, Number.isFinite(maxDeletesRaw) ? maxDeletesRaw : 50));
+
     const uid = decoded.uid;
     const { calendar } = await getCalendarClientForUser(uid);
 
     let deleted = 0;
+    let processed = 0;
     let pageToken = undefined;
+    let hasMore = false;
 
     do {
       const listResp = await calendar.events.list({
         calendarId: 'primary',
         privateExtendedProperty: 'source=registropx',
-        maxResults: 250,
+        maxResults: 100,
         pageToken,
         showDeleted: false,
       });
@@ -565,7 +571,12 @@ exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res)
       pageToken = listResp.data.nextPageToken;
 
       for (const evt of events) {
+        if (processed >= maxDeletes) {
+          hasMore = true;
+          break;
+        }
         if (!evt.id) continue;
+        processed++;
         try {
           await calendar.events.delete({ calendarId: 'primary', eventId: evt.id });
           deleted++;
@@ -576,10 +587,15 @@ exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res)
           }
         }
       }
+
+      if (processed >= maxDeletes) {
+        hasMore = true;
+        break;
+      }
     } while (pageToken);
 
-    console.info('googleCalendarPurgeRemnants finished', { uid, deleted });
-    return res.status(200).json({ ok: true, deleted });
+    console.info('googleCalendarPurgeRemnants finished', { uid, deleted, processed, hasMore, maxDeletes });
+    return res.status(200).json({ ok: true, deleted, processed, hasMore, maxDeletes });
   } catch (err) {
     console.error('googleCalendarPurgeRemnants error', err);
     return res.status(500).json({

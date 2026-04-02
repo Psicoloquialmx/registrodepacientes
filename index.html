@@ -1547,13 +1547,46 @@ async function purgeCalendarRemnants(){
   if(btn){ btn.disabled=true; btn.textContent='Limpiando...'; }
   try {
     const idToken=await currentUser.getIdToken();
-    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarPurgeRemnantsProxy`,{
-      method:'POST',
-      headers:{Authorization:`Bearer ${idToken}`,'Content-Type':'application/json'}
-    });
-    const data=await resp.json();
-    if(!resp.ok) throw new Error(data?.detail||data?.error||'Error al limpiar');
-    alert(`Limpieza completada. ${data.deleted} evento${data.deleted!==1?'s':''} eliminado${data.deleted!==1?'s':''} del calendario principal.`);
+    const batchSize=40;
+    const maxRounds=20;
+    let rounds=0;
+    let totalDeleted=0;
+    let hasMore=true;
+
+    while(hasMore&&rounds<maxRounds){
+      rounds++;
+      if(btn) btn.textContent=`Limpiando lote ${rounds}...`;
+
+      const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarPurgeRemnantsProxy`,{
+        method:'POST',
+        headers:{Authorization:`Bearer ${idToken}`,'Content-Type':'application/json'},
+        body:JSON.stringify({maxDeletes:batchSize})
+      });
+
+      const rawText=await resp.text();
+      let data={};
+      try {
+        data=rawText?JSON.parse(rawText):{};
+      } catch(_parseErr){
+        if(!resp.ok){
+          throw new Error(`Servidor devolvió ${resp.status} y una respuesta no-JSON (probable timeout).`);
+        }
+        throw new Error('Respuesta inesperada del servidor al limpiar duplicados.');
+      }
+
+      if(!resp.ok) throw new Error(data?.detail||data?.error||`Error HTTP ${resp.status}`);
+
+      const deletedNow=Math.max(0,parseInt(data?.deleted,10)||0);
+      totalDeleted+=deletedNow;
+      hasMore=!!data?.hasMore;
+      if(btn) btn.textContent=`Limpiando... ${totalDeleted} eliminados`;
+    }
+
+    if(hasMore){
+      alert(`Limpieza parcial: ${totalDeleted} eventos eliminados del calendario principal.\n\nAún pueden quedar algunos; vuelve a presionar "Limpiar duplicados" para continuar.`);
+    } else {
+      alert(`Limpieza completada. ${totalDeleted} evento${totalDeleted!==1?'s':''} eliminado${totalDeleted!==1?'s':''} del calendario principal.`);
+    }
   } catch(err){
     alert(`Error al limpiar: ${err.message||err}`);
   } finally {
