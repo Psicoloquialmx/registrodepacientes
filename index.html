@@ -1529,6 +1529,13 @@ function triggerCalendarUpsert(p,ses,opts){
 
 function triggerCalendarDelete(p,ses){
   syncSessionToGoogleCalendar('delete',p,ses);
+  const dateStr=String(ses?.fecha||'').split(' ')[0];
+  if(/^\d{4}-\d{2}-\d{2}$/.test(dateStr)){
+    const plannedId=`plan_${dateStr}`;
+    if(String(ses?.id||'')!==plannedId){
+      syncSessionToGoogleCalendar('delete',p,{id:plannedId,fecha:dateStr});
+    }
+  }
 }
 
 function addDaysToIsoDate(baseIso,days){
@@ -4200,6 +4207,11 @@ function registrarDesdePop(pid,dateStr,tipo){
       });
     }
 
+    // Calendar sync: remove source day entry and ensure target day is present.
+    if(source) triggerCalendarDelete(p,source);
+    else triggerCalendarDelete(p,{id:`plan_${dateStr}`,fecha:dateStr});
+    if(target) triggerCalendarUpsert(p,target,{dateStr:nuevaIso,hora:target.hora||nuevaHora});
+
     closePopover();
     refreshAfterSessionMutation(p);
     return;
@@ -4235,6 +4247,14 @@ function registrarDesdePop(pid,dateStr,tipo){
     if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete p.sesiones[p.sesiones.length-1].noCharge;
     if(p.pago==='sesion'&&isBillable(finalTipo,requestedNoCharge)) p.adeudo+=tv;
     if(finalTipo==='falta') addLog(p,'datos',`Falta del paciente: ${dateStr}${requestedNoCharge?' (sin costo)':''}`);
+  }
+
+  const currentSession=p.sesiones.find(s=>s.fecha===dateStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
+  if(currentSession){
+    if(finalTipo==='falta'||finalTipo==='cancelada') triggerCalendarDelete(p,currentSession);
+    else triggerCalendarUpsert(p,currentSession,{dateStr,hora:currentSession.hora||horaDiaFecha(p,dateStr)});
+  } else if(finalTipo==='falta'||finalTipo==='cancelada'){
+    triggerCalendarDelete(p,{id:`plan_${dateStr}`,fecha:dateStr});
   }
 
   closePopover();
