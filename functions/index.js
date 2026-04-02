@@ -532,3 +532,59 @@ exports.googleCalendarDeleteSession = functions.https.onRequest(async (req, res)
     });
   }
 });
+
+/**
+ * One-time cleanup: deletes all events tagged source=registropx from the
+ * user's primary Google Calendar, leaving only the Agenda de Pacientes ones.
+ * Safe to run multiple times (already-deleted events return 404 and are ignored).
+ */
+exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res) => {
+  try {
+    if (setCors(req, res)) return;
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const decoded = await verifyRequestUser(req);
+    if (!decoded || !decoded.uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const uid = decoded.uid;
+    const { calendar } = await getCalendarClientForUser(uid);
+
+    let deleted = 0;
+    let pageToken = undefined;
+
+    do {
+      const listResp = await calendar.events.list({
+        calendarId: 'primary',
+        privateExtendedProperty: 'source=registropx',
+        maxResults: 250,
+        pageToken,
+        showDeleted: false,
+      });
+
+      const events = (listResp.data.items || []);
+      pageToken = listResp.data.nextPageToken;
+
+      for (const evt of events) {
+        if (!evt.id) continue;
+        try {
+          await calendar.events.delete({ calendarId: 'primary', eventId: evt.id });
+          deleted++;
+        } catch (delErr) {
+          const status = delErr && delErr.code ? Number(delErr.code) : 0;
+          if (status !== 404 && status !== 410) {
+            console.warn('purgeRemnants: could not delete event', evt.id, String(delErr && delErr.message ? delErr.message : delErr));
+          }
+        }
+      }
+    } while (pageToken);
+
+    console.info('googleCalendarPurgeRemnants finished', { uid, deleted });
+    return res.status(200).json({ ok: true, deleted });
+  } catch (err) {
+    console.error('googleCalendarPurgeRemnants error', err);
+    return res.status(500).json({
+      error: 'Failed to purge remnant events',
+      detail: String(err && err.message ? err.message : err),
+    });
+  }
+});

@@ -1537,6 +1537,30 @@ function addDaysToIsoDate(baseIso,days){
   return dt.toISOString().split('T')[0];
 }
 
+async function purgeCalendarRemnants(){
+  if(!calendarIntegration?.connected){
+    alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
+    return;
+  }
+  if(!currentUser||!auth) return;
+  const btn=document.getElementById('btn-purge-remnants');
+  if(btn){ btn.disabled=true; btn.textContent='Limpiando...'; }
+  try {
+    const idToken=await currentUser.getIdToken();
+    const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarPurgeRemnantsProxy`,{
+      method:'POST',
+      headers:{Authorization:`Bearer ${idToken}`,'Content-Type':'application/json'}
+    });
+    const data=await resp.json();
+    if(!resp.ok) throw new Error(data?.detail||data?.error||'Error al limpiar');
+    alert(`Limpieza completada. ${data.deleted} evento${data.deleted!==1?'s':''} eliminado${data.deleted!==1?'s':''} del calendario principal.`);
+  } catch(err){
+    alert(`Error al limpiar: ${err.message||err}`);
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Limpiar duplicados'; }
+  }
+}
+
 async function upsertCalendarEventForSession(p,ses,opts){
   if(!calendarIntegration?.connected||!currentUser||!auth||!p||!ses) return false;
   const options=(opts&&typeof opts==='object')?opts:{};
@@ -2856,6 +2880,7 @@ function renderTherapistProfileView(){
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button class="btn-primary btn-sm" onclick="startGoogleCalendarConnect()">${calConnected?'Reconectar Calendar':'Conectar Calendar'}</button>
             <button class="btn-sec btn-sm" onclick="fetchCalendarIntegrationStatus().then(()=>renderTherapistProfileView())">Actualizar estado</button>
+            ${calConnected?`<button id="btn-purge-remnants" class="btn-sec btn-sm" onclick="purgeCalendarRemnants()" title="Elimina del calendario principal los eventos duplicados que ya están en Agenda de Pacientes">Limpiar duplicados</button>`:''}
           </div>
         </div>
       </div>
