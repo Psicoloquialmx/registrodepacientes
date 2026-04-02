@@ -395,7 +395,9 @@ exports.googleCalendarUpsertSession = functions.https.onRequest(async (req, res)
       eventPayload.colorId = String(colorId);
     }
 
-    let eventId = mapData.eventId || null;
+    const previousCalendarId = mapData.calendarId || null;
+    const previousEventId = mapData.eventId || null;
+    let eventId = previousEventId;
 
     if (eventId) {
       try {
@@ -422,6 +424,32 @@ exports.googleCalendarUpsertSession = functions.https.onRequest(async (req, res)
         requestBody: eventPayload,
       });
       eventId = created.data.id;
+    }
+
+    // If this session used to be linked to another calendar (typically 'primary'),
+    // remove the legacy event there so the session appears only once.
+    if (
+      previousCalendarId &&
+      previousEventId &&
+      previousCalendarId !== calendarId
+    ) {
+      try {
+        await calendar.events.delete({
+          calendarId: previousCalendarId,
+          eventId: previousEventId,
+        });
+      } catch (legacyDeleteErr) {
+        const status = legacyDeleteErr && legacyDeleteErr.code ? Number(legacyDeleteErr.code) : 0;
+        // Ignore not found; it may have already been removed manually.
+        if (status !== 404) {
+          console.warn('Could not delete legacy event from previous calendar', {
+            previousCalendarId,
+            previousEventId,
+            status,
+            message: String(legacyDeleteErr && legacyDeleteErr.message ? legacyDeleteErr.message : legacyDeleteErr),
+          });
+        }
+      }
     }
 
     await mapRef.set(
