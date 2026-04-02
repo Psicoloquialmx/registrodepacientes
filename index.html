@@ -444,6 +444,7 @@ input[type="file"].form-input{cursor:pointer}
 .calendar-sync-hint{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light);margin-left:6px;white-space:nowrap}
 .calendar-sync-dot{width:7px;height:7px;border-radius:50%;background:var(--sage-dark);display:inline-block;animation:calendarSyncPulse 1.25s ease-in-out infinite}
 @keyframes calendarSyncPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.05)}}
+.color-dot-preview{width:12px;height:12px;border-radius:50%;display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,.15)}
 .est-card{background:#f8fbfa;border:1px solid #dceae6;border-radius:10px;padding:.875rem 1rem;margin-top:.75rem}
 .est-head{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-light);margin-bottom:6px}
 .est-main{font-family:'Lora',serif;font-size:28px;line-height:1.1;color:var(--ink)}
@@ -1635,12 +1636,13 @@ async function runCalendarSyncBatch(toSync,opts){
 let calendarBackgroundSyncInProgress=false;
 const AUTO_WEEKLY_SYNC_STORAGE_PREFIX='axo_weekly_calendar_sync';
 
-function setCalendarSyncBackgroundHint(isActive){
+function setCalendarSyncBackgroundHint(isActive, done, total){
   const hint=document.getElementById('calendar-sync-bg-hint');
   if(!hint) return;
   if(isActive){
     hint.style.display='inline-flex';
-    hint.innerHTML='<span class="calendar-sync-dot" aria-hidden="true"></span><span>Sincronizando en segundo plano...</span>';
+    const progress=(done!=null&&total!=null&&total>0)?` ${done}/${total}`:'';
+    hint.innerHTML=`<span class="calendar-sync-dot" aria-hidden="true"></span><span>Segundo plano${progress}...</span>`;
   } else {
     hint.style.display='none';
     hint.innerHTML='';
@@ -1698,9 +1700,11 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
       const monthItems=collectFuturePlannedSessionsForSync(30,8);
       const sixMonthsItems=collectFuturePlannedSessionsForSync(180,31);
 
-      const w=await runCalendarSyncBatch(weekItems);
-      const m=await runCalendarSyncBatch(monthItems);
-      const s=await runCalendarSyncBatch(sixMonthsItems);
+      const bgTotal=weekItems.length+monthItems.length+sixMonthsItems.length;
+      const makeProgress=(offset)=>(p)=>setCalendarSyncBackgroundHint(true,offset+p.done,bgTotal);
+      const w=await runCalendarSyncBatch(weekItems,{progressEvery:1,onProgress:makeProgress(0)});
+      const m=await runCalendarSyncBatch(monthItems,{progressEvery:1,onProgress:makeProgress(weekItems.length)});
+      const s=await runCalendarSyncBatch(sixMonthsItems,{progressEvery:1,onProgress:makeProgress(weekItems.length+monthItems.length)});
       const totalFail=(w.fail||0)+(m.fail||0)+(s.fail||0);
       if(totalFail===0){
         writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
@@ -1767,12 +1771,14 @@ async function syncPlannedFutureSessionsToGoogleCalendar(){
   }
 
   // Continue quietly in the background so the user can keep using the app.
+  const bgTotal2=monthItems.length+sixMonthsItems.length;
   calendarBackgroundSyncInProgress=true;
-  setCalendarSyncBackgroundHint(true);
+  setCalendarSyncBackgroundHint(true,0,bgTotal2);
   setTimeout(async ()=>{
     try {
-      const monthResult=await runCalendarSyncBatch(monthItems);
-      const sixMonthsResult=await runCalendarSyncBatch(sixMonthsItems);
+      const makeProgress2=(offset)=>(p)=>setCalendarSyncBackgroundHint(true,offset+p.done,bgTotal2);
+      const monthResult=await runCalendarSyncBatch(monthItems,{progressEvery:1,onProgress:makeProgress2(0)});
+      const sixMonthsResult=await runCalendarSyncBatch(sixMonthsItems,{progressEvery:1,onProgress:makeProgress2(monthItems.length)});
       console.info('[CalSync] Background sync finished',{
         month:monthResult,
         sixMonths:sixMonthsResult
@@ -1832,18 +1838,18 @@ function timezoneOptionsHtml(selected){
 }
 
 const GOOGLE_CALENDAR_COLOR_OPTIONS=[
-  {id:'11',label:'Tomate'},
-  {id:'6',label:'Mandarina'},
-  {id:'5',label:'Girasol'},
-  {id:'10',label:'Albahaca'},
-  {id:'2',label:'Menta'},
-  {id:'7',label:'Turquesa'},
-  {id:'9',label:'Indigo'},
-  {id:'1',label:'Lavanda'},
-  {id:'3',label:'Uva'},
-  {id:'4',label:'Flamenco'},
-  {id:'8',label:'Grafito'},
-  {id:'',label:'Color predeterminado'}
+  {id:'11',label:'Tomate',hex:'#d50000'},
+  {id:'6',label:'Mandarina',hex:'#f4511e'},
+  {id:'5',label:'Girasol',hex:'#f6bf26'},
+  {id:'10',label:'Albahaca',hex:'#0b8043'},
+  {id:'2',label:'Menta',hex:'#33b679'},
+  {id:'7',label:'Turquesa',hex:'#039be5'},
+  {id:'9',label:'Indigo',hex:'#3f51b5'},
+  {id:'1',label:'Lavanda',hex:'#7986cb'},
+  {id:'3',label:'Uva',hex:'#8e24aa'},
+  {id:'4',label:'Flamenco',hex:'#e67c73'},
+  {id:'8',label:'Grafito',hex:'#616161'},
+  {id:'',label:'Color predeterminado',hex:'#adb5bd'}
 ];
 const SYSTEM_REFERRAL_OTHER_ID='referral_source_other';
 const NEW_REFERRAL_SOURCE_OPTION='__new__';
@@ -1855,6 +1861,18 @@ function googleCalendarColorOptions(){
 function googleCalendarColorLabel(colorId){
   const found=googleCalendarColorOptions().find(opt=>String(opt.id)===String(colorId??''));
   return found?found.label:'Color predeterminado';
+}
+
+function googleCalendarColorHex(colorId){
+  const found=googleCalendarColorOptions().find(opt=>String(opt.id)===String(colorId??''));
+  return found?found.hex:'#adb5bd';
+}
+
+function updateColorDotPreview(selectEl){
+  const dot=selectEl.previousElementSibling;
+  if(dot&&dot.classList.contains('color-dot-preview')){
+    dot.style.background=googleCalendarColorHex(selectEl.value);
+  }
 }
 
 function googleCalendarColorOptionsHtml(selected){
@@ -1940,7 +1958,7 @@ function buildPatientReferralSourceOptionsHtml(selectedId){
     <option value=""${!selected?' selected':''}>Agregar fuente de referencia</option>
     <option value="${NEW_REFERRAL_SOURCE_OPTION}"${selected===NEW_REFERRAL_SOURCE_OPTION?' selected':''}>Nueva referencia</option>
     ${existingHtml}
-    <option value="${escAttr(other.id)}"${other.id===selected?' selected':''}>otro</option>`;
+    <option value="${escAttr(other.id)}"${other.id===selected?' selected':''}>Otro</option>`;
 }
 
 function generateReferralSourceId(){
@@ -1957,7 +1975,7 @@ function updatePatientReferralSourceEditor(){
 function buildReferralSourceProfileRow(source){
   return `<div class="freq-item" data-ref-source-row data-source-id="${escAttr(source.id)}" data-source-system="${source.isSystem?'1':'0'}" style="display:grid;grid-template-columns:minmax(160px,1fr) 180px auto;gap:8px;align-items:center">
     <input class="form-input" data-ref-source-name value="${escAttr(source.nombre)}" ${source.isSystem?'readonly':''} placeholder="Nombre de la fuente">
-    <select class="form-input" data-ref-source-color>${googleCalendarColorOptionsHtml(source.googleColorId)}</select>
+    <div style="display:flex;align-items:center;gap:6px"><span class="color-dot-preview" style="background:${googleCalendarColorHex(source.googleColorId)}"></span><select class="form-input" style="flex:1;min-width:0" data-ref-source-color onchange="updateColorDotPreview(this)">${googleCalendarColorOptionsHtml(source.googleColorId)}</select></div>
     ${source.isSystem?'<span style="font-size:12px;color:var(--ink-light)">Sistema</span>':`<button class="btn-ghost btn-sm" type="button" onclick="removeReferralSourceProfileRow(this)">Eliminar</button>`}
   </div>`;
 }
@@ -4707,7 +4725,7 @@ function buildEditPanel(p){
           <div class="form-group form-full" id="e-referral-new-wrap" style="display:none">
             <div class="form-grid">
               <div class="form-group"><label class="form-label">Nombre de la nueva referencia</label><input class="form-input" id="e-referral-new-name" placeholder="Ej: Casa Psi"></div>
-              <div class="form-group"><label class="form-label">Color en Google Calendar</label><select class="form-input" id="e-referral-new-color">${googleCalendarColorOptionsHtml('')}</select></div>
+              <div class="form-group"><label class="form-label">Color en Google Calendar</label><div style="display:flex;align-items:center;gap:6px"><span class="color-dot-preview" style="background:${googleCalendarColorHex('')}"></span><select class="form-input" style="flex:1;min-width:0" id="e-referral-new-color" onchange="updateColorDotPreview(this)">${googleCalendarColorOptionsHtml('')}</select></div></div>
             </div>
           </div>
           <div class="form-group" style="display:flex;align-items:center;gap:8px">
