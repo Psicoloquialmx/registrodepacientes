@@ -26,6 +26,13 @@ const CALENDAR_CONFIG = {
   encrypt_secret: process.env.ENCRYPT_SECRET || LEGACY_CALENDAR_CONFIG.encrypt_secret || 'axolotl_therapy_calendar_256'
 };
 
+const GOOGLE_CALENDAR_REQUIRED_SCOPES = [
+  // Required to create/list secondary calendars (e.g., "Agenda de Pacientes").
+  'https://www.googleapis.com/auth/calendar',
+  // Required for event CRUD in the selected calendar.
+  'https://www.googleapis.com/auth/calendar.events',
+];
+
 const AGENDA_CALENDAR_NAME = 'Agenda de Pacientes';
 
 /**
@@ -209,7 +216,7 @@ exports.googleCalendarConnect = functions.https.onRequest(async (req, res) => {
       access_type: 'offline',
       prompt: 'consent',
       include_granted_scopes: true,
-      scope: ['https://www.googleapis.com/auth/calendar.events'],
+      scope: GOOGLE_CALENDAR_REQUIRED_SCOPES,
       state,
     });
 
