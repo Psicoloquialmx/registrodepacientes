@@ -1537,30 +1537,33 @@ function addDaysToIsoDate(baseIso,days){
   return dt.toISOString().split('T')[0];
 }
 
-async function purgeCalendarRemnants(){
+async function movePrimaryEventsToAgenda(){
   if(!calendarIntegration?.connected){
     alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
     return;
   }
   if(!currentUser||!auth) return;
   const btn=document.getElementById('btn-purge-remnants');
-  if(btn){ btn.disabled=true; btn.textContent='Limpiando...'; }
+  if(btn){ btn.disabled=true; btn.textContent='Moviendo...'; }
   try {
     const idToken=await currentUser.getIdToken();
-    const batchSize=40;
-    const maxRounds=20;
+    const batchSize=20;
+    const maxRounds=40;
     let rounds=0;
-    let totalDeleted=0;
+    let totalMoved=0;
+    let totalAlready=0;
+    let totalPrimaryDeleted=0;
+    let totalAgendaDupDeleted=0;
     let hasMore=true;
 
     while(hasMore&&rounds<maxRounds){
       rounds++;
-      if(btn) btn.textContent=`Limpiando lote ${rounds}...`;
+      if(btn) btn.textContent=`Moviendo lote ${rounds}...`;
 
-      const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarPurgeRemnantsProxy`,{
+      const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarMigratePrimaryToAgendaProxy`,{
         method:'POST',
         headers:{Authorization:`Bearer ${idToken}`,'Content-Type':'application/json'},
-        body:JSON.stringify({maxDeletes:batchSize})
+        body:JSON.stringify({maxOps:batchSize})
       });
 
       const rawText=await resp.text();
@@ -1571,26 +1574,28 @@ async function purgeCalendarRemnants(){
         if(!resp.ok){
           throw new Error(`Servidor devolvió ${resp.status} y una respuesta no-JSON (probable timeout).`);
         }
-        throw new Error('Respuesta inesperada del servidor al limpiar duplicados.');
+        throw new Error('Respuesta inesperada del servidor al mover eventos.');
       }
 
       if(!resp.ok) throw new Error(data?.detail||data?.error||`Error HTTP ${resp.status}`);
 
-      const deletedNow=Math.max(0,parseInt(data?.deleted,10)||0);
-      totalDeleted+=deletedNow;
+      totalMoved+=Math.max(0,parseInt(data?.moved,10)||0);
+      totalAlready+=Math.max(0,parseInt(data?.alreadyInAgenda,10)||0);
+      totalPrimaryDeleted+=Math.max(0,parseInt(data?.primaryDeleted,10)||0);
+      totalAgendaDupDeleted+=Math.max(0,parseInt(data?.agendaDuplicatesDeleted,10)||0);
       hasMore=!!data?.hasMore;
-      if(btn) btn.textContent=`Limpiando... ${totalDeleted} eliminados`;
+      if(btn) btn.textContent=`Moviendo... ${totalPrimaryDeleted} limpiados en principal`;
     }
 
     if(hasMore){
-      alert(`Limpieza parcial: ${totalDeleted} eventos eliminados del calendario principal.\n\nAún pueden quedar algunos; vuelve a presionar "Limpiar duplicados" para continuar.`);
+      alert(`Proceso parcial completado.\n\nMovidos a Agenda: ${totalMoved}\nYa existentes en Agenda: ${totalAlready}\nEliminados de principal: ${totalPrimaryDeleted}\nDuplicados eliminados en Agenda: ${totalAgendaDupDeleted}\n\nAún pueden quedar eventos. Presiona "Mover y limpiar" otra vez para continuar.`);
     } else {
-      alert(`Limpieza completada. ${totalDeleted} evento${totalDeleted!==1?'s':''} eliminado${totalDeleted!==1?'s':''} del calendario principal.`);
+      alert(`Listo.\n\nMovidos a Agenda: ${totalMoved}\nYa existentes en Agenda: ${totalAlready}\nEliminados de principal: ${totalPrimaryDeleted}\nDuplicados eliminados en Agenda: ${totalAgendaDupDeleted}`);
     }
   } catch(err){
-    alert(`Error al limpiar: ${err.message||err}`);
+    alert(`Error al mover/limpiar: ${err.message||err}`);
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent='Limpiar duplicados'; }
+    if(btn){ btn.disabled=false; btn.textContent='Mover y limpiar'; }
   }
 }
 
@@ -2913,7 +2918,7 @@ function renderTherapistProfileView(){
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button class="btn-primary btn-sm" onclick="startGoogleCalendarConnect()">${calConnected?'Reconectar Calendar':'Conectar Calendar'}</button>
             <button class="btn-sec btn-sm" onclick="fetchCalendarIntegrationStatus().then(()=>renderTherapistProfileView())">Actualizar estado</button>
-            ${calConnected?`<button id="btn-purge-remnants" class="btn-sec btn-sm" onclick="purgeCalendarRemnants()" title="Elimina del calendario principal los eventos duplicados que ya están en Agenda de Pacientes">Limpiar duplicados</button>`:''}
+            ${calConnected?`<button id="btn-purge-remnants" class="btn-sec btn-sm" onclick="movePrimaryEventsToAgenda()" title="Mueve eventos del calendario principal a Agenda de Pacientes y limpia duplicados">Mover y limpiar</button>`:''}
           </div>
         </div>
       </div>

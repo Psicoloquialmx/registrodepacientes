@@ -604,3 +604,161 @@ exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res)
     });
   }
 });
+
+/**
+ * Migrates app events from primary calendar to the dedicated Agenda calendar.
+ * For each source-tagged event in primary, ensures a matching event exists in
+ * Agenda (by sessionKey when available), then deletes the primary copy.
+ */
+exports.googleCalendarMigratePrimaryToAgenda = functions.https.onRequest(async (req, res) => {
+  try {
+    if (setCors(req, res)) return;
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const decoded = await verifyRequestUser(req);
+    if (!decoded || !decoded.uid) return res.status(401).json({ error: 'Unauthorized' });
+
+    const body = req.body || {};
+    const maxOpsRaw = parseInt(body.maxOps, 10);
+    const maxOps = Math.max(5, Math.min(80, Number.isFinite(maxOpsRaw) ? maxOpsRaw : 20));
+
+    const uid = decoded.uid;
+    const { calendar, calendarId } = await getCalendarClientForUser(uid);
+
+    let processed = 0;
+    let moved = 0;
+    let alreadyInAgenda = 0;
+    let primaryDeleted = 0;
+    let agendaDuplicatesDeleted = 0;
+    let hasMore = false;
+    let pageToken = undefined;
+
+    do {
+      const listResp = await calendar.events.list({
+        calendarId: 'primary',
+        privateExtendedProperty: 'source=registropx',
+        maxResults: 100,
+        pageToken,
+        showDeleted: false,
+      });
+
+      const events = listResp.data.items || [];
+      pageToken = listResp.data.nextPageToken;
+
+      for (let i = 0; i < events.length; i++) {
+        if (processed >= maxOps) {
+          hasMore = true;
+          break;
+        }
+
+        const primaryEvent = events[i] || {};
+        const primaryEventId = primaryEvent.id;
+        if (!primaryEventId) continue;
+
+        processed++;
+
+        const extPrivate = (primaryEvent.extendedProperties && primaryEvent.extendedProperties.private) || {};
+        const sessionKey = extPrivate.sessionKey || '';
+
+        let agendaEventId = null;
+        let agendaMatches = [];
+
+        if (sessionKey) {
+          const matchResp = await calendar.events.list({
+            calendarId,
+            privateExtendedProperty: `sessionKey=${sessionKey}`,
+            maxResults: 10,
+            showDeleted: false,
+          });
+          agendaMatches = matchResp.data.items || [];
+        }
+
+        if (agendaMatches.length > 0) {
+          agendaEventId = agendaMatches[0].id || null;
+          alreadyInAgenda++;
+
+          // Keep one copy in agenda and delete extra duplicates for this session.
+          if (agendaMatches.length > 1) {
+            for (let j = 1; j < agendaMatches.length; j++) {
+              const dupId = agendaMatches[j] && agendaMatches[j].id;
+              if (!dupId) continue;
+              try {
+                await calendar.events.delete({ calendarId, eventId: dupId });
+                agendaDuplicatesDeleted++;
+              } catch (dupErr) {
+                const status = dupErr && dupErr.code ? Number(dupErr.code) : 0;
+                if (status !== 404 && status !== 410) {
+                  console.warn('migratePrimaryToAgenda: could not delete duplicate agenda event', dupId, String(dupErr && dupErr.message ? dupErr.message : dupErr));
+                }
+              }
+            }
+          }
+        } else {
+          const created = await calendar.events.insert({
+            calendarId,
+            requestBody: {
+              summary: primaryEvent.summary || 'Sesion',
+              description: primaryEvent.description || '',
+              start: primaryEvent.start,
+              end: primaryEvent.end,
+              colorId: primaryEvent.colorId,
+              extendedProperties: primaryEvent.extendedProperties,
+            },
+          });
+          agendaEventId = created.data && created.data.id ? created.data.id : null;
+          moved++;
+        }
+
+        try {
+          await calendar.events.delete({ calendarId: 'primary', eventId: primaryEventId });
+          primaryDeleted++;
+        } catch (delErr) {
+          const status = delErr && delErr.code ? Number(delErr.code) : 0;
+          if (status !== 404 && status !== 410) throw delErr;
+        }
+
+        const patientId = extPrivate.patientId || '';
+        const sessionId = extPrivate.sessionId || '';
+        if (sessionKey && patientId && sessionId && agendaEventId) {
+          const mapDocId = `googleCalendarSessionMap_${sessionKey}`;
+          const mapRef = db.collection('users').doc(uid).collection('private').doc(mapDocId);
+          await mapRef.set(
+            {
+              sessionKey,
+              patientId: String(patientId),
+              sessionId: String(sessionId),
+              eventId: String(agendaEventId),
+              calendarId,
+              status: 'linked',
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+      }
+
+      if (processed >= maxOps) {
+        hasMore = true;
+        break;
+      }
+    } while (pageToken);
+
+    return res.status(200).json({
+      ok: true,
+      processed,
+      moved,
+      alreadyInAgenda,
+      primaryDeleted,
+      agendaDuplicatesDeleted,
+      hasMore,
+      maxOps,
+      agendaCalendarId: calendarId,
+    });
+  } catch (err) {
+    console.error('googleCalendarMigratePrimaryToAgenda error', err);
+    return res.status(500).json({
+      error: 'Failed to migrate events from primary to agenda',
+      detail: String(err && err.message ? err.message : err),
+    });
+  }
+});
