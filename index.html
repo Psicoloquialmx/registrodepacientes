@@ -1467,6 +1467,18 @@ function patientCalendarLabel(p){
   return `${firstName} ${lastName.charAt(0).toUpperCase()}.`;
 }
 
+function patientCalendarPrefixForSession(ses){
+  if(!ses) return '';
+  if(ses.tipo==='reposicion') return '(R) ';
+  const isMovedSource=ses.tipo==='reprogramada'||ses.skipped||ses.replaced||(ses.tipo==='falta'&&!!ses.repoId);
+  if(isMovedSource) return '(R->) ';
+  return '';
+}
+
+function patientCalendarTitle(p,ses){
+  return `${patientCalendarPrefixForSession(ses)}${patientCalendarLabel(p)}`;
+}
+
 function calendarSessionDescriptionForPatient(p,ses){
   const tipo=ses?.tipo||'asistio';
   return `RegistroPX | ${patientCalendarLabel(p)} | Tipo: ${tipo}`;
@@ -1510,7 +1522,7 @@ async function syncSessionToGoogleCalendar(action,p,ses,opts){
       body:JSON.stringify({
         patientId:p.id,
         sessionId:ses.id,
-        title:patientCalendarLabel(p),
+        title:patientCalendarTitle(p,ses),
         description:calendarSessionDescriptionForPatient(p,ses),
         colorId:patientReferralSourceColorId(p),
         startIso:windowIso.startIso,
@@ -1628,7 +1640,7 @@ async function upsertCalendarEventForSession(p,ses,opts){
     body:JSON.stringify({
       patientId:p.id,
       sessionId:ses.id,
-      title:patientCalendarLabel(p),
+      title:patientCalendarTitle(p,ses),
       description:calendarSessionDescriptionForPatient(p,ses),
       colorId:patientReferralSourceColorId(p),
       startIso:windowIso.startIso,
@@ -4311,9 +4323,9 @@ function registrarDesdePop(pid,dateStr,tipo){
       });
     }
 
-    // Calendar sync: remove source day entry and ensure target day is present.
-    if(source) triggerCalendarDelete(p,source);
-    else triggerCalendarDelete(p,{id:`plan_${dateStr}`,fecha:dateStr});
+    // Calendar sync: keep original moved session (R->) and replacement session (R).
+    const sourceForCalendar=source||{id:`plan_${dateStr}`,fecha:dateStr,tipo:'reprogramada',replaced:true,movedTo:nuevaIso,movedTime:nuevaHora,hora:sourceHora};
+    triggerCalendarUpsert(p,sourceForCalendar,{dateStr,hora:sourceHora});
     if(target) triggerCalendarUpsert(p,target,{dateStr:nuevaIso,hora:target.hora||nuevaHora});
 
     closePopover();
@@ -5356,6 +5368,11 @@ function confirmarReposicion(id){
   }
 
   addLog(p,'reposicion',`Repo: ${fechaRepo} (repone ${fechaOrig})${nota?'  -  '+nota:''}`);
+
+  // Calendar sync: tag original as moved (R->) and replacement as reposicion (R).
+  if(sesOrig) triggerCalendarUpsert(p,sesOrig,{dateStr:fechaOrig,hora:sesOrig.hora||horaDiaFecha(p,fechaOrig)});
+  if(sesRepo) triggerCalendarUpsert(p,sesRepo,{dateStr:fechaRepo,hora:sesRepo.hora||horaDiaFecha(p,fechaRepo)});
+
   saveState();
   closeModal();curTab='sesiones';exposeSesMap(p);renderDetalle(p);updateSidebarBadge();
 }
