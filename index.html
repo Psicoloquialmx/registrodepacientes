@@ -1188,6 +1188,8 @@ function normalizePatient(p){
   if(!p.notas) p.notas=[];
   if(!p.cambios) p.cambios=[];
   if(!p.tarifas) p.tarifas=[{monto:p.tarifa||0,desde:p.inicio,hasta:null}];
+  const referralSourceId=(p.referralSourceId||'').toString().trim();
+  p.referralSourceId=getReferralSourceById(referralSourceId)?referralSourceId:null;
   p.pideFactura=(p.pideFactura===true||p.pideFactura==='si'||p.pideFactura===1);
   p.therapistCancelWeeksPerYear=Number.isFinite(Number(p.therapistCancelWeeksPerYear))?Number(p.therapistCancelWeeksPerYear):Number.isFinite(Number(p.cancelWeeksPerYear))?Number(p.cancelWeeksPerYear):DEFAULT_THERAPIST_CANCEL_WEEKS;
   p.patientAbsenceWeeksPerYear=Number.isFinite(Number(p.patientAbsenceWeeksPerYear))?Number(p.patientAbsenceWeeksPerYear):0;
@@ -1502,6 +1504,7 @@ async function syncSessionToGoogleCalendar(action,p,ses,opts){
         sessionId:ses.id,
         title:patientCalendarLabel(p),
         description:calendarSessionDescriptionForPatient(p,ses),
+        colorId:patientReferralSourceColorId(p),
         startIso:windowIso.startIso,
         endIso:windowIso.endIso
       })
@@ -1550,6 +1553,7 @@ async function upsertCalendarEventForSession(p,ses,opts){
       sessionId:ses.id,
       title:patientCalendarLabel(p),
       description:calendarSessionDescriptionForPatient(p,ses),
+      colorId:patientReferralSourceColorId(p),
       startIso:windowIso.startIso,
       endIso:windowIso.endIso
     })
@@ -1561,13 +1565,14 @@ async function upsertCalendarEventForSession(p,ses,opts){
   return true;
 }
 
-function collectFuturePlannedSessionsForSync(maxDays,minDays=0){
+function collectFuturePlannedSessionsForSync(maxDays,minDays=0,patientList=null){
   const days=Math.max(1,Math.min(366,parseInt(maxDays,10)||365));
   const fromDay=Math.max(0,Math.min(days,parseInt(minDays,10)||0));
   const start=today();
   const items=[];
+  const targetPatients=Array.isArray(patientList)&&patientList.length?patientList:activePatients();
 
-  activePatients().forEach(p=>{
+  targetPatients.forEach(p=>{
     for(let i=fromDay;i<=days;i++){
       const dateStr=addDaysToIsoDate(start,i);
       if(isBeforeTreatmentStart(p,dateStr)) continue;
@@ -1778,7 +1783,8 @@ function getDefaultTherapistProfile(){
     defaultSessionRate:800,
     defaultPaymentMode:'sesion',
     firstSessionNoChargeDefault:false,
-    logoUrl:''
+    logoUrl:'',
+    referralSources:ensureReferralSources([])
   };
 }
 
@@ -1806,6 +1812,207 @@ function timezoneOptionsHtml(selected){
   return `<option value="${escAttr(selected)}" selected>${escAttr(selected)}</option>${opts}`;
 }
 
+const GOOGLE_CALENDAR_COLOR_OPTIONS=[
+  {id:'11',label:'Tomate'},
+  {id:'6',label:'Mandarina'},
+  {id:'5',label:'Girasol'},
+  {id:'10',label:'Albahaca'},
+  {id:'2',label:'Menta'},
+  {id:'7',label:'Turquesa'},
+  {id:'9',label:'Indigo'},
+  {id:'1',label:'Lavanda'},
+  {id:'3',label:'Uva'},
+  {id:'4',label:'Flamenco'},
+  {id:'8',label:'Grafito'},
+  {id:'',label:'Color predeterminado'}
+];
+const SYSTEM_REFERRAL_OTHER_ID='referral_source_other';
+const NEW_REFERRAL_SOURCE_OPTION='__new__';
+
+function googleCalendarColorOptions(){
+  return GOOGLE_CALENDAR_COLOR_OPTIONS.map(opt=>({...opt}));
+}
+
+function googleCalendarColorLabel(colorId){
+  const found=googleCalendarColorOptions().find(opt=>String(opt.id)===String(colorId??''));
+  return found?found.label:'Color predeterminado';
+}
+
+function googleCalendarColorOptionsHtml(selected){
+  const current=String(selected??'');
+  return googleCalendarColorOptions().map(opt=>`<option value="${escAttr(opt.id)}"${String(opt.id)===current?' selected':''}>${escAttr(opt.label)}</option>`).join('');
+}
+
+function normalizeReferralSource(raw,index=0){
+  const data=raw&&typeof raw==='object'?raw:{};
+  const validColorIds=new Set(googleCalendarColorOptions().map(opt=>String(opt.id)));
+  const colorId=String(data.googleColorId??'');
+  return {
+    id:(data.id||`ref_${index}`).toString(),
+    nombre:(data.nombre||'').toString().trim(),
+    googleColorId:validColorIds.has(colorId)?colorId:'',
+    isSystem:!!data.isSystem
+  };
+}
+
+function ensureReferralSources(rawSources){
+  const normalized=(Array.isArray(rawSources)?rawSources:[])
+    .map((item,index)=>normalizeReferralSource(item,index))
+    .filter(item=>item.nombre);
+
+  const seenIds=new Set();
+  const seenNames=new Set();
+  const regular=[];
+  let otherSource=null;
+
+  normalized.forEach(source=>{
+    const lowerName=source.nombre.toLowerCase();
+    if(source.id===SYSTEM_REFERRAL_OTHER_ID||lowerName==='otro'||source.isSystem){
+      if(!otherSource){
+        otherSource={...source,id:SYSTEM_REFERRAL_OTHER_ID,nombre:'otro',isSystem:true,googleColorId:source.googleColorId||'8'};
+      }
+      return;
+    }
+    if(seenIds.has(source.id)||seenNames.has(lowerName)) return;
+    seenIds.add(source.id);
+    seenNames.add(lowerName);
+    regular.push({...source,isSystem:false});
+  });
+
+  regular.sort((a,b)=>a.nombre.localeCompare(b.nombre,'es',{sensitivity:'base'}));
+  if(!otherSource) otherSource={id:SYSTEM_REFERRAL_OTHER_ID,nombre:'otro',googleColorId:'8',isSystem:true};
+  return [...regular,otherSource];
+}
+
+function getReferralSources(profile=therapistProfile){
+  const data=profile&&typeof profile==='object'?profile:{};
+  return ensureReferralSources(data.referralSources);
+}
+
+function getOtherReferralSource(profile=therapistProfile){
+  return getReferralSources(profile).find(source=>source.id===SYSTEM_REFERRAL_OTHER_ID)||{id:SYSTEM_REFERRAL_OTHER_ID,nombre:'otro',googleColorId:'8',isSystem:true};
+}
+
+function getReferralSourceById(sourceId,profile=therapistProfile){
+  if(!sourceId) return null;
+  return getReferralSources(profile).find(source=>source.id===String(sourceId))||null;
+}
+
+function getPatientReferralSource(p,profile=therapistProfile){
+  return getReferralSourceById(p?.referralSourceId,profile);
+}
+
+function patientReferralSourceLabel(p,profile=therapistProfile){
+  const source=getPatientReferralSource(p,profile);
+  return source?source.nombre:'Sin fuente';
+}
+
+function patientReferralSourceColorId(p,profile=therapistProfile){
+  const source=getPatientReferralSource(p,profile);
+  return source?String(source.googleColorId??''):'';
+}
+
+function buildPatientReferralSourceOptionsHtml(selectedId){
+  const selected=String(selectedId||'');
+  const sources=getReferralSources().filter(source=>!source.isSystem);
+  const other=getOtherReferralSource();
+  const existingHtml=sources.map(source=>`<option value="${escAttr(source.id)}"${source.id===selected?' selected':''}>${escAttr(source.nombre)}</option>`).join('');
+  return `
+    <option value=""${!selected?' selected':''}>Agregar fuente de referencia</option>
+    <option value="${NEW_REFERRAL_SOURCE_OPTION}"${selected===NEW_REFERRAL_SOURCE_OPTION?' selected':''}>Nueva referencia</option>
+    ${existingHtml}
+    <option value="${escAttr(other.id)}"${other.id===selected?' selected':''}>otro</option>`;
+}
+
+function generateReferralSourceId(){
+  return `ref_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;
+}
+
+function updatePatientReferralSourceEditor(){
+  const select=document.getElementById('e-referral-source');
+  const wrap=document.getElementById('e-referral-new-wrap');
+  if(!select||!wrap) return;
+  wrap.style.display=select.value===NEW_REFERRAL_SOURCE_OPTION?'grid':'none';
+}
+
+function buildReferralSourceProfileRow(source){
+  return `<div class="freq-item" data-ref-source-row data-source-id="${escAttr(source.id)}" data-source-system="${source.isSystem?'1':'0'}" style="display:grid;grid-template-columns:minmax(160px,1fr) 180px auto;gap:8px;align-items:center">
+    <input class="form-input" data-ref-source-name value="${escAttr(source.nombre)}" ${source.isSystem?'readonly':''} placeholder="Nombre de la fuente">
+    <select class="form-input" data-ref-source-color>${googleCalendarColorOptionsHtml(source.googleColorId)}</select>
+    ${source.isSystem?'<span style="font-size:12px;color:var(--ink-light)">Sistema</span>':`<button class="btn-ghost btn-sm" type="button" onclick="removeReferralSourceProfileRow(this)">Eliminar</button>`}
+  </div>`;
+}
+
+function buildReferralSourceProfileRows(sources){
+  return getReferralSources({referralSources:sources}).map(source=>buildReferralSourceProfileRow(source)).join('');
+}
+
+function addReferralSourceProfileRow(){
+  const container=document.getElementById('tp-referral-sources-list');
+  if(!container) return;
+  const source={id:generateReferralSourceId(),nombre:'',googleColorId:'',isSystem:false};
+  container.insertAdjacentHTML('beforeend',buildReferralSourceProfileRow(source));
+}
+
+function removeReferralSourceProfileRow(btn){
+  const row=btn?.closest?.('[data-ref-source-row]');
+  if(row) row.remove();
+}
+
+function readReferralSourcesFromProfileForm(){
+  const container=document.getElementById('tp-referral-sources-list');
+  if(!container) return getReferralSources();
+  const rows=[...container.querySelectorAll('[data-ref-source-row]')];
+  const seenNames=new Set();
+  const sources=[];
+
+  for(const row of rows){
+    const id=row.dataset.sourceId||generateReferralSourceId();
+    const isSystem=row.dataset.sourceSystem==='1';
+    const nameInput=row.querySelector('[data-ref-source-name]');
+    const colorSelect=row.querySelector('[data-ref-source-color]');
+    const nombre=(nameInput?.value||'').trim();
+    const googleColorId=(colorSelect?.value||'').trim();
+    const effectiveName=isSystem?'otro':nombre;
+    if(!effectiveName){
+      alert('Cada fuente de referencia debe tener nombre.');
+      return null;
+    }
+    const lowered=effectiveName.toLowerCase();
+    if(seenNames.has(lowered)){
+      alert(`La fuente de referencia "${effectiveName}" ya existe.`);
+      return null;
+    }
+    seenNames.add(lowered);
+    sources.push(normalizeReferralSource({id,nombre:effectiveName,googleColorId,isSystem},sources.length));
+  }
+
+  return ensureReferralSources(sources);
+}
+
+function collectFuturePlannedSessionsForPatients(patientIds,maxDays=180,minDays=0){
+  const idSet=new Set((Array.isArray(patientIds)?patientIds:[]).map(id=>parseInt(id,10)).filter(Number.isFinite));
+  if(!idSet.size) return [];
+  const scopedPatients=activePatients().filter(patient=>idSet.has(parseInt(patient.id,10)));
+  return collectFuturePlannedSessionsForSync(maxDays,minDays,scopedPatients);
+}
+
+function queueReferralCalendarResync(patientIds,reason){
+  if(!calendarIntegration?.connected||!currentUser||!auth) return;
+  const ids=[...new Set((Array.isArray(patientIds)?patientIds:[]).map(id=>parseInt(id,10)).filter(Number.isFinite))];
+  if(!ids.length) return;
+  setTimeout(async ()=>{
+    try {
+      const items=collectFuturePlannedSessionsForPatients(ids,180,0);
+      if(!items.length) return;
+      const result=await runCalendarSyncBatch(items);
+      console.info('[CalSync] Referral background sync finished',{reason,patients:ids,result});
+    } catch(err){
+      console.warn('[CalSync] Referral background sync failed',reason,err);
+    }
+  },80);
+}
+
 function normalizeTherapistProfile(raw){
   const base=getDefaultTherapistProfile();
   const data=raw&&typeof raw==='object'?raw:{};
@@ -1826,7 +2033,8 @@ function normalizeTherapistProfile(raw){
     defaultSessionRate:Number.isFinite(Number(data.defaultSessionRate))?Number(data.defaultSessionRate):base.defaultSessionRate,
     defaultPaymentMode:['sesion','mensual','quincenal','inicio'].includes(data.defaultPaymentMode)?data.defaultPaymentMode:base.defaultPaymentMode,
     firstSessionNoChargeDefault:!!data.firstSessionNoChargeDefault,
-    logoUrl:(data.logoUrl||'').toString().trim()
+    logoUrl:(data.logoUrl||'').toString().trim(),
+    referralSources:ensureReferralSources(data.referralSources||base.referralSources)
   };
 }
 
@@ -2641,6 +2849,14 @@ function renderTherapistProfileView(){
           <label class="form-label" for="tp-first-free" style="margin:0">Primera sesión sin costo por default</label>
         </div>
         <div class="form-group form-full"><label class="form-label">Bio breve (display)</label><textarea class="form-input" id="tp-bio" rows="3" style="resize:vertical">${escAttr(p.bio)}</textarea></div>
+        <div class="form-group form-full">
+          <div class="sec-title" style="margin-bottom:.5rem">Fuentes de referencia</div>
+          <div id="tp-referral-sources-list" style="display:flex;flex-direction:column;gap:8px">${buildReferralSourceProfileRows(p.referralSources)}</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.75rem">
+            <button class="btn-sec btn-sm" type="button" onclick="addReferralSourceProfileRow()">Agregar fuente</button>
+            <span style="font-size:12px;color:var(--ink-light)">Si eliminas una fuente, sus pacientes pasarán a otro y sus sesiones futuras se re-sincronizarán.</span>
+          </div>
+        </div>
       </div>
       <div class="modal-footer" style="margin-top:1rem"><button class="btn-primary" onclick="saveTherapistProfile()">Guardar perfil</button></div>
     </div>`;
@@ -2659,10 +2875,22 @@ function handleLogoUpload(){
 
 function saveTherapistProfile(){
   const current=normalizeTherapistProfile(therapistProfile);
+  const nextReferralSources=readReferralSourcesFromProfileForm();
+  if(!nextReferralSources) return;
   const displayName=document.getElementById('tp-display-name').value.trim();
   const profession=document.getElementById('tp-profession').value.trim();
   if(!displayName){alert('Escribe el nombre visible del terapeuta.');return;}
   if(!profession){alert('Escribe la profesión o rol clínico.');return;}
+  const currentSources=getReferralSources(current);
+  const nextSources=ensureReferralSources(nextReferralSources);
+  const currentById=new Map(currentSources.map(source=>[source.id,source]));
+  const nextById=new Map(nextSources.map(source=>[source.id,source]));
+  const removedSources=currentSources.filter(source=>!source.isSystem&&!nextById.has(source.id));
+  const changedColorSourceIds=nextSources
+    .filter(source=>currentById.has(source.id)&&currentById.get(source.id).googleColorId!==source.googleColorId)
+    .map(source=>source.id);
+  const otherSourceId=getOtherReferralSource({referralSources:nextSources}).id;
+  const affectedPatientIds=new Set();
   therapistProfile=normalizeTherapistProfile({
     displayName,
     profession,
@@ -2678,12 +2906,27 @@ function saveTherapistProfile(){
     defaultPaymentMode:document.getElementById('tp-payment').value,
     firstSessionNoChargeDefault:document.getElementById('tp-first-free').checked,
     logoUrl:window.__logoUrlData||current.logoUrl||'',
-    bio:document.getElementById('tp-bio').value.trim()
+    bio:document.getElementById('tp-bio').value.trim(),
+    referralSources:nextSources
   });
+
+  patients.forEach(patient=>{
+    normalizePatient(patient);
+    const removedSource=removedSources.find(source=>source.id===patient.referralSourceId);
+    if(removedSource){
+      patient.referralSourceId=otherSourceId;
+      affectedPatientIds.add(patient.id);
+      addLog(patient,'datos',`Fuente de referencia: ${removedSource.nombre} → otro`);
+      return;
+    }
+    if(changedColorSourceIds.includes(patient.referralSourceId)) affectedPatientIds.add(patient.id);
+  });
+
   applyTherapistProfileDisplay();
   saveState();
   window.__logoUrlData=null;
   renderTherapistProfileView();
+  if(affectedPatientIds.size) queueReferralCalendarResync([...affectedPatientIds],'profile-referral-source-update');
   alert('Perfil del terapeuta guardado.');
 }
 
@@ -4107,6 +4350,7 @@ function renderDetalle(p){
   const freqActual=frecuenciaVigenteEnFecha(p,estTarget);
   const showTherapistAbsence=hasCustomTherapistAbsence(p);
   const showPatientAbsence=hasCustomPatientAbsence(p);
+  const referralLabel=patientReferralSourceLabel(p);
   const inicioYear=new Date(p.inicio+'T12:00').getFullYear();
   const startedThisYear=inicioYear===new Date().getFullYear();
   const useManualMode=startedThisYear && !p.manualEstimateOverride;
@@ -4207,6 +4451,7 @@ function renderDetalle(p){
           <div class="drow"><span class="dkey">Faltas del paciente</span><span class="dval">${faltas}</span></div>
           <div class="drow"><span class="dkey">Canceladas por terapeuta</span><span class="dval">${cancels}</span></div>
           <div class="drow"><span class="dkey">Reposiciones</span><span class="dval">${repos}</span></div>
+          <div class="drow"><span class="dkey">Fuente de referencia</span><span class="dval">${escAttr(referralLabel)}</span></div>
           <div class="drow"><span class="dkey">Frecuencia vigente</span><span class="dval">${freqActual.vecesSemana} por semana</span></div>
           ${showTherapistAbsence?`<div class="drow"><span class="dkey">Ausencias terapeuta</span><span class="dval">${p.therapistCancelWeeksPerYear} sem/año</span></div>`:''}
           ${showPatientAbsence?`<div class="drow"><span class="dkey">Ausencias paciente</span><span class="dval">${p.patientAbsenceWeeksPerYear} sem/año</span></div>`:''}
@@ -4413,6 +4658,7 @@ function buildEditPanel(p){
   const freqActual=frecuenciaVigenteEnFecha(p,today());
   const frecuenciasHtml=p.frecuencias.map((f,index)=>`<div class="freq-item"><div><div>${f.vecesSemana} sesión${f.vecesSemana!==1?'es':''}/semana</div><div class="freq-meta">Desde ${f.desde}</div></div>${index===0?'':`<button class="btn-ghost" onclick="deleteFrecuencia(${p.id},'${f.desde}')">Eliminar</button>`}</div>`).join('');
   const pausasHtml=p.pausas.length?p.pausas.map(pp=>`<div class="freq-item"><div><div>${pp.categoria==='vacaciones'?'Vacaciones':'Pausa'} · ${pp.actor}</div><div class="freq-meta">${pp.desde} → ${pp.hasta}${pp.nota?` · ${pp.nota}`:''}</div></div><button class="btn-ghost" onclick="deletePausa(${p.id},'${pp.id}')">Eliminar</button></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin vacaciones o pausas registradas.</div>';
+  const currentReferralSourceId=(p.referralSourceId||'').toString();
   return `
     <div class="edit-banner">o <strong>Modo edición</strong>  -  Los cambios se registran en la bitácora automáticamente.</div>
     <div class="detail-grid">
@@ -4433,6 +4679,17 @@ function buildEditPanel(p){
             <select class="form-input" id="e-duracion">
               ${durationOptionsHtml(p.duracion||45)}
             </select>
+          </div>
+          <div class="form-group"><label class="form-label">Fuente de referencia</label>
+            <select class="form-input" id="e-referral-source" onchange="updatePatientReferralSourceEditor()">
+              ${buildPatientReferralSourceOptionsHtml(currentReferralSourceId)}
+            </select>
+          </div>
+          <div class="form-group form-full" id="e-referral-new-wrap" style="display:none">
+            <div class="form-grid">
+              <div class="form-group"><label class="form-label">Nombre de la nueva referencia</label><input class="form-input" id="e-referral-new-name" placeholder="Ej: Casa Psi"></div>
+              <div class="form-group"><label class="form-label">Color en Google Calendar</label><select class="form-input" id="e-referral-new-color">${googleCalendarColorOptionsHtml('')}</select></div>
+            </div>
           </div>
           <div class="form-group" style="display:flex;align-items:center;gap:8px">
             <input type="checkbox" id="e-primera-sin-costo" ${p.primeraSinCosto?'checked':''}>
@@ -4616,10 +4873,14 @@ function guardarSeccionDatos(id){
   const p=patients.find(x=>x.id===id);
   normalizePatient(p);
   const cambios=[];
+  const affectedPatientIds=new Set();
   const nuevoNombre=document.getElementById('e-nombre').value.trim();
   const nuevoInicio=document.getElementById('e-inicio').value;
   const nuevoPago=document.getElementById('e-pago').value;
   const nuevaDuracion=parseInt(document.getElementById('e-duracion').value)||45;
+  const referralSelection=(document.getElementById('e-referral-source')?.value||'').trim();
+  const newReferralName=(document.getElementById('e-referral-new-name')?.value||'').trim();
+  const newReferralColor=(document.getElementById('e-referral-new-color')?.value||'').trim();
   const nuevaPrimeraSinCosto=document.getElementById('e-primera-sin-costo').checked;
   const nuevoPideFactura=(document.getElementById('e-pide-factura')?.value||'no')==='si';
   if(!nuevoNombre){alert('El nombre no puede estar vacío');return;}
@@ -4638,10 +4899,45 @@ function guardarSeccionDatos(id){
   if((p.duracion||45)!==nuevaDuracion) cambios.push(`Duración: ${p.duracion||45} → ${nuevaDuracion} min`);
   if(!!p.primeraSinCosto!==nuevaPrimeraSinCosto) cambios.push(`Primera sin costo: ${p.primeraSinCosto?'sí':'no'} → ${nuevaPrimeraSinCosto?'sí':'no'}`);
   if(!!p.pideFactura!==nuevoPideFactura) cambios.push(`Factura: ${p.pideFactura?'sí':'no'} → ${nuevoPideFactura?'sí':'no'}`);
+
+  let nextReferralSourceId=null;
+  const previousReferralLabel=patientReferralSourceLabel(p);
+  if(referralSelection===NEW_REFERRAL_SOURCE_OPTION){
+    if(!newReferralName){
+      alert('Escribe el nombre de la nueva referencia.');
+      return;
+    }
+    const existingMatch=getReferralSources().find(source=>source.nombre.toLowerCase()===newReferralName.toLowerCase());
+    if(existingMatch){
+      alert('Esa fuente de referencia ya existe. Selecciónala desde la lista.');
+      return;
+    }
+    const newSource=normalizeReferralSource({
+      id:generateReferralSourceId(),
+      nombre:newReferralName,
+      googleColorId:newReferralColor,
+      isSystem:false
+    },Date.now());
+    therapistProfile=normalizeTherapistProfile({
+      ...normalizeTherapistProfile(therapistProfile),
+      referralSources:[...getReferralSources(),newSource]
+    });
+    nextReferralSourceId=newSource.id;
+  } else if(referralSelection){
+    nextReferralSourceId=referralSelection;
+  }
+
+  if((p.referralSourceId||null)!==(nextReferralSourceId||null)){
+    const nextReferralLabel=nextReferralSourceId?(getReferralSourceById(nextReferralSourceId)?.nombre||'otro'):'Sin fuente';
+    cambios.push(`Fuente de referencia: ${previousReferralLabel} → ${nextReferralLabel}`);
+    affectedPatientIds.add(p.id);
+  }
+
   p.nombre=nuevoNombre;
   p.inicio=nuevoInicio;
   p.pago=nuevoPago;
   p.duracion=nuevaDuracion;
+  p.referralSourceId=nextReferralSourceId||null;
   p.primeraSinCosto=nuevaPrimeraSinCosto;
   p.pideFactura=nuevoPideFactura;
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
@@ -4650,6 +4946,7 @@ function guardarSeccionDatos(id){
   saveState();
   setEditSaveFeedback(p.id,'datos');
   curTab='editar';renderDetalle(p);
+  if(affectedPatientIds.size) queueReferralCalendarResync([...affectedPatientIds],'patient-referral-source-change');
 }
 
 function setFacturaToggle(value){

@@ -352,6 +352,7 @@ exports.googleCalendarUpsertSession = functions.https.onRequest(async (req, res)
     const sessionId = body.sessionId;
     const title = body.title || 'Sesion';
     const description = body.description || '';
+    const colorId = body.colorId;
     const startIso = body.startIso;
     const endIso = body.endIso;
 
@@ -382,6 +383,10 @@ exports.googleCalendarUpsertSession = functions.https.onRequest(async (req, res)
         },
       },
     };
+
+    if (/^(?:[1-9]|10|11)$/.test(String(colorId || ''))) {
+      eventPayload.colorId = String(colorId);
+    }
 
     let eventId = mapData.eventId || null;
 
