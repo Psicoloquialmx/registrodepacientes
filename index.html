@@ -335,13 +335,17 @@ input[type="file"].form-input{cursor:pointer}
 .wslot{background:var(--sage-soft);color:var(--ink);border-radius:6px;padding:5px 6px;font-size:11px;margin-bottom:4px;cursor:pointer;line-height:1.4}
 .wslot:hover{background:rgba(165,196,188,.45)}
 .wslot.repo{background:var(--cream);color:var(--ink)}
+.wslot.therapist-cancel{background:#f2f3f5;color:#6f7a83;opacity:.85}
+.wslot.therapist-cancel:hover{background:#eceef1}
 .wslot.moved-source{background:rgba(247,228,241,.7);border:1px dashed rgba(90,61,158,.35);color:var(--ink)}
 .wslot.moved-source:hover{background:rgba(247,228,241,.92)}
 .wslot-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wslot-name{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.wslot-ref-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,.15)}
 .wslot-mark{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:999px;background:rgba(56,70,81,.12);color:var(--ink);font-size:10px;line-height:1;flex-shrink:0}
 .wslot-mark.ok{background:#d4ede8;color:#1d6b5e}
 .wslot-mark.miss{background:#fde0cc;color:#a0461a}
-.wslot-mark.cancel{background:#fde0cc;color:#a0461a}
+.wslot-mark.cancel{background:#e6eaee;color:#6f7a83}
 .wslot-mark.repo{background:#ede8f8;color:#5a3d9e}
 .week-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
 .week-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -1638,6 +1642,106 @@ async function upsertCalendarEventForSession(p,ses,opts){
   return true;
 }
 
+async function deleteCalendarEventForSessionId(p,sessionId){
+  if(!calendarIntegration?.connected||!currentUser||!auth||!p||!sessionId) return false;
+  const idToken=await currentUser.getIdToken();
+  const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarDeleteSessionProxy`,{
+    method:'POST',
+    headers:{
+      Authorization:`Bearer ${idToken}`,
+      'Content-Type':'application/json'
+    },
+    body:JSON.stringify({
+      patientId:p.id,
+      sessionId:String(sessionId)
+    })
+  });
+  if(!resp.ok){
+    const errData=await resp.json().catch(()=>({}));
+    throw new Error(errData?.detail?`${errData?.error||'Delete failed'}: ${errData.detail}`:(errData?.error||'Delete failed'));
+  }
+  return true;
+}
+
+function buildTodayCalendarReconcileBox(){
+  const connected=!!calendarIntegration?.connected;
+  return `<div class="dsec" style="margin-top:10px;max-width:560px"><div class="sec-title">Google Calendar</div><p style="font-size:12px;color:var(--ink-light);line-height:1.5">Revisa el día visible y corrige desajustes contra Google Calendar (crea los que faltan y elimina los que no deben existir).</p><button id="btn-reconcile-day-calendar" class="btn-sec btn-sm" onclick="reconcileCalendarForTodayView()" ${connected?'':'disabled'} title="Alinea Google Calendar con el estado real de la fecha visible en esta vista">Reconciliar día visible</button></div>`;
+}
+
+async function reconcileCalendarForTodayView(){
+  if(!calendarIntegration?.connected){
+    alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
+    return;
+  }
+  if(!currentUser||!auth) return;
+
+  const btn=document.getElementById('btn-reconcile-day-calendar');
+  if(btn){btn.disabled=true;btn.textContent='Reconciliando...';}
+
+  const dateStr=getTodayViewDate();
+  const idsPlan=new Set();
+  let upserts=0;
+  let deletes=0;
+  let fails=0;
+
+  try {
+    const patientList=activePatients();
+    for(let i=0;i<patientList.length;i++){
+      const p=patientList[i];
+      if(isBeforeTreatmentStart(p,dateStr)) continue;
+      if(getPatientStatusAtDate(p,dateStr)==='inactive') continue;
+
+      const daySessions=(p.sesiones||[]).filter(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr);
+      const existing=daySessions.find(s=>!(s.skipped||s.replaced||s.tipo==='reprogramada'))||null;
+      const movedSource=daySessions.some(s=>s.skipped||s.replaced||s.tipo==='reprogramada');
+      const fixedDay=isFixedScheduledOnDate(p,dateStr);
+      if(!existing&&!movedSource&&!fixedDay) continue;
+
+      let shouldExist=false;
+      let targetSession=null;
+      let targetHora='';
+
+      if(existing){
+        const isRepoCanceled=existing.tipo==='reposicion'&&existing.repoRespuesta==='cancelada';
+        if(existing.tipo!=='cancelada'&&existing.tipo!=='falta'&&!isRepoCanceled){
+          shouldExist=true;
+          targetSession=existing;
+          targetHora=existing.hora||horaDiaFecha(p,dateStr);
+        }
+      } else if(!movedSource&&fixedDay){
+        shouldExist=true;
+        targetHora=horaDiaFecha(p,dateStr);
+        targetSession={id:`plan_${dateStr}`,fecha:dateStr,hora:targetHora,tipo:'planeada'};
+      }
+
+      try {
+        if(shouldExist&&targetSession){
+          await upsertCalendarEventForSession(p,targetSession,{dateStr,hora:targetHora});
+          upserts++;
+        } else {
+          const idsToDelete=new Set([`plan_${dateStr}`]);
+          if(existing?.id) idsToDelete.add(String(existing.id));
+          for(const sessionId of idsToDelete){
+            const dedupeKey=`${p.id}_${sessionId}`;
+            if(idsPlan.has(dedupeKey)) continue;
+            idsPlan.add(dedupeKey);
+            await deleteCalendarEventForSessionId(p,sessionId);
+            deletes++;
+          }
+        }
+      } catch(_err){
+        fails++;
+      }
+    }
+
+    alert(`Reconciliación de ${displayDate(dateStr)} lista.\n\nCreados/actualizados: ${upserts}\nEliminados: ${deletes}\nIncidencias: ${fails}`);
+  } catch(err){
+    alert(`No se pudo reconciliar el día: ${err.message||err}`);
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='Reconciliar día visible';}
+  }
+}
+
 function collectFuturePlannedSessionsForSync(maxDays,minDays=0,patientList=null){
   const days=Math.max(1,Math.min(366,parseInt(maxDays,10)||365));
   const fromDay=Math.max(0,Math.min(days,parseInt(minDays,10)||0));
@@ -1907,18 +2011,18 @@ function timezoneOptionsHtml(selected){
 }
 
 const GOOGLE_CALENDAR_COLOR_OPTIONS=[
-  {id:'11',label:'Tomate',hex:'#d50000'},
-  {id:'6',label:'Mandarina',hex:'#f4511e'},
-  {id:'5',label:'Girasol',hex:'#f6bf26'},
-  {id:'10',label:'Albahaca',hex:'#0b8043'},
-  {id:'2',label:'Menta',hex:'#33b679'},
-  {id:'7',label:'Turquesa',hex:'#039be5'},
-  {id:'9',label:'Indigo',hex:'#3f51b5'},
-  {id:'1',label:'Lavanda',hex:'#7986cb'},
-  {id:'3',label:'Uva',hex:'#8e24aa'},
-  {id:'4',label:'Flamenco',hex:'#e67c73'},
-  {id:'8',label:'Grafito',hex:'#616161'},
-  {id:'',label:'Color predeterminado',hex:'#adb5bd'}
+  {id:'11',label:'Tomate',hex:'#d50000',dot:'🔴'},
+  {id:'6',label:'Mandarina',hex:'#f4511e',dot:'🟠'},
+  {id:'5',label:'Girasol',hex:'#f6bf26',dot:'🟡'},
+  {id:'10',label:'Albahaca',hex:'#0b8043',dot:'🟢'},
+  {id:'2',label:'Menta',hex:'#33b679',dot:'🟢'},
+  {id:'7',label:'Turquesa',hex:'#039be5',dot:'🔵'},
+  {id:'9',label:'Indigo',hex:'#3f51b5',dot:'🔵'},
+  {id:'1',label:'Lavanda',hex:'#7986cb',dot:'🟣'},
+  {id:'3',label:'Uva',hex:'#8e24aa',dot:'🟣'},
+  {id:'4',label:'Flamenco',hex:'#e67c73',dot:'🩷'},
+  {id:'8',label:'Grafito',hex:'#616161',dot:'⚫'},
+  {id:'',label:'Color predeterminado',hex:'#adb5bd',dot:'⚪'}
 ];
 const SYSTEM_REFERRAL_OTHER_ID='referral_source_other';
 const NEW_REFERRAL_SOURCE_OPTION='__new__';
@@ -1946,7 +2050,7 @@ function updateColorDotPreview(selectEl){
 
 function googleCalendarColorOptionsHtml(selected){
   const current=String(selected??'');
-  return googleCalendarColorOptions().map(opt=>`<option value="${escAttr(opt.id)}"${String(opt.id)===current?' selected':''}>${escAttr(opt.label)}</option>`).join('');
+  return googleCalendarColorOptions().map(opt=>`<option value="${escAttr(opt.id)}"${String(opt.id)===current?' selected':''}>${escAttr((opt.dot||'•')+' '+opt.label)}</option>`).join('');
 }
 
 function normalizeReferralSource(raw,index=0){
@@ -3068,7 +3172,7 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="dsec"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p></div>`;
+    el.innerHTML=`<div class="dsec"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p></div>${buildTodayCalendarReconcileBox()}`;
     return;
   }
 
@@ -3177,7 +3281,7 @@ function renderHoy(){
         </div>
       </div>
     </div>`;
-  }).join('')}</div>`;
+  }).join('')}</div>${buildTodayCalendarReconcileBox()}`;
 }
 
 function syncQuickPayPatients(){
@@ -4807,7 +4911,7 @@ function buildEditPanel(p){
           </div>
           <div class="form-group form-full" id="e-referral-new-wrap" style="display:none">
             <div class="form-grid">
-              <div class="form-group"><label class="form-label">Nombre de la nueva referencia</label><input class="form-input" id="e-referral-new-name" placeholder="Ej: Casa Psi"></div>
+              <div class="form-group"><label class="form-label">Nombre de la nueva referencia</label><input class="form-input" id="e-referral-new-name" placeholder="Ej: Mi clínica"></div>
               <div class="form-group"><label class="form-label">Color en Google Calendar</label><div style="display:flex;align-items:center;gap:6px"><span class="color-dot-preview" style="background:${googleCalendarColorHex('')}"></span><select class="form-input" style="flex:1;min-width:0" id="e-referral-new-color" onchange="updateColorDotPreview(this)">${googleCalendarColorOptionsHtml('')}</select></div></div>
             </div>
           </div>
@@ -5265,6 +5369,29 @@ function getWeekSlotMarkerClass(ses){
   return '';
 }
 
+function weekSlotReferralDotHtml(p){
+  const colorId=patientReferralSourceColorId(p);
+  if(!colorId) return '';
+  return `<span class="wslot-ref-dot" style="background:${googleCalendarColorHex(colorId)}" title="Color por fuente de referencia"></span>`;
+}
+
+function weekSlotMarkerHtml(sesRegistrada,sesMovida=false){
+  if(sesMovida) return '<span class="wslot-mark repo" title="Sesión reagendada">&#8635;</span>';
+  if(!sesRegistrada) return '';
+
+  // Reposición pendiente: show circular-arrow marker until there is an explicit response.
+  if(sesRegistrada.tipo==='reposicion'&&!sesRegistrada.repoRespuesta){
+    return '<span class="wslot-mark repo" title="Reposición pendiente">&#8635;</span>';
+  }
+
+  if(sesRegistrada.tipo==='reposicion'&&sesRegistrada.repoRespuesta==='cancelada'){
+    return '<span class="wslot-mark cancel" title="Reposición cancelada">&ndash;</span>';
+  }
+
+  const markerClass=getWeekSlotMarkerClass(sesRegistrada);
+  return markerClass?`<span class="wslot-mark ${markerClass}" title="Sesión registrada">&#10003;</span>`:'';
+}
+
 // " - ? SEMANA " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderSemana(){
   const activos=activePatients();
@@ -5281,12 +5408,10 @@ function renderSemana(){
       html:(()=>{
         const sesRegistrada=p.sesiones.find(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
         const sesMovida=p.sesiones.find(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'));
-        const markerClass=getWeekSlotMarkerClass(sesRegistrada);
-        const slotClass=sesMovida?'wslot moved-source':'wslot';
-        const markerHtml=sesMovida
-          ?'<span class="wslot-mark repo" title="Sesión reagendada">&#8635;</span>'
-          :(sesRegistrada?`<span class="wslot-mark ${markerClass}" title="Sesión registrada">&#10003;</span>`:'');
-        return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div style="font-weight:500">${p.nombre.split(' ')[0]}</div>${markerHtml}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
+        const therapistCancelClass=(sesRegistrada?.tipo==='cancelada'&&sesRegistrada?.therapistCancel)?' therapist-cancel':'';
+        const slotClass=sesMovida?'wslot moved-source':`wslot${therapistCancelClass}`;
+        const markerHtml=weekSlotMarkerHtml(sesRegistrada,!!sesMovida);
+        return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div>${markerHtml}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
       })()
     }));
     const repos=patients.flatMap(p=>p.sesiones
@@ -5294,7 +5419,7 @@ function renderSemana(){
       .map(s=>({
         pNombre:p.nombre,
         hora:s.hora||horaDiaFecha(p,fechaStr)||'99:99',
-        html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div style="font-weight:500">&#8635; ${p.nombre.split(' ')[0]}</div><span class="wslot-mark repo" title="Sesión registrada">&#10003;</span></div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
+        html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>&#8635; ${p.nombre.split(' ')[0]}</span></div>${weekSlotMarkerHtml(s,false)}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
       }))
     );
     return [...slots,...repos].sort((a,b)=>{
