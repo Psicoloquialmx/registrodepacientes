@@ -1625,6 +1625,73 @@ async function runCalendarSyncBatch(toSync,opts){
 }
 
 let calendarBackgroundSyncInProgress=false;
+const AUTO_WEEKLY_SYNC_STORAGE_PREFIX='axo_weekly_calendar_sync';
+
+function isoDateFromDateObj(dt){
+  const y=dt.getFullYear();
+  const m=String(dt.getMonth()+1).padStart(2,'0');
+  const d=String(dt.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+
+function currentWeekStartIso(){
+  const now=new Date();
+  const start=new Date(now);
+  const diff=(start.getDay()+6)%7; // monday-based week
+  start.setDate(start.getDate()-diff);
+  start.setHours(0,0,0,0);
+  return isoDateFromDateObj(start);
+}
+
+function weeklyAutoSyncStorageKey(uid){
+  return `${AUTO_WEEKLY_SYNC_STORAGE_PREFIX}_${uid||'anon'}`;
+}
+
+function readWeeklyAutoSyncMarker(uid){
+  try {
+    return localStorage.getItem(weeklyAutoSyncStorageKey(uid))||'';
+  } catch(_err){
+    return '';
+  }
+}
+
+function writeWeeklyAutoSyncMarker(uid,weekIso){
+  try {
+    localStorage.setItem(weeklyAutoSyncStorageKey(uid),String(weekIso||''));
+  } catch(_err){
+    // Ignore storage failures
+  }
+}
+
+function scheduleWeeklyAutoCalendarSyncIfNeeded(){
+  if(!calendarIntegration?.connected||!currentUser||!auth||calendarBackgroundSyncInProgress) return;
+  const weekIso=currentWeekStartIso();
+  const lastSyncedWeek=readWeeklyAutoSyncMarker(currentUser.uid);
+  if(lastSyncedWeek===weekIso) return;
+
+  calendarBackgroundSyncInProgress=true;
+  setTimeout(async ()=>{
+    try {
+      // Same 3-phase strategy, fully silent for automatic weekly sync.
+      const weekItems=collectFuturePlannedSessionsForSync(7,0);
+      const monthItems=collectFuturePlannedSessionsForSync(30,8);
+      const sixMonthsItems=collectFuturePlannedSessionsForSync(180,31);
+
+      const w=await runCalendarSyncBatch(weekItems);
+      const m=await runCalendarSyncBatch(monthItems);
+      const s=await runCalendarSyncBatch(sixMonthsItems);
+      const totalFail=(w.fail||0)+(m.fail||0)+(s.fail||0);
+      if(totalFail===0){
+        writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
+      }
+      console.info('[CalSync] Weekly auto-sync finished',{weekIso,week:w,month:m,sixMonths:s,totalFail});
+    } catch(err){
+      console.warn('[CalSync] Weekly auto-sync failed',err);
+    } finally {
+      calendarBackgroundSyncInProgress=false;
+    }
+  },150);
+}
 
 async function syncPlannedFutureSessionsToGoogleCalendar(){
   if(!calendarIntegration?.connected){
@@ -2183,6 +2250,7 @@ async function handleAuthStateChanged(user){
   unlockApp();
   await hydrateUserStore(user.uid);
   await fetchCalendarIntegrationStatus();
+  scheduleWeeklyAutoCalendarSyncIfNeeded();
   if(forceProfileSetupOnNextAuth||therapistProfileNeedsSetup()){
     forceProfileSetupOnNextAuth=false;
     showView('perfil',{historyMode:'replace'});
