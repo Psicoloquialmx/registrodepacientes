@@ -1632,6 +1632,18 @@ async function runCalendarSyncBatch(toSync,opts){
 let calendarBackgroundSyncInProgress=false;
 const AUTO_WEEKLY_SYNC_STORAGE_PREFIX='axo_weekly_calendar_sync';
 
+function setCalendarSyncBackgroundHint(isActive){
+  const hint=document.getElementById('calendar-sync-bg-hint');
+  if(!hint) return;
+  if(isActive){
+    hint.style.display='inline-block';
+    hint.textContent='Sincronizando en segundo plano...';
+  } else {
+    hint.style.display='none';
+    hint.textContent='';
+  }
+}
+
 function isoDateFromDateObj(dt){
   const y=dt.getFullYear();
   const m=String(dt.getMonth()+1).padStart(2,'0');
@@ -1675,6 +1687,7 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
   if(lastSyncedWeek===weekIso) return;
 
   calendarBackgroundSyncInProgress=true;
+  setCalendarSyncBackgroundHint(true);
   setTimeout(async ()=>{
     try {
       // Same 3-phase strategy, fully silent for automatic weekly sync.
@@ -1694,6 +1707,7 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
       console.warn('[CalSync] Weekly auto-sync failed',err);
     } finally {
       calendarBackgroundSyncInProgress=false;
+      setCalendarSyncBackgroundHint(false);
     }
   },150);
 }
@@ -1751,6 +1765,7 @@ async function syncPlannedFutureSessionsToGoogleCalendar(){
 
   // Continue quietly in the background so the user can keep using the app.
   calendarBackgroundSyncInProgress=true;
+  setCalendarSyncBackgroundHint(true);
   setTimeout(async ()=>{
     try {
       const monthResult=await runCalendarSyncBatch(monthItems);
@@ -1763,6 +1778,7 @@ async function syncPlannedFutureSessionsToGoogleCalendar(){
       console.warn('[CalSync] Background sync failed',err);
     } finally {
       calendarBackgroundSyncInProgress=false;
+      setCalendarSyncBackgroundHint(false);
     }
   },50);
 }
@@ -5205,6 +5221,7 @@ function renderSemana(){
           <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
           <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
           <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 6 meses">Sincronizar calendario</button>
+          <span id="calendar-sync-bg-hint" style="display:${calendarBackgroundSyncInProgress?'inline-block':'none'};font-size:11px;color:var(--ink-light);margin-left:6px">${calendarBackgroundSyncInProgress?'Sincronizando en segundo plano...':''}</span>
         </div>
         <div class="week-nav">
           <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
@@ -5235,6 +5252,7 @@ function renderSemana(){
         <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
         <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
         <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 6 meses">Sincronizar calendario</button>
+        <span id="calendar-sync-bg-hint" style="display:${calendarBackgroundSyncInProgress?'inline-block':'none'};font-size:11px;color:var(--ink-light);margin-left:6px">${calendarBackgroundSyncInProgress?'Sincronizando en segundo plano...':''}</span>
       </div>
       <div class="week-nav">
         <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
