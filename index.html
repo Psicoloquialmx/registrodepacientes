@@ -441,6 +441,9 @@ input[type="file"].form-input{cursor:pointer}
 .period-btn{background:transparent;border:none;color:var(--ink-light);font-size:12px;font-family:'DM Sans',sans-serif;padding:5px 10px;border-radius:999px;cursor:pointer;transition:all .15s}
 .period-btn:hover{color:var(--ink)}
 .period-btn.active{background:white;color:var(--ink);box-shadow:0 1px 3px rgba(30,42,50,.08)}
+.calendar-sync-hint{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light);margin-left:6px;white-space:nowrap}
+.calendar-sync-dot{width:7px;height:7px;border-radius:50%;background:var(--sage-dark);display:inline-block;animation:calendarSyncPulse 1.25s ease-in-out infinite}
+@keyframes calendarSyncPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.05)}}
 .est-card{background:#f8fbfa;border:1px solid #dceae6;border-radius:10px;padding:.875rem 1rem;margin-top:.75rem}
 .est-head{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-light);margin-bottom:6px}
 .est-main{font-family:'Lora',serif;font-size:28px;line-height:1.1;color:var(--ink)}
@@ -1636,11 +1639,11 @@ function setCalendarSyncBackgroundHint(isActive){
   const hint=document.getElementById('calendar-sync-bg-hint');
   if(!hint) return;
   if(isActive){
-    hint.style.display='inline-block';
-    hint.textContent='Sincronizando en segundo plano...';
+    hint.style.display='inline-flex';
+    hint.innerHTML='<span class="calendar-sync-dot" aria-hidden="true"></span><span>Sincronizando en segundo plano...</span>';
   } else {
     hint.style.display='none';
-    hint.textContent='';
+    hint.innerHTML='';
   }
 }
 
@@ -5221,7 +5224,7 @@ function renderSemana(){
           <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
           <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
           <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 6 meses">Sincronizar calendario</button>
-          <span id="calendar-sync-bg-hint" style="display:${calendarBackgroundSyncInProgress?'inline-block':'none'};font-size:11px;color:var(--ink-light);margin-left:6px">${calendarBackgroundSyncInProgress?'Sincronizando en segundo plano...':''}</span>
+          <span id="calendar-sync-bg-hint" class="calendar-sync-hint" style="display:${calendarBackgroundSyncInProgress?'inline-flex':'none'}">${calendarBackgroundSyncInProgress?'<span class="calendar-sync-dot" aria-hidden="true"></span><span>Sincronizando en segundo plano...</span>':''}</span>
         </div>
         <div class="week-nav">
           <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
@@ -5252,7 +5255,7 @@ function renderSemana(){
         <button class="period-btn${semanaViewMode==='semana'?' active':''}" onclick="setSemanaViewMode('semana')">Semana</button>
         <button class="period-btn${semanaViewMode==='mes'?' active':''}" onclick="setSemanaViewMode('mes')">Mes</button>
         <button class="btn-primary btn-sm" id="btn-sync-future-calendar" onclick="syncPlannedFutureSessionsToGoogleCalendar()" ${calendarIntegration?.connected?'':'disabled'} title="Sincroniza sesiones futuras planeadas a 6 meses">Sincronizar calendario</button>
-        <span id="calendar-sync-bg-hint" style="display:${calendarBackgroundSyncInProgress?'inline-block':'none'};font-size:11px;color:var(--ink-light);margin-left:6px">${calendarBackgroundSyncInProgress?'Sincronizando en segundo plano...':''}</span>
+        <span id="calendar-sync-bg-hint" class="calendar-sync-hint" style="display:${calendarBackgroundSyncInProgress?'inline-flex':'none'}">${calendarBackgroundSyncInProgress?'<span class="calendar-sync-dot" aria-hidden="true"></span><span>Sincronizando en segundo plano...</span>':''}</span>
       </div>
       <div class="week-nav">
         <button class="btn-ghost btn-sm" onclick="moveSemanaRange(-1)">&larr; Anterior</button>
