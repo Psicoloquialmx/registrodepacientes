@@ -137,6 +137,57 @@ async function deleteEventsBySessionKey(calendar, calendarIds, sessionKey) {
   return deletedCount;
 }
 
+async function purgeManagedSourceEvents(calendar, calendarIds, maxDeletes) {
+  const ids = Array.from(new Set((Array.isArray(calendarIds) ? calendarIds : []).filter(Boolean)));
+  let deleted = 0;
+  let processed = 0;
+  let hasMore = false;
+
+  outer:
+  for (let index = 0; index < ids.length; index++) {
+    const calendarId = ids[index];
+    let pageToken = undefined;
+
+    do {
+      const listResp = await calendar.events.list({
+        calendarId,
+        privateExtendedProperty: 'source=registropx',
+        maxResults: 100,
+        pageToken,
+        showDeleted: false,
+      });
+
+      const events = listResp.data.items || [];
+      pageToken = listResp.data.nextPageToken;
+
+      for (const evt of events) {
+        if (processed >= maxDeletes) {
+          hasMore = true;
+          break outer;
+        }
+        if (!evt || !evt.id) continue;
+        processed++;
+        try {
+          await calendar.events.delete({ calendarId, eventId: evt.id });
+          deleted++;
+        } catch (delErr) {
+          const status = delErr && delErr.code ? Number(delErr.code) : 0;
+          if (status !== 404 && status !== 410) {
+            console.warn('purgeManagedSourceEvents: could not delete event', calendarId, evt.id, String(delErr && delErr.message ? delErr.message : delErr));
+          }
+        }
+      }
+
+      if (processed >= maxDeletes) {
+        hasMore = true;
+        break outer;
+      }
+    } while (pageToken);
+  }
+
+  return { deleted, processed, hasMore };
+}
+
 async function getGoogleIntegration(uid) {
   const ref = db
     .collection('users')
@@ -572,9 +623,8 @@ exports.googleCalendarDeleteSession = functions.https.onRequest(async (req, res)
 });
 
 /**
- * One-time cleanup: deletes all events tagged source=registropx from the
- * user's primary Google Calendar, leaving only the Agenda de Pacientes ones.
- * Safe to run multiple times (already-deleted events return 404 and are ignored).
+ * Deletes app-managed events from the dedicated Agenda calendar and any legacy
+ * copies in primary. Safe to run multiple times.
  */
 exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res) => {
   try {
@@ -589,51 +639,12 @@ exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res)
     const maxDeletes = Math.max(10, Math.min(150, Number.isFinite(maxDeletesRaw) ? maxDeletesRaw : 50));
 
     const uid = decoded.uid;
-    const { calendar } = await getCalendarClientForUser(uid);
+    const { calendar, calendarId } = await getCalendarClientForUser(uid);
+    const targetCalendarIds = calendarId === 'primary' ? ['primary'] : [calendarId, 'primary'];
+    const result = await purgeManagedSourceEvents(calendar, targetCalendarIds, maxDeletes);
 
-    let deleted = 0;
-    let processed = 0;
-    let pageToken = undefined;
-    let hasMore = false;
-
-    do {
-      const listResp = await calendar.events.list({
-        calendarId: 'primary',
-        privateExtendedProperty: 'source=registropx',
-        maxResults: 100,
-        pageToken,
-        showDeleted: false,
-      });
-
-      const events = (listResp.data.items || []);
-      pageToken = listResp.data.nextPageToken;
-
-      for (const evt of events) {
-        if (processed >= maxDeletes) {
-          hasMore = true;
-          break;
-        }
-        if (!evt.id) continue;
-        processed++;
-        try {
-          await calendar.events.delete({ calendarId: 'primary', eventId: evt.id });
-          deleted++;
-        } catch (delErr) {
-          const status = delErr && delErr.code ? Number(delErr.code) : 0;
-          if (status !== 404 && status !== 410) {
-            console.warn('purgeRemnants: could not delete event', evt.id, String(delErr && delErr.message ? delErr.message : delErr));
-          }
-        }
-      }
-
-      if (processed >= maxDeletes) {
-        hasMore = true;
-        break;
-      }
-    } while (pageToken);
-
-    console.info('googleCalendarPurgeRemnants finished', { uid, deleted, processed, hasMore, maxDeletes });
-    return res.status(200).json({ ok: true, deleted, processed, hasMore, maxDeletes });
+    console.info('googleCalendarPurgeRemnants finished', { uid, calendarIds: targetCalendarIds, maxDeletes, ...result });
+    return res.status(200).json({ ok: true, maxDeletes, calendarIds: targetCalendarIds, ...result });
   } catch (err) {
     console.error('googleCalendarPurgeRemnants error', err);
     return res.status(500).json({
