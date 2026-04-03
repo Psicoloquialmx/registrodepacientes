@@ -9,6 +9,7 @@ exports.handler = async (event) => {
 
     const targetUrl = getFunctionUrl('googleCalendarPurgeRemnants');
     const invokerAuth = await getInvokerToken(targetUrl);
+    const forwardedBody = event.body && String(event.body).trim() ? event.body : '{}';
 
     const resp = await fetch(targetUrl, {
       method: 'POST',
@@ -17,7 +18,7 @@ exports.handler = async (event) => {
         'X-Firebase-Auth': userAuth,
         'Content-Type': 'application/json',
       },
-      body: '{}',
+      body: forwardedBody,
     });
 
     const text = await resp.text();

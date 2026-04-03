@@ -1923,10 +1923,19 @@ async function purgeManagedGoogleCalendarEvents(opts){
       const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarPurgeRemnantsProxy`,{
         method:'POST',
         headers:{Authorization:`Bearer ${idToken}`,'Content-Type':'application/json'},
-        body:JSON.stringify({maxDeletes:200})
+        body:JSON.stringify({maxDeletes:40})
       });
-      const data=await resp.json().catch(()=>({}));
-      if(!resp.ok) throw new Error(data?.detail?`${data?.error||'No se pudo limpiar Calendar'}: ${data.detail}`:(data?.error||'No se pudo limpiar Calendar'));
+      const raw=await resp.text();
+      let data={};
+      try {
+        data=raw?JSON.parse(raw):{};
+      } catch(_parseErr){
+        data={};
+      }
+      if(!resp.ok){
+        const fallbackDetail=raw&&raw.length<280?raw.replace(/\s+/g,' ').trim():'';
+        throw new Error(data?.detail?`${data?.error||'No se pudo limpiar Calendar'}: ${data.detail}`:(data?.error||fallbackDetail||`No se pudo limpiar Calendar (HTTP ${resp.status})`));
+      }
       totalDeleted+=Number(data.deleted)||0;
       totalProcessed+=Number(data.processed)||0;
       hasMore=!!data.hasMore;
