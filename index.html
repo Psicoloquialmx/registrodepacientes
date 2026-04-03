@@ -119,6 +119,10 @@ body.auth-locked .auth-screen{display:flex}
 .person-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .today-list{display:flex;flex-direction:column;gap:10px}
 .today-card{background:white;border:1px solid var(--ink-border);border-radius:12px;padding:.9rem 1rem}
+.today-card.muted-state{background:#f2f3f5;border-color:#d9dde2}
+.today-card.muted-state .today-name{color:#4c5a64}
+.today-card.muted-state .today-meta,.today-card.muted-state .today-status-label{color:#6d7a84}
+.today-card.muted-state .today-locked-pill{background:rgba(111,122,131,.11);border-color:rgba(111,122,131,.28);color:#4c5a64}
 .today-card.repo-target,.today-card.repo-origin{background:#fcf4f8;border-color:#edd7e3}
 .today-card.repo-origin{border-style:dashed}
 .today-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.65rem}
@@ -1466,7 +1470,49 @@ function patientCalendarLabel(p){
   const firstName=parts[0]||'Paciente';
   const lastName=parts.length>1?(parts[parts.length-1]||''):'';
   if(!lastName) return firstName;
-  return `${firstName} ${lastName.charAt(0).toUpperCase()}.`;
+
+  const formatLabel=(chars)=>{
+    const count=Math.max(1,Math.min(chars,lastName.length));
+    const segment=lastName.slice(0,count);
+    return `${firstName} ${segment.charAt(0).toUpperCase()}${segment.slice(1).toLowerCase()}.`;
+  };
+
+  const normalizeTxt=v=>String(v||'').toLocaleLowerCase('es-MX').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const firstNorm=normalizeTxt(firstName);
+
+  // If there is a collision for first name + first surname initial, use second initial (and more if needed).
+  const people=Array.isArray(patients)?patients:[];
+  const sameFirstAndInitial=people.filter(other=>{
+    if(!other||other.id===p?.id) return false;
+    const name=String(other.nombre||'').trim().replace(/\s+/g,' ');
+    if(!name) return false;
+    const seg=name.split(' ');
+    const otherFirst=seg[0]||'';
+    const otherLast=seg.length>1?(seg[seg.length-1]||''):'';
+    if(!otherLast) return false;
+    return normalizeTxt(otherFirst)===firstNorm&&normalizeTxt(otherLast.charAt(0))===normalizeTxt(lastName.charAt(0));
+  });
+
+  if(!sameFirstAndInitial.length) return formatLabel(1);
+
+  let chars=Math.min(2,lastName.length);
+  let label=formatLabel(chars);
+  while(chars<Math.min(lastName.length,6)){
+    const hasCollision=sameFirstAndInitial.some(other=>{
+      const name=String(other.nombre||'').trim().replace(/\s+/g,' ');
+      const seg=name.split(' ');
+      const otherFirst=seg[0]||'';
+      const otherLast=seg.length>1?(seg[seg.length-1]||''):'';
+      if(!otherLast) return false;
+      const otherSegment=otherLast.slice(0,chars);
+      const otherLabel=`${otherFirst} ${otherSegment.charAt(0).toUpperCase()}${otherSegment.slice(1).toLowerCase()}.`;
+      return normalizeTxt(otherLabel)===normalizeTxt(label);
+    });
+    if(!hasCollision) break;
+    chars++;
+    label=formatLabel(chars);
+  }
+  return label;
 }
 
 function patientCalendarPrefixForSession(ses){
@@ -1720,7 +1766,7 @@ async function reconcileCalendarForTodayView(){
   if(btn){btn.disabled=true;btn.textContent='Reconciliando...';}
 
   const dateStr=today();
-  const idsPlan=new Set();
+  const processedDeleteIds=new Set();
   let upserts=0;
   let deletes=0;
   let fails=0;
@@ -1762,19 +1808,23 @@ async function reconcileCalendarForTodayView(){
       }
 
       try {
+        const expectedSessionId=shouldExist&&targetSession?.id?String(targetSession.id):'';
+        const dayCandidateIds=new Set([`plan_${dateStr}`]);
+        daySessions.forEach(s=>{if(s?.id) dayCandidateIds.add(String(s.id));});
+
+        // Strict 1:1 filter: keep only the expected event id for this patient/day.
+        for(const sessionId of dayCandidateIds){
+          if(expectedSessionId&&sessionId===expectedSessionId) continue;
+          const dedupeKey=`${p.id}_${sessionId}`;
+          if(processedDeleteIds.has(dedupeKey)) continue;
+          processedDeleteIds.add(dedupeKey);
+          await deleteCalendarEventForSessionId(p,sessionId);
+          deletes++;
+        }
+
         if(shouldExist&&targetSession){
           await upsertCalendarEventForSession(p,targetSession,{dateStr,hora:targetHora});
           upserts++;
-        } else {
-          const idsToDelete=new Set([`plan_${dateStr}`]);
-          if(existing?.id) idsToDelete.add(String(existing.id));
-          for(const sessionId of idsToDelete){
-            const dedupeKey=`${p.id}_${sessionId}`;
-            if(idsPlan.has(dedupeKey)) continue;
-            idsPlan.add(dedupeKey);
-            await deleteCalendarEventForSessionId(p,sessionId);
-            deletes++;
-          }
         }
       } catch(_err){
         fails++;
@@ -3262,6 +3312,7 @@ function renderHoy(){
         return respuesta==='asistio'||respuesta==='falta'||respuesta==='cancelada'||!!r.ses?.therapistCancel;
       }
       if(r.ses?.todaySavedFrom==='calendar') return true;
+      if(r.ses?.todaySavedFrom==='today') return false;
       return !r.ses?.todaySaved&&['asistio','falta','cancelada','extra'].includes(tipoSes);
     })();
     if(isRecordedFromCalendar){
@@ -3270,7 +3321,7 @@ function renderHoy(){
       const attendedInfo=tipoCalendarInfo==='asistio'||tipoCalendarInfo==='reposicion'||tipoCalendarInfo==='extra';
       const chargeInfo=tipoCalendarInfo==='falta'?!r.ses?.noCharge:false;
       const paidInfo=(attendedInfo||chargeInfo)?!!r.autoPay:false;
-      return `<div class="today-card${tipoInfo==='reposicion'?' repo-target':''}">
+      return `<div class="today-card muted-state${tipoInfo==='reposicion'?' repo-target':''}">
         <div class="today-head">
           <div>
             <div class="today-name">${getConfidentialName(p, activePatients())}${tipoInfo==='reposicion'?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
@@ -3310,7 +3361,7 @@ function renderHoy(){
       </div>`;
     }
     if(r.ses?.therapistCancel||r.ses?.tipo==='cancelada'){
-      return `<div class="today-card">
+      return `<div class="today-card muted-state">
         <div class="today-head"><div><div class="today-name">${getConfidentialName(p, activePatients())}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
         <div class="today-form" style="padding-top:4px">
           <div class="today-status-label">Cancelación del terapeuta</div>
@@ -3320,7 +3371,8 @@ function renderHoy(){
     }
     if(r.ses?.todaySaved){
       const repoTargetClass=r.ses?.tipo==='reposicion'?' repo-target':'';
-      return `<div class="today-card${repoTargetClass}">
+      const savedMutedClass=(r.ses?.tipo==='cancelada'||(r.ses?.tipo==='falta'&&!!r.ses?.noCharge))?' muted-state':'';
+      return `<div class="today-card${repoTargetClass}${savedMutedClass}">
         <div class="today-head">
           <div>
             <div class="today-name">${getConfidentialName(p, activePatients())}</div>
@@ -3345,7 +3397,8 @@ function renderHoy(){
     const paidYes=paidAllowed?!!r.autoPay:false;
     const paidMethod=r.autoPay?.metodo||'transferencia';
     const esReposicion=tipoActual==='reposicion';
-    return `<div class="today-card${esReposicion?' repo-target':''}">
+    const mutedEditableClass=(tipoActual==='cancelada'||(tipoActual==='falta'&&!!r.ses?.noCharge))?' muted-state':'';
+    return `<div class="today-card${esReposicion?' repo-target':''}${mutedEditableClass}">
       <div class="today-head">
         <div>
           <div class="today-name">${getConfidentialName(p, activePatients())}${esReposicion?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
@@ -3549,7 +3602,7 @@ function saveTodaySession(pid){
     addLog(p,'datos',`Registro hoy ${dateStr}: ${ant} → ${tipo}${noCharge?' (sin cobro)':''}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    ses={id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo,noCharge,hora:defaultHora};
+    ses={id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo,noCharge,hora:defaultHora,createdFromToday:true};
     p.sesiones.push(ses);
     if(p.pago==='sesion'&&isBillable(tipo,noCharge)) p.adeudo+=tv;
     addLog(p,'datos',`Registro hoy ${dateStr}: ${tipo}${noCharge?' (sin cobro)':''}`);
@@ -3594,9 +3647,31 @@ function unlockTodayCard(pid){
   const dateStr=getTodayViewDate();
   const ses=p.sesiones.find(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr&&!s.skipped&&s.tipo!=='reprogramada');
   if(!ses) return;
-  ses.todaySaved=false;
+  const tv=tarifaVigente(p);
+  const sessionWasBillable=ses.tipo==='asistio'||ses.tipo==='extra'||(ses.tipo==='falta'&&!ses.noCharge);
+  if(p.pago==='sesion'&&sessionWasBillable) p.adeudo=Math.max(0,p.adeudo-tv);
+  const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===dateStr);
+  if(autoPay){
+    p.pagado-=autoPay.monto;
+    p.adeudo+=autoPay.monto;
+    p.pagos=p.pagos.filter(py=>py.id!==autoPay.id);
+  }
+
+  // Remove current Google event for this explicit registration.
+  triggerCalendarDelete(p,ses);
+
+  // If this registration originated from Today, reset to "pendiente" by removing it.
+  if(ses.todaySavedFrom==='today'||ses.createdFromToday){
+    p.sesiones=p.sesiones.filter(s=>s.id!==ses.id);
+  } else {
+    ses.todaySaved=false;
+  }
+
+  addLog(p,'datos',`Registro hoy deshecho: ${dateStr}`);
+  exposeSesMap(p);
   saveState();
   renderHoy();
+  if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
 }
 
 function saveTerapeutaCancel(pid){
