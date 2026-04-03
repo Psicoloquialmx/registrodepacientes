@@ -4591,7 +4591,7 @@ function registrarDesdePop(pid,dateStr,tipo){
     if(finalTipo==='falta') addLog(p,'datos',`Falta del paciente: ${dateStr}${requestedNoCharge?' (sin costo)':''}`);
   }
 
-  const currentSession=p.sesiones.find(s=>s.fecha===dateStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
+  const currentSession=p.sesiones.find(s=>s.fecha?.split(' ')[0]===dateStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
   if(currentSession){
     currentSession.todaySaved=true;
     currentSession.todaySavedFrom='calendar';
