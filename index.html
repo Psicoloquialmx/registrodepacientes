@@ -119,7 +119,8 @@ body.auth-locked .auth-screen{display:flex}
 .person-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .today-list{display:flex;flex-direction:column;gap:10px}
 .today-card{background:white;border:1px solid var(--ink-border);border-radius:12px;padding:.9rem 1rem}
-.today-card.repo-target{background:#fcf4f8;border-color:#edd7e3}
+.today-card.repo-target,.today-card.repo-origin{background:#fcf4f8;border-color:#edd7e3}
+.today-card.repo-origin{border-style:dashed}
 .today-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.65rem}
 .today-name{font-family:'Lora',serif;font-size:15px;color:var(--ink)}
 .today-meta{font-size:12px;color:var(--ink-light);margin-top:2px}
@@ -335,11 +336,11 @@ input[type="file"].form-input{cursor:pointer}
 .wday-name{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
 .wslot{background:var(--sage-soft);color:var(--ink);border-radius:6px;padding:5px 6px;font-size:11px;margin-bottom:4px;cursor:pointer;line-height:1.4}
 .wslot:hover{background:rgba(165,196,188,.45)}
-.wslot.repo{background:var(--cream);color:var(--ink)}
+.wslot.repo{background:#fcf4f8;color:var(--ink);border:1px solid #edd7e3}
 .wslot.therapist-cancel{background:#f2f3f5;color:#6f7a83;opacity:.85}
 .wslot.therapist-cancel:hover{background:#eceef1}
-.wslot.moved-source{background:rgba(247,228,241,.7);border:1px dashed rgba(90,61,158,.35);color:var(--ink)}
-.wslot.moved-source:hover{background:rgba(247,228,241,.92)}
+.wslot.moved-source{background:#fcf4f8;border:1px dashed rgba(185,93,55,.45);color:var(--ink)}
+.wslot.moved-source:hover{background:#f9ebf2}
 .wslot-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .wslot-name{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .wslot-ref-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,.15)}
@@ -1869,18 +1870,30 @@ function weeklyAutoSyncStorageKey(uid){
 }
 
 function readWeeklyAutoSyncMarker(uid){
+  const profileMarker=(therapistProfile?.lastWeeklyAutoSyncWeek||'').toString();
   try {
-    return localStorage.getItem(weeklyAutoSyncStorageKey(uid))||'';
-  } catch(_err){
+    const localMarker=localStorage.getItem(weeklyAutoSyncStorageKey(uid))||'';
+    if(localMarker) return localMarker;
+    if(profileMarker){
+      localStorage.setItem(weeklyAutoSyncStorageKey(uid),profileMarker);
+      return profileMarker;
+    }
     return '';
+  } catch(_err){
+    return profileMarker||'';
   }
 }
 
 function writeWeeklyAutoSyncMarker(uid,weekIso){
+  const nextMarker=String(weekIso||'');
   try {
-    localStorage.setItem(weeklyAutoSyncStorageKey(uid),String(weekIso||''));
+    localStorage.setItem(weeklyAutoSyncStorageKey(uid),nextMarker);
   } catch(_err){
     // Ignore storage failures
+  }
+  if((therapistProfile?.lastWeeklyAutoSyncWeek||'')!==nextMarker){
+    therapistProfile={...therapistProfile,lastWeeklyAutoSyncWeek:nextMarker};
+    saveState();
   }
 }
 
@@ -2006,6 +2019,7 @@ function getDefaultTherapistProfile(){
     defaultSessionRate:800,
     defaultPaymentMode:'sesion',
     firstSessionNoChargeDefault:false,
+    lastWeeklyAutoSyncWeek:'',
     logoUrl:'',
     referralSources:ensureReferralSources([])
   };
@@ -3207,11 +3221,59 @@ function renderHoy(){
     if(r.movedFrom){
       const sk=r.skippedSes;
       const reschLabel=sk?.movedTo?new Date(sk.movedTo+'T12:00').toLocaleDateString('es-MX',{weekday:'short',day:'2-digit',month:'short'})+(sk.movedTime?' '+sk.movedTime:''):''
-      return `<div class="today-card">
+      return `<div class="today-card repo-origin">
         <div class="today-head"><div><div class="today-name">${getConfidentialName(p, activePatients())}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
         <div class="today-form" style="padding-top:4px">
           <div class="today-status-label">Reagendada${reschLabel?' \u2192 '+reschLabel:''}</div>
           <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="cancelTodayReposicion(${p.id})">Cancelar reposición</button>
+        </div>
+      </div>`;
+    }
+    const isRecordedFromCalendar=(!!r.ses)&&(
+      r.ses?.todaySavedFrom==='calendar'||
+      (!r.ses?.todaySaved&&['asistio','falta','cancelada','reposicion','extra'].includes(r.ses?.tipo||''))
+    );
+    if(isRecordedFromCalendar){
+      const tipoInfo=r.ses?.tipo||'asistio';
+      const attendedInfo=tipoInfo==='asistio'||tipoInfo==='reposicion'||tipoInfo==='extra';
+      const chargeInfo=tipoInfo==='falta'?!r.ses?.noCharge:false;
+      const paidInfo=(attendedInfo||chargeInfo)?!!r.autoPay:false;
+      return `<div class="today-card${tipoInfo==='reposicion'?' repo-target':''}">
+        <div class="today-head">
+          <div>
+            <div class="today-name">${getConfidentialName(p, activePatients())}${tipoInfo==='reposicion'?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
+            <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} · ${pagoLabel(p.pago)}</div>
+          </div>
+          <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
+        </div>
+        <div class="today-locked" style="margin-bottom:8px">
+          <div class="today-locked-left">
+            <button class="btn-sec btn-sm" type="button" style="cursor:default;pointer-events:none">Guardado desde Calendario</button>
+            <span class="today-locked-pill">Solo informativo</span>
+          </div>
+        </div>
+        <div class="today-form" style="opacity:.82">
+          <div class="yn-row">
+            <label class="form-label">¿Asistió?</label>
+            <div class="yn-toggle">
+              <button type="button" class="yn-btn${attendedInfo?' active':''}" disabled>Sí</button>
+              <button type="button" class="yn-btn${!attendedInfo?' active':''}" disabled>No</button>
+            </div>
+          </div>
+          <div class="yn-row" style="display:${attendedInfo?'none':'block'}">
+            <label class="form-label">¿Se cobra la sesión?</label>
+            <div class="yn-toggle">
+              <button type="button" class="yn-btn${chargeInfo?' active':''}" disabled>Sí</button>
+              <button type="button" class="yn-btn${!chargeInfo?' active':''}" disabled>No</button>
+            </div>
+          </div>
+          <div class="yn-row" style="display:${attendedInfo||chargeInfo?'block':'none'}">
+            <label class="form-label">¿Pagó?</label>
+            <div class="yn-toggle">
+              <button type="button" class="yn-btn${paidInfo?' active':''}" disabled>Sí</button>
+              <button type="button" class="yn-btn${!paidInfo?' active':''}" disabled>No</button>
+            </div>
+          </div>
         </div>
       </div>`;
     }
@@ -3484,6 +3546,7 @@ function saveTodaySession(pid){
   }
 
   ses.todaySaved=true;
+  ses.todaySavedFrom='today';
   if(tipo==='cancelada'||(tipo==='falta'&&noCharge)) triggerCalendarDelete(p,ses);
   else triggerCalendarUpsert(p,ses,{dateStr, hora:ses.hora||defaultHora});
 
@@ -4355,6 +4418,8 @@ function registrarDesdePop(pid,dateStr,tipo){
       if(prev===finalTipo&&prevNoCharge===requestedNoCharge){closePopover();return;}
       existing.repoRespuesta=finalTipo;
       existing.noCharge=requestedNoCharge||finalTipo==='cancelada';
+      existing.todaySaved=true;
+      existing.todaySavedFrom='calendar';
       if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete existing.noCharge;
       addLog(p,'reposicion',`Reposición ${dateStr}: ${prev||'sin respuesta'}${prevNoCharge?' (sin costo)':''} -> ${finalTipo}${requestedNoCharge?' (sin costo)':''}`);
       if(finalTipo==='cancelada'||(finalTipo==='falta'&&requestedNoCharge)) triggerCalendarDelete(p,existing);
@@ -4386,6 +4451,8 @@ function registrarDesdePop(pid,dateStr,tipo){
 
   const currentSession=p.sesiones.find(s=>s.fecha===dateStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
   if(currentSession){
+    currentSession.todaySaved=true;
+    currentSession.todaySavedFrom='calendar';
     if(finalTipo==='cancelada'||(finalTipo==='falta'&&requestedNoCharge)) triggerCalendarDelete(p,currentSession);
     else triggerCalendarUpsert(p,currentSession,{dateStr,hora:currentSession.hora||horaDiaFecha(p,dateStr)});
   } else if(finalTipo==='cancelada'||(finalTipo==='falta'&&requestedNoCharge)){
