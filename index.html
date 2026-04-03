@@ -47,8 +47,12 @@ body.auth-locked .auth-screen{display:flex}
 .auth-msg.show{display:block}
 .auth-msg.error{background:#fde8e4;color:#9e3020;border:1px solid #f5c5bc}
 .auth-msg.info{background:#eef5f4;color:#335a53;border:1px solid #d3e5e1}
-.auth-primary-google{width:100%;justify-content:center;font-size:14px;padding:10px 16px;font-weight:600}
+.auth-primary-google{width:100%;justify-content:center;font-size:14px;padding:10px 16px;font-weight:600;background:var(--terra);border-color:var(--terra);color:white}
+.auth-primary-google:hover{background:#9e4f2e;border-color:#9e4f2e}
 .auth-secondary-caption{font-size:11px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .55rem}
+.auth-email-toggle{width:100%;justify-content:center}
+.auth-email-panel{display:none}
+.auth-email-panel.open{display:block}
 .auth-actions{display:flex;gap:8px;align-items:center;margin-top:1rem}
 .auth-note{font-size:11px;color:var(--ink-light);margin-top:.85rem;line-height:1.5}
 .sidebar-auth{margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:6px}
@@ -555,19 +559,24 @@ input[type="file"].form-input{cursor:pointer}
         <button type="button" class="btn-google auth-primary-google" id="auth-google">Continuar con Google</button>
       </div>
       <div class="auth-secondary-caption">Acceso alterno con correo y contraseña</div>
-      <div class="auth-tabs" id="auth-tabs">
-        <button type="button" class="auth-tab active" id="auth-tab-login" data-auth-mode="login">Iniciar sesión</button>
-        <button type="button" class="auth-tab" id="auth-tab-register" data-auth-mode="register">Crear cuenta</button>
+      <div class="auth-actions" style="margin-top:0">
+        <button type="button" class="btn-sec auth-email-toggle" id="auth-email-toggle">Entrar con correo</button>
       </div>
-      <div class="auth-msg" id="auth-message"></div>
-      <div class="form-grid">
-        <div class="form-group form-full"><label class="form-label">Correo</label><input class="form-input" id="auth-email" type="email" autocomplete="email"></div>
-        <div class="form-group form-full"><label class="form-label">Contraseña</label><input class="form-input" id="auth-password" type="password" autocomplete="current-password"></div>
-        <div class="form-group form-full" id="auth-name-group" style="display:none"><label class="form-label">Nombre visible</label><input class="form-input" id="auth-name" type="text" autocomplete="name"></div>
-      </div>
-      <div class="auth-actions">
-        <button type="button" class="btn-primary" id="auth-submit">Entrar</button>
-        <button type="button" class="btn-ghost" id="auth-reset">Recuperar contraseña</button>
+      <div class="auth-email-panel" id="auth-email-panel">
+        <div class="auth-tabs" id="auth-tabs">
+          <button type="button" class="auth-tab active" id="auth-tab-login" data-auth-mode="login">Iniciar sesión</button>
+          <button type="button" class="auth-tab" id="auth-tab-register" data-auth-mode="register">Crear cuenta</button>
+        </div>
+        <div class="auth-msg" id="auth-message"></div>
+        <div class="form-grid">
+          <div class="form-group form-full"><label class="form-label">Correo</label><input class="form-input" id="auth-email" type="email" autocomplete="email"></div>
+          <div class="form-group form-full"><label class="form-label">Contraseña</label><input class="form-input" id="auth-password" type="password" autocomplete="current-password"></div>
+          <div class="form-group form-full" id="auth-name-group" style="display:none"><label class="form-label">Nombre visible</label><input class="form-input" id="auth-name" type="text" autocomplete="name"></div>
+        </div>
+        <div class="auth-actions">
+          <button type="button" class="btn-primary" id="auth-submit">Entrar</button>
+          <button type="button" class="btn-ghost" id="auth-reset">Recuperar contraseña</button>
+        </div>
       </div>
       <div class="auth-note" id="auth-setup-note">Configura Firebase para habilitar acceso multiusuario y sincronización.</div>
     </div>
@@ -703,6 +712,12 @@ input[type="file"].form-input{cursor:pointer}
 
 <script>
 (function(){
+  function setEmailPanelOpen(isOpen){
+    const panel=document.getElementById('auth-email-panel');
+    const toggle=document.getElementById('auth-email-toggle');
+    if(panel) panel.classList.toggle('open',!!isOpen);
+    if(toggle) toggle.textContent=isOpen?'Ocultar acceso con correo':'Entrar con correo';
+  }
   function setMode(mode){
     const loginTab=document.getElementById('auth-tab-login');
     const registerTab=document.getElementById('auth-tab-register');
@@ -717,6 +732,7 @@ input[type="file"].form-input{cursor:pointer}
     if(resetBtn) resetBtn.style.display=mode==='login'?'inline-flex':'none';
   }
   window.__authUiSetMode=setMode;
+  window.__authUiToggleEmailPanel=setEmailPanelOpen;
   function callWhenReady(fnName){
     const maxTries=30;
     let tries=0;
@@ -746,6 +762,7 @@ input[type="file"].form-input{cursor:pointer}
     const submitBtn=document.getElementById('auth-submit');
     const resetBtn=document.getElementById('auth-reset');
     const googleBtn=document.getElementById('auth-google');
+    const emailToggleBtn=document.getElementById('auth-email-toggle');
     const pwdInput=document.getElementById('auth-password');
     const nameInput=document.getElementById('auth-name');
     const doSubmit=e=>{
@@ -790,6 +807,13 @@ input[type="file"].form-input{cursor:pointer}
       googleBtn.addEventListener('click',doGoogle);
       googleBtn.dataset.authFallbackBound='1';
     }
+    if(emailToggleBtn && !emailToggleBtn.dataset.authFallbackBound){
+      emailToggleBtn.addEventListener('click',()=>{
+        const panel=document.getElementById('auth-email-panel');
+        setEmailPanelOpen(!(panel&&panel.classList.contains('open')));
+      });
+      emailToggleBtn.dataset.authFallbackBound='1';
+    }
     if(pwdInput && !pwdInput.dataset.authFallbackBound){
       pwdInput.addEventListener('keydown',submitOnEnter);
       pwdInput.dataset.authFallbackBound='1';
@@ -799,6 +823,7 @@ input[type="file"].form-input{cursor:pointer}
       nameInput.dataset.authFallbackBound='1';
     }
     setMode('login');
+    setEmailPanelOpen(false);
   }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',bind);
