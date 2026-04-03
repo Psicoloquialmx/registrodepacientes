@@ -47,6 +47,8 @@ body.auth-locked .auth-screen{display:flex}
 .auth-msg.show{display:block}
 .auth-msg.error{background:#fde8e4;color:#9e3020;border:1px solid #f5c5bc}
 .auth-msg.info{background:#eef5f4;color:#335a53;border:1px solid #d3e5e1}
+.auth-primary-google{width:100%;justify-content:center;font-size:14px;padding:10px 16px;font-weight:600}
+.auth-secondary-caption{font-size:11px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .55rem}
 .auth-actions{display:flex;gap:8px;align-items:center;margin-top:1rem}
 .auth-note{font-size:11px;color:var(--ink-light);margin-top:.85rem;line-height:1.5}
 .sidebar-auth{margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:6px}
@@ -548,7 +550,11 @@ input[type="file"].form-input{cursor:pointer}
   <div class="auth-shell">
     <div class="auth-card">
       <div class="auth-title">Registro de pacientes y asistencias</div>
-      <div class="auth-sub">Accede con tu correo profesional para ver solo tus pacientes y sincronizar la información en línea.</div>
+      <div class="auth-sub">Accede rápidamente con Google. Si lo prefieres, también puedes entrar con correo y contraseña.</div>
+      <div class="auth-actions" style="margin-top:.35rem">
+        <button type="button" class="btn-google auth-primary-google" id="auth-google">Continuar con Google</button>
+      </div>
+      <div class="auth-secondary-caption">Acceso alterno con correo y contraseña</div>
       <div class="auth-tabs" id="auth-tabs">
         <button type="button" class="auth-tab active" id="auth-tab-login" data-auth-mode="login">Iniciar sesión</button>
         <button type="button" class="auth-tab" id="auth-tab-register" data-auth-mode="register">Crear cuenta</button>
@@ -562,9 +568,6 @@ input[type="file"].form-input{cursor:pointer}
       <div class="auth-actions">
         <button type="button" class="btn-primary" id="auth-submit">Entrar</button>
         <button type="button" class="btn-ghost" id="auth-reset">Recuperar contraseña</button>
-      </div>
-      <div class="auth-actions" style="margin-top:.55rem">
-        <button type="button" class="btn-google" id="auth-google">Continuar con Google</button>
       </div>
       <div class="auth-note" id="auth-setup-note">Configura Firebase para habilitar acceso multiusuario y sincronización.</div>
     </div>
