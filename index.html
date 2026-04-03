@@ -119,6 +119,7 @@ body.auth-locked .auth-screen{display:flex}
 .person-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .today-list{display:flex;flex-direction:column;gap:10px}
 .today-card{background:white;border:1px solid var(--ink-border);border-radius:12px;padding:.9rem 1rem}
+.today-card.repo-target{background:#fcf4f8;border-color:#edd7e3}
 .today-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.65rem}
 .today-name{font-family:'Lora',serif;font-size:15px;color:var(--ink)}
 .today-meta{font-size:12px;color:var(--ink-light);margin-top:2px}
@@ -1469,7 +1470,9 @@ function patientCalendarLabel(p){
 
 function patientCalendarPrefixForSession(ses){
   if(!ses) return '';
+  if(ses.tipo==='reposicion'&&ses.repoRespuesta==='falta'&&!ses.noCharge) return '(F) ';
   if(ses.tipo==='reposicion') return '(R) ';
+  if(ses.tipo==='falta'&&!ses.noCharge) return '(F) ';
   const isMovedSource=ses.tipo==='reprogramada'||ses.skipped||ses.replaced||(ses.tipo==='falta'&&!!ses.repoId);
   if(isMovedSource) return '(R->) ';
   return '';
@@ -1677,7 +1680,7 @@ async function deleteCalendarEventForSessionId(p,sessionId){
 
 function buildTodayCalendarReconcileBox(){
   const connected=!!calendarIntegration?.connected;
-  return `<div class="dsec" style="margin-top:10px;max-width:560px"><div class="sec-title">Google Calendar</div><p style="font-size:12px;color:var(--ink-light);line-height:1.5">Revisa el día visible y corrige desajustes contra Google Calendar (crea los que faltan y elimina los que no deben existir).</p><button id="btn-reconcile-day-calendar" class="btn-sec btn-sm" onclick="reconcileCalendarForTodayView()" ${connected?'':'disabled'} title="Alinea Google Calendar con el estado real de la fecha visible en esta vista">Reconciliar día visible</button></div>`;
+  return `<div class="dsec" style="margin-top:10px;max-width:560px"><div class="sec-title">Google Calendar</div><button id="btn-reconcile-day-calendar" class="btn-sec btn-sm" onclick="reconcileCalendarForTodayView()" ${connected?'':'disabled'} title="Alinea Google Calendar con las reglas de sincronización para hoy">Actualizar agenda de hoy</button></div>`;
 }
 
 async function reconcileCalendarForTodayView(){
@@ -1690,7 +1693,7 @@ async function reconcileCalendarForTodayView(){
   const btn=document.getElementById('btn-reconcile-day-calendar');
   if(btn){btn.disabled=true;btn.textContent='Reconciliando...';}
 
-  const dateStr=getTodayViewDate();
+  const dateStr=today();
   const idsPlan=new Set();
   let upserts=0;
   let deletes=0;
@@ -1705,7 +1708,8 @@ async function reconcileCalendarForTodayView(){
 
       const daySessions=(p.sesiones||[]).filter(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr);
       const existing=daySessions.find(s=>!(s.skipped||s.replaced||s.tipo==='reprogramada'))||null;
-      const movedSource=daySessions.some(s=>s.skipped||s.replaced||s.tipo==='reprogramada');
+      const movedSourceSession=daySessions.find(s=>s.skipped||s.replaced||s.tipo==='reprogramada')||null;
+      const movedSource=!!movedSourceSession;
       const fixedDay=isFixedScheduledOnDate(p,dateStr);
       if(!existing&&!movedSource&&!fixedDay) continue;
 
@@ -1715,11 +1719,16 @@ async function reconcileCalendarForTodayView(){
 
       if(existing){
         const isRepoCanceled=existing.tipo==='reposicion'&&existing.repoRespuesta==='cancelada';
-        if(existing.tipo!=='cancelada'&&existing.tipo!=='falta'&&!isRepoCanceled){
+        if(existing.tipo!=='cancelada'&&!(existing.tipo==='falta'&&!!existing.noCharge)&&!isRepoCanceled){
           shouldExist=true;
           targetSession=existing;
           targetHora=existing.hora||horaDiaFecha(p,dateStr);
         }
+      } else if(movedSourceSession){
+        // Keep origin moved session in Google with (R->) prefix.
+        shouldExist=true;
+        targetSession=movedSourceSession;
+        targetHora=movedSourceSession.hora||horaDiaFecha(p,dateStr);
       } else if(!movedSource&&fixedDay){
         shouldExist=true;
         targetHora=horaDiaFecha(p,dateStr);
@@ -1746,11 +1755,11 @@ async function reconcileCalendarForTodayView(){
       }
     }
 
-    alert(`Reconciliación de ${displayDate(dateStr)} lista.\n\nCreados/actualizados: ${upserts}\nEliminados: ${deletes}\nIncidencias: ${fails}`);
+    alert(`Actualización de agenda de hoy lista.\n\nCreados/actualizados: ${upserts}\nEliminados: ${deletes}\nIncidencias: ${fails}`);
   } catch(err){
-    alert(`No se pudo reconciliar el día: ${err.message||err}`);
+    alert(`No se pudo actualizar la agenda de hoy: ${err.message||err}`);
   } finally {
-    if(btn){btn.disabled=false;btn.textContent='Reconciliar día visible';}
+    if(btn){btn.disabled=false;btn.textContent='Actualizar agenda de hoy';}
   }
 }
 
@@ -1769,8 +1778,13 @@ function collectFuturePlannedSessionsForSync(maxDays,minDays=0,patientList=null)
 
       const daySessions=(p.sesiones||[]).filter(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr);
       const existing=daySessions.find(s=>!(s.skipped||s.replaced||s.tipo==='reprogramada'))||null;
-      if(existing&&existing.tipo!=='cancelada'&&existing.tipo!=='falta'){
-        items.push({p,ses:existing,dateStr,hora:existing.hora||horaDiaFecha(p,dateStr)});
+      if(existing){
+        const existingIsRepoCanceled=existing.tipo==='reposicion'&&existing.repoRespuesta==='cancelada';
+        const shouldKeepInCalendar=existing.tipo!=='cancelada'&&!(existing.tipo==='falta'&&!!existing.noCharge)&&!existingIsRepoCanceled;
+        if(shouldKeepInCalendar){
+          items.push({p,ses:existing,dateStr,hora:existing.hora||horaDiaFecha(p,dateStr)});
+        }
+        // Never synthesize a virtual event when an explicit session already exists.
         continue;
       }
 
@@ -1844,7 +1858,7 @@ function isoDateFromDateObj(dt){
 function currentWeekStartIso(){
   const now=new Date();
   const start=new Date(now);
-  const diff=(start.getDay()+6)%7; // monday-based week
+  const diff=start.getDay(); // sunday-based week
   start.setDate(start.getDate()-diff);
   start.setHours(0,0,0,0);
   return isoDateFromDateObj(start);
@@ -3212,7 +3226,8 @@ function renderHoy(){
       </div>`;
     }
     if(r.ses?.todaySaved){
-      return `<div class="today-card">
+      const repoTargetClass=r.ses?.tipo==='reposicion'?' repo-target':'';
+      return `<div class="today-card${repoTargetClass}">
         <div class="today-head">
           <div>
             <div class="today-name">${getConfidentialName(p, activePatients())}</div>
@@ -3236,7 +3251,7 @@ function renderHoy(){
     const paidYes=!!r.autoPay;
     const paidMethod=r.autoPay?.metodo||'transferencia';
     const esReposicion=tipoActual==='reposicion';
-    return `<div class="today-card">
+    return `<div class="today-card${esReposicion?' repo-target':''}">
       <div class="today-head">
         <div>
           <div class="today-name">${getConfidentialName(p, activePatients())}${esReposicion?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
@@ -3469,7 +3484,7 @@ function saveTodaySession(pid){
   }
 
   ses.todaySaved=true;
-  if(tipo==='falta'||tipo==='cancelada') triggerCalendarDelete(p,ses);
+  if(tipo==='cancelada'||(tipo==='falta'&&noCharge)) triggerCalendarDelete(p,ses);
   else triggerCalendarUpsert(p,ses,{dateStr, hora:ses.hora||defaultHora});
 
   exposeSesMap(p);
@@ -4342,6 +4357,8 @@ function registrarDesdePop(pid,dateStr,tipo){
       existing.noCharge=requestedNoCharge||finalTipo==='cancelada';
       if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete existing.noCharge;
       addLog(p,'reposicion',`Reposición ${dateStr}: ${prev||'sin respuesta'}${prevNoCharge?' (sin costo)':''} -> ${finalTipo}${requestedNoCharge?' (sin costo)':''}`);
+      if(finalTipo==='cancelada'||(finalTipo==='falta'&&requestedNoCharge)) triggerCalendarDelete(p,existing);
+      else triggerCalendarUpsert(p,existing,{dateStr,hora:existing.hora||horaDiaFecha(p,dateStr)});
       closePopover();
       refreshAfterSessionMutation(p);
       return;
@@ -4367,9 +4384,9 @@ function registrarDesdePop(pid,dateStr,tipo){
 
   const currentSession=p.sesiones.find(s=>s.fecha===dateStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
   if(currentSession){
-    if(finalTipo==='falta'||finalTipo==='cancelada') triggerCalendarDelete(p,currentSession);
+    if(finalTipo==='cancelada'||(finalTipo==='falta'&&requestedNoCharge)) triggerCalendarDelete(p,currentSession);
     else triggerCalendarUpsert(p,currentSession,{dateStr,hora:currentSession.hora||horaDiaFecha(p,dateStr)});
-  } else if(finalTipo==='falta'||finalTipo==='cancelada'){
+  } else if(finalTipo==='cancelada'||(finalTipo==='falta'&&requestedNoCharge)){
     triggerCalendarDelete(p,{id:`plan_${dateStr}`,fecha:dateStr});
   }
 
@@ -5425,7 +5442,7 @@ function renderSemana(){
       html:(()=>{
         const sesRegistrada=p.sesiones.find(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
         const sesMovida=p.sesiones.find(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'));
-        const therapistCancelClass=(sesRegistrada?.tipo==='cancelada'&&sesRegistrada?.therapistCancel)?' therapist-cancel':'';
+        const therapistCancelClass=sesRegistrada?.tipo==='cancelada'?' therapist-cancel':'';
         const slotClass=sesMovida?'wslot moved-source':`wslot${therapistCancelClass}`;
         const markerHtml=weekSlotMarkerHtml(sesRegistrada,!!sesMovida);
         return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div>${markerHtml}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
