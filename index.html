@@ -1903,6 +1903,9 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
   const lastSyncedWeek=readWeeklyAutoSyncMarker(currentUser.uid);
   if(lastSyncedWeek===weekIso) return;
 
+  // Mark at start so interrupted mobile sessions do not re-trigger on every login.
+  writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
+
   calendarBackgroundSyncInProgress=true;
   setCalendarSyncBackgroundHint(true);
   setTimeout(async ()=>{
@@ -1918,8 +1921,6 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
       const m=await runCalendarSyncBatch(monthItems,{progressEvery:1,onProgress:makeProgress(weekItems.length)});
       const s=await runCalendarSyncBatch(sixMonthsItems,{progressEvery:1,onProgress:makeProgress(weekItems.length+monthItems.length)});
       const totalFail=(w.fail||0)+(m.fail||0)+(s.fail||0);
-      // Mark the week even with partial failures to prevent repeated retries on each login.
-      writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
       console.info('[CalSync] Weekly auto-sync finished',{weekIso,week:w,month:m,sixMonths:s,totalFail});
     } catch(err){
       console.warn('[CalSync] Weekly auto-sync failed',err);
@@ -2009,7 +2010,6 @@ function getDefaultTherapistProfile(){
     profession:'',
     pronouns:'',
     specialty:'',
-    lastWeeklyAutoSyncWeek:(data.lastWeeklyAutoSyncWeek||base.lastWeeklyAutoSyncWeek||'').toString(),
     bio:'',
     license:'',
     clinicName:'',
@@ -2020,9 +2020,6 @@ function getDefaultTherapistProfile(){
     defaultSessionRate:800,
     defaultPaymentMode:'sesion',
     firstSessionNoChargeDefault:false,
-
-  // Mark at start so interrupted mobile sessions do not re-trigger on every login.
-  writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
     lastWeeklyAutoSyncWeek:'',
     logoUrl:'',
     referralSources:ensureReferralSources([])
@@ -2284,6 +2281,7 @@ function normalizeTherapistProfile(raw){
     defaultSessionRate:Number.isFinite(Number(data.defaultSessionRate))?Number(data.defaultSessionRate):base.defaultSessionRate,
     defaultPaymentMode:['sesion','mensual','quincenal','inicio'].includes(data.defaultPaymentMode)?data.defaultPaymentMode:base.defaultPaymentMode,
     firstSessionNoChargeDefault:!!data.firstSessionNoChargeDefault,
+    lastWeeklyAutoSyncWeek:(data.lastWeeklyAutoSyncWeek||base.lastWeeklyAutoSyncWeek||'').toString(),
     logoUrl:(data.logoUrl||'').toString().trim(),
     referralSources:ensureReferralSources(data.referralSources||base.referralSources)
   };
