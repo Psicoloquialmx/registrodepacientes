@@ -2009,6 +2009,7 @@ function getDefaultTherapistProfile(){
     profession:'',
     pronouns:'',
     specialty:'',
+    lastWeeklyAutoSyncWeek:(data.lastWeeklyAutoSyncWeek||base.lastWeeklyAutoSyncWeek||'').toString(),
     bio:'',
     license:'',
     clinicName:'',
@@ -2019,6 +2020,9 @@ function getDefaultTherapistProfile(){
     defaultSessionRate:800,
     defaultPaymentMode:'sesion',
     firstSessionNoChargeDefault:false,
+
+  // Mark at start so interrupted mobile sessions do not re-trigger on every login.
+  writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
     lastWeeklyAutoSyncWeek:'',
     logoUrl:'',
     referralSources:ensureReferralSources([])
@@ -2027,8 +2031,6 @@ function getDefaultTherapistProfile(){
 
 function therapistTimezoneOptions(){
   return [
-    {value:'America/Mexico_City',label:'Ciudad de Mexico (GMT-6/-5)'},
-    {value:'America/Cancun',label:'Cancun (GMT-5)'},
     {value:'America/Tijuana',label:'Tijuana (GMT-8/-7)'},
     {value:'America/Bogota',label:'Bogota (GMT-5)'},
     {value:'America/Lima',label:'Lima (GMT-5)'},
@@ -3229,14 +3231,21 @@ function renderHoy(){
         </div>
       </div>`;
     }
-    const isRecordedFromCalendar=(!!r.ses)&&(
-      r.ses?.todaySavedFrom==='calendar'||
-      (!r.ses?.todaySaved&&['asistio','falta','cancelada','reposicion','extra'].includes(r.ses?.tipo||''))
-    );
+    const isRecordedFromCalendar=(!!r.ses)&&(()=>{
+      const tipoSes=(r.ses?.tipo||'').toString();
+      if(tipoSes==='reposicion'){
+        // Reposición destino remains editable until there is an explicit attendance response.
+        const respuesta=(r.ses?.repoRespuesta||'').toString();
+        return respuesta==='asistio'||respuesta==='falta'||respuesta==='cancelada'||!!r.ses?.therapistCancel;
+      }
+      if(r.ses?.todaySavedFrom==='calendar') return true;
+      return !r.ses?.todaySaved&&['asistio','falta','cancelada','extra'].includes(tipoSes);
+    })();
     if(isRecordedFromCalendar){
       const tipoInfo=r.ses?.tipo||'asistio';
-      const attendedInfo=tipoInfo==='asistio'||tipoInfo==='reposicion'||tipoInfo==='extra';
-      const chargeInfo=tipoInfo==='falta'?!r.ses?.noCharge:false;
+      const tipoCalendarInfo=tipoInfo==='reposicion'?(r.ses?.repoRespuesta||'reposicion'):tipoInfo;
+      const attendedInfo=tipoCalendarInfo==='asistio'||tipoCalendarInfo==='reposicion'||tipoCalendarInfo==='extra';
+      const chargeInfo=tipoCalendarInfo==='falta'?!r.ses?.noCharge:false;
       const paidInfo=(attendedInfo||chargeInfo)?!!r.autoPay:false;
       return `<div class="today-card${tipoInfo==='reposicion'?' repo-target':''}">
         <div class="today-head">
