@@ -1,0 +1,5 @@
+﻿# Local Firebase config
+.firebaserc
+
+# Deploy/debug logs
+*.log
