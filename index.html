@@ -39,7 +39,9 @@ body.auth-locked .auth-screen{display:flex}
 .auth-axo{width:170px;max-width:100%;object-fit:contain;transform-origin:70% 88%;animation:authAxoWave 2.6s ease-in-out infinite;pointer-events:none}
 @keyframes authAxoWave{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(6deg) translateY(-3px)}}
 .auth-logo{width:100%;max-width:240px;height:auto;display:block;margin:0 0 .85rem}
-.auth-title{font-family:'Lora',serif;font-size:28px;color:var(--ink);margin-bottom:.35rem}
+.auth-title{font-family:'Lora',serif;font-size:28px;color:var(--ink);margin-bottom:.35rem;line-height:1.2}
+.auth-sub{display:none}
+.auth-secondary-caption{display:none}
 .auth-sub{font-size:13px;color:var(--ink-light);line-height:1.6;margin-bottom:1.25rem}
 .auth-tabs{display:flex;gap:6px;background:var(--cream);border:1px solid var(--blush);border-radius:999px;padding:4px;margin-bottom:1rem}
 .auth-tab{flex:1;border:none;background:transparent;border-radius:999px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink-light);cursor:pointer;position:relative;z-index:3}
@@ -557,7 +559,7 @@ input[type="file"].form-input{cursor:pointer}
   <div class="auth-shell">
     <div class="auth-card">
       <img class="auth-logo" src="Assets/Branding/LogoClaim-Color-.svg" alt="Psicoloquial">
-      <div class="auth-title">Registro de pacientes y asistencias</div>
+      <div class="auth-title">Registro de<br>pacientes y asistencias</div>
       <div class="auth-sub">Accede rápidamente con Google. Si lo prefieres, también puedes entrar con correo y contraseña.</div>
       <div class="auth-actions" style="margin-top:.35rem">
         <button type="button" class="btn-google auth-primary-google" id="auth-google">Continuar con Google</button>
