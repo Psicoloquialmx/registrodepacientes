@@ -19,7 +19,7 @@ const LEGACY_CALENDAR_CONFIG = getLegacyCalendarConfig();
 
 // Config values - use environment variables or defaults
 const CALENDAR_CONFIG = {
-  client_id: process.env.GOOGLE_CLIENT_ID || LEGACY_CALENDAR_CONFIG.client_id || '327033644024-dcqvtbaa08ki2he4m4jlmfgt6pf8ma8h.apps.googleusercontent.com',
+  client_id: process.env.GOOGLE_CLIENT_ID || LEGACY_CALENDAR_CONFIG.client_id || '',
   client_secret: process.env.GOOGLE_CLIENT_SECRET || LEGACY_CALENDAR_CONFIG.client_secret || '',
   redirect_uri: process.env.GOOGLE_REDIRECT_URI || LEGACY_CALENDAR_CONFIG.redirect_uri || 'https://registropx.netlify.app/api/google-calendar/callback',
   app_url: process.env.APP_URL || LEGACY_CALENDAR_CONFIG.app_url || 'https://registropx.netlify.app',
@@ -72,6 +72,9 @@ async function findOrCreateAgendaCalendar(calendarClient) {
 }
 
 function getOAuthClient() {
+  if (!CALENDAR_CONFIG.client_id) {
+    throw new Error('Missing GOOGLE_CLIENT_ID environment variable.');
+  }
   if (!CALENDAR_CONFIG.client_secret) {
     throw new Error('Missing GOOGLE_CLIENT_SECRET environment variable.');
   }
