@@ -1488,6 +1488,28 @@ function calendarSessionDescriptionForPatient(p,ses){
   return `RegistroPX | ${patientCalendarLabel(p)} | Tipo: ${tipo}`;
 }
 
+async function deletePlannedPlaceholderBeforeUpsert(idToken,p,ses,dateStr){
+  const safeDate=String(dateStr||'').split(' ')[0];
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) return;
+  const plannedSessionId=`plan_${safeDate}`;
+  if(String(ses?.id||'')===plannedSessionId) return;
+  try {
+    await fetch(`${getFunctionsBaseUrl()}/googleCalendarDeleteSessionProxy`,{
+      method:'POST',
+      headers:{
+        Authorization:`Bearer ${idToken}`,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        patientId:p.id,
+        sessionId:plannedSessionId
+      })
+    });
+  } catch(err){
+    console.warn('[CalSync] Could not delete planned placeholder before upsert',safeDate,err);
+  }
+}
+
 async function syncSessionToGoogleCalendar(action,p,ses,opts){
   const options=(opts&&typeof opts==='object')?opts:{};
   if(!calendarIntegration?.connected||!currentUser||!auth||!p||!ses) return;
@@ -1516,6 +1538,8 @@ async function syncSessionToGoogleCalendar(action,p,ses,opts){
     const hora=options.hora||ses.hora||horaDiaFecha(p,dateStr);
     const windowIso=buildSessionIsoWindow(dateStr,hora,therapistProfile?.defaultSessionDuration||45);
     if(!windowIso) return;
+
+    await deletePlannedPlaceholderBeforeUpsert(idToken,p,ses,dateStr);
 
     const upsertResp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarUpsertSessionProxy`,{
       method:'POST',
@@ -1635,6 +1659,7 @@ async function upsertCalendarEventForSession(p,ses,opts){
   if(!windowIso) return false;
 
   const idToken=await currentUser.getIdToken();
+  await deletePlannedPlaceholderBeforeUpsert(idToken,p,ses,dateStr);
   const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarUpsertSessionProxy`,{
     method:'POST',
     headers:{
