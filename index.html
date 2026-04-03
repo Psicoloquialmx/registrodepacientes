@@ -38,6 +38,7 @@ body.auth-locked .auth-screen{display:flex}
 .auth-axo-wrap{display:flex;justify-content:flex-end;align-items:flex-end;min-height:220px;pointer-events:none}
 .auth-axo{width:170px;max-width:100%;object-fit:contain;transform-origin:70% 88%;animation:authAxoWave 2.6s ease-in-out infinite;pointer-events:none}
 @keyframes authAxoWave{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(6deg) translateY(-3px)}}
+.auth-logo{width:100%;max-width:240px;height:auto;display:block;margin:0 0 .85rem}
 .auth-title{font-family:'Lora',serif;font-size:28px;color:var(--ink);margin-bottom:.35rem}
 .auth-sub{font-size:13px;color:var(--ink-light);line-height:1.6;margin-bottom:1.25rem}
 .auth-tabs{display:flex;gap:6px;background:var(--cream);border:1px solid var(--blush);border-radius:999px;padding:4px;margin-bottom:1rem}
@@ -102,6 +103,8 @@ body.auth-locked .auth-screen{display:flex}
 .btn-primary:hover{background:#9e4f2e}
 .btn-google{background:white;color:var(--ink);border:1px solid #ddd;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;font-family:'DM Sans',sans-serif;transition:all .15s;white-space:nowrap}
 .btn-google:hover{background:#fafafa;border-color:#cfd6db}
+.btn-google.auth-primary-google{background:var(--terra);border-color:var(--terra);color:#fff;box-shadow:0 8px 18px rgba(185,93,55,.28)}
+.btn-google.auth-primary-google:hover{background:#9e4f2e;border-color:#9e4f2e;box-shadow:0 10px 22px rgba(158,79,46,.32)}
 .btn-sm{padding:6px 12px;font-size:12px}
 .btn-sec{border:1px solid #ddd;background:none;padding:8px 16px;border-radius:8px;font-size:13px;cursor:pointer;color:var(--ink-light);font-family:'DM Sans',sans-serif}
 .btn-sec:hover{background:var(--cream)}
@@ -553,6 +556,7 @@ input[type="file"].form-input{cursor:pointer}
 <div class="auth-screen" id="auth-screen">
   <div class="auth-shell">
     <div class="auth-card">
+      <img class="auth-logo" src="Assets/Branding/LogoClaim-Color-.svg" alt="Psicoloquial">
       <div class="auth-title">Registro de pacientes y asistencias</div>
       <div class="auth-sub">Accede rápidamente con Google. Si lo prefieres, también puedes entrar con correo y contraseña.</div>
       <div class="auth-actions" style="margin-top:.35rem">
