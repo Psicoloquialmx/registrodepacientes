@@ -466,6 +466,12 @@ input[type="file"].form-input{cursor:pointer}
 .calendar-sync-hint{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light);margin-left:6px;white-space:nowrap}
 .calendar-sync-dot{width:7px;height:7px;border-radius:50%;background:var(--sage-dark);display:inline-block;animation:calendarSyncPulse 1.25s ease-in-out infinite}
 @keyframes calendarSyncPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes resyncAxoSwing{0%,100%{transform:rotate(-5deg) translateY(0)}50%{transform:rotate(5deg) translateY(-3px)}}
+.resync-axo-wrap{display:flex;align-items:center;justify-content:center;margin:4px 0}
+.resync-axo{width:74px;height:74px;object-fit:contain;filter:drop-shadow(0 3px 7px rgba(30,42,50,.16))}
+.resync-axo.swing{animation:resyncAxoSwing 1.8s ease-in-out infinite;transform-origin:50% 80%}
+.resync-report{display:flex;gap:10px;flex-wrap:wrap}
+.resync-report-chip{border:1px solid #e5e0db;background:#faf8f6;border-radius:999px;padding:5px 10px;font-size:12px;color:var(--ink)}
 .color-dot-preview{width:12px;height:12px;border-radius:50%;display:inline-block;flex-shrink:0;border:1px solid rgba(0,0,0,.15)}
 .est-card{background:#f8fbfa;border:1px solid #dceae6;border-radius:10px;padding:.875rem 1rem;margin-top:.75rem}
 .est-head{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-light);margin-bottom:6px}
@@ -1567,8 +1573,7 @@ function patientCalendarTitle(p,ses){
 function calendarColorIdForSession(p,ses){
   const sourceColor=patientReferralSourceColorId(p);
   if(sourceColor) return sourceColor;
-  const isPlanned=ses?.tipo==='planeada'||String(ses?.id||'').startsWith('plan_');
-  return isPlanned?'9':'8';
+  return '8';
 }
 
 function calendarSessionDescriptionForPatient(p,ses){
@@ -1873,7 +1878,9 @@ function openCalendarCleanModal(){
   document.getElementById('modal-title').textContent='Limpiar Google Calendar';
   document.getElementById('modal-body').innerHTML=`
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Se eliminarán del Google Calendar todos los eventos gestionados por RegistroPX. Tus datos dentro de la app no se borran.</div>
+      <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Este proceso tomará unos minutos. Mantente en línea, relájate y ve por un café o algo de tomar.</div>
+      <div class="resync-axo-wrap"><img class="resync-axo swing" src="Assets/Axolotl/Pensando-1.svg" alt="Ajolote limpiando calendario"></div>
+      <div style="font-size:12px;color:var(--ink-light)">Se eliminarán del Google Calendar todos los eventos gestionados por RegistroPX. Tus datos dentro de la app no se borran.</div>
       <div id="calendar-clean-status" style="font-size:12px;color:var(--ink-light);min-height:18px">Listo para iniciar.</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         <button class="btn-sec" type="button" onclick="closeModal()">Cancelar</button>
@@ -1888,12 +1895,13 @@ async function startCalendarCleanFromModal(){
   const btn=document.getElementById('btn-calendar-clean-confirm');
   if(btn){ btn.disabled=true; btn.textContent='Limpiando...'; }
   if(status) status.textContent='Preparando limpieza...';
-  await purgeManagedGoogleCalendarEvents({skipConfirm:true,statusNode:status,triggerButton:btn,closeModalOnSuccess:true});
+  await purgeManagedGoogleCalendarEvents({skipConfirm:true,statusNode:status,triggerButton:btn,reportMode:'modal'});
   if(btn){ btn.disabled=false; btn.textContent='Iniciar limpieza'; }
 }
 
 async function purgeManagedGoogleCalendarEvents(opts){
   const options=(opts&&typeof opts==='object')?opts:{};
+  const isModalReport=options.reportMode==='modal';
   if(!calendarIntegration?.connected){
     alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
     return;
@@ -1947,11 +1955,42 @@ async function purgeManagedGoogleCalendarEvents(opts){
     } while(hasMore&&rounds<20);
 
     if(statusNode) statusNode.textContent=`Limpieza lista. Revisados: ${totalProcessed}. Eliminados: ${totalDeleted}${hasMore?'. Quedaron eventos pendientes; ejecuta otra limpieza para continuar.':''}`;
-    alert(`Limpieza de Google Calendar lista.\n\nEventos eliminados: ${totalDeleted}\nEventos revisados: ${totalProcessed}${hasMore?'\nQuedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':''}`);
-    if(options.closeModalOnSuccess) closeModal();
+    if(isModalReport){
+      const modalBody=document.getElementById('modal-body');
+      if(modalBody){
+        modalBody.innerHTML=`
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="resync-axo-wrap"><img class="resync-axo" src="Assets/Axolotl/Pensando-4.svg" alt="Ajolote limpieza completada"></div>
+            <div style="font-size:13px;color:var(--ink);line-height:1.6;font-weight:600">Limpieza de Google Calendar completada.</div>
+            <div class="resync-report">
+              <span class="resync-report-chip">Eliminados: ${totalDeleted}</span>
+              <span class="resync-report-chip">Revisados: ${totalProcessed}</span>
+              <span class="resync-report-chip">Lotes: ${rounds}</span>
+            </div>
+            <div style="font-size:12px;color:var(--ink-light)">${hasMore?'Quedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':'No quedaron eventos pendientes en este ciclo.'}</div>
+            <div style="display:flex;justify-content:flex-end"><button class="btn-primary" type="button" onclick="closeModal()">Cerrar</button></div>
+          </div>`;
+      }
+    } else {
+      alert(`Limpieza de Google Calendar lista.\n\nEventos eliminados: ${totalDeleted}\nEventos revisados: ${totalProcessed}${hasMore?'\nQuedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':''}`);
+      if(options.closeModalOnSuccess) closeModal();
+    }
   } catch(err){
     if(statusNode) statusNode.textContent=`No se pudo limpiar Google Calendar: ${err.message||err}`;
-    alert(`No se pudo limpiar Google Calendar: ${err.message||err}`);
+    if(isModalReport){
+      const modalBody=document.getElementById('modal-body');
+      if(modalBody){
+        modalBody.innerHTML=`
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="resync-axo-wrap"><img class="resync-axo" src="Assets/Axolotl/Pensando-4.svg" alt="Ajolote con incidencia"></div>
+            <div style="font-size:13px;color:var(--terra);line-height:1.6;font-weight:600">No se pudo completar la limpieza.</div>
+            <div style="font-size:12px;color:var(--ink-light)">${escAttr(err?.message||String(err))}</div>
+            <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn-sec" type="button" onclick="openCalendarCleanModal()">Reintentar</button><button class="btn-primary" type="button" onclick="closeModal()">Cerrar</button></div>
+          </div>`;
+      }
+    } else {
+      alert(`No se pudo limpiar Google Calendar: ${err.message||err}`);
+    }
   } finally {
     if(btn){
       btn.disabled=false;
@@ -1970,10 +2009,19 @@ function openCalendarResyncModal(){
   document.getElementById('modal-title').textContent='Resincronizar Google Calendar';
   document.getElementById('modal-body').innerHTML=`
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Reconstruye los eventos gestionados por la app desde la fecha elegida y hasta 12 meses hacia adelante. Este proceso borra duplicados y vuelve a publicar la versión correcta según el estado real de cada sesión.</div>
-      <div class="form-group" style="margin:0">
-        <label class="form-label" for="calendar-resync-start">Resincronizar desde</label>
-        <input class="form-input" id="calendar-resync-start" type="date" value="${escAttr(defaultDate)}">
+      <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Este proceso tomará unos minutos. Mantente en línea, relájate y ve por un café o algo de tomar.</div>
+      <div class="resync-axo-wrap"><img class="resync-axo swing" src="Assets/Axolotl/Pensando-1.svg" alt="Ajolote resincronizando"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label" for="calendar-resync-start">Resincronizar desde</label>
+          <input class="form-input" id="calendar-resync-start" type="date" value="${escAttr(defaultDate)}">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label" for="calendar-resync-months">Hasta cuándo</label>
+          <select class="form-input" id="calendar-resync-months">
+            ${Array.from({length:12},(_,i)=>{const n=i+1;return `<option value="${n}"${n===6?' selected':''}>${n} mes${n>1?'es':''}</option>`;}).join('')}
+          </select>
+        </div>
       </div>
       <div id="calendar-resync-status" style="font-size:12px;color:var(--ink-light);min-height:18px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
@@ -1990,24 +2038,54 @@ async function startCalendarResyncFromModal(){
     return;
   }
   const input=document.getElementById('calendar-resync-start');
+  const monthsInput=document.getElementById('calendar-resync-months');
   const status=document.getElementById('calendar-resync-status');
   const btn=document.getElementById('btn-calendar-resync-confirm');
   const fromDate=String(input?.value||'').trim();
+  const months=Math.max(1,Math.min(12,parseInt(monthsInput?.value,10)||0));
   if(!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)){
     alert('Selecciona una fecha válida para resincronizar.');
     return;
   }
+  if(!(months>=1&&months<=12)){
+    alert('Selecciona un lapso válido entre 1 y 12 meses.');
+    return;
+  }
+
+  const startDt=new Date(`${fromDate}T12:00:00`);
+  const endDt=new Date(startDt);
+  endDt.setMonth(endDt.getMonth()+months);
+  endDt.setDate(endDt.getDate()-1);
+  const endDateIso=isoDateFromDateObj(endDt);
+  const maxDays=Math.max(1,Math.round((endDt-startDt)/(24*60*60*1000))+1);
+
   if(btn){ btn.disabled=true; btn.textContent='Resincronizando...'; }
-  if(status) status.textContent='Preparando resincronización...';
+  if(status) status.textContent=`Preparando resincronización de ${displayDate(fromDate)} a ${displayDate(endDateIso)}...`;
 
   try {
     const result=await reconcileCalendarRangeFromDate(fromDate,{
-      maxDays:366,
+      maxDays,
       onProgress:progress=>{
         if(status) status.textContent=`Procesando ${progress.done}/${progress.total} días. Actualizados: ${progress.upserts}. Eliminados: ${progress.deletes}. Incidencias: ${progress.fails}.`;
       }
     });
-    if(status) status.textContent=`Resincronización lista. Actualizados: ${result.upserts}. Eliminados: ${result.deletes}. Incidencias: ${result.fails}.`;
+    const modalBody=document.getElementById('modal-body');
+    if(modalBody){
+      modalBody.innerHTML=`
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="resync-axo-wrap"><img class="resync-axo" src="Assets/Axolotl/Pensando-4.svg" alt="Ajolote sincronización completada"></div>
+          <div style="font-size:13px;color:var(--ink);line-height:1.6;font-weight:600">Resincronización completada.</div>
+          <div class="resync-report">
+            <span class="resync-report-chip">Actualizados: ${result.upserts}</span>
+            <span class="resync-report-chip">Eliminados: ${result.deletes}</span>
+            <span class="resync-report-chip">Incidencias: ${result.fails}</span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-light)">Desde: ${displayDate(fromDate)} · Hasta: ${displayDate(endDateIso)} · Rango: ${months} mes${months>1?'es':''}</div>
+          <div style="display:flex;justify-content:flex-end"><button class="btn-primary" type="button" onclick="closeModal()">Cerrar</button></div>
+        </div>`;
+    } else if(status){
+      status.textContent=`Resincronización lista. Actualizados: ${result.upserts}. Eliminados: ${result.deletes}. Incidencias: ${result.fails}.`;
+    }
     await fetchCalendarIntegrationStatus();
     renderTherapistProfileView();
   } catch(err){
