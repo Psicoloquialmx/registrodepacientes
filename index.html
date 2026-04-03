@@ -1564,6 +1564,13 @@ function patientCalendarTitle(p,ses){
   return `${patientCalendarPrefixForSession(ses)}${patientCalendarLabel(p)}`;
 }
 
+function calendarColorIdForSession(p,ses){
+  const sourceColor=patientReferralSourceColorId(p);
+  if(sourceColor) return sourceColor;
+  const isPlanned=ses?.tipo==='planeada'||String(ses?.id||'').startsWith('plan_');
+  return isPlanned?'9':'8';
+}
+
 function calendarSessionDescriptionForPatient(p,ses){
   const tipo=ses?.tipo||'asistio';
   return `RegistroPX | ${patientCalendarLabel(p)} | Tipo: ${tipo}`;
@@ -1633,7 +1640,7 @@ async function syncSessionToGoogleCalendar(action,p,ses,opts){
         sessionId:ses.id,
         title:patientCalendarTitle(p,ses),
         description:calendarSessionDescriptionForPatient(p,ses),
-        colorId:patientReferralSourceColorId(p),
+        colorId:calendarColorIdForSession(p,ses),
         startIso:windowIso.startIso,
         endIso:windowIso.endIso
       })
@@ -1858,16 +1865,51 @@ async function movePrimaryEventsToAgenda(){
   }
 }
 
-async function purgeManagedGoogleCalendarEvents(){
+function openCalendarCleanModal(){
+  if(!calendarIntegration?.connected){
+    alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
+    return;
+  }
+  document.getElementById('modal-title').textContent='Limpiar Google Calendar';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Se eliminarán del Google Calendar todos los eventos gestionados por RegistroPX. Tus datos dentro de la app no se borran.</div>
+      <div id="calendar-clean-status" style="font-size:12px;color:var(--ink-light);min-height:18px">Listo para iniciar.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn-sec" type="button" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="btn-calendar-clean-confirm" type="button" onclick="startCalendarCleanFromModal()">Iniciar limpieza</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+async function startCalendarCleanFromModal(){
+  const status=document.getElementById('calendar-clean-status');
+  const btn=document.getElementById('btn-calendar-clean-confirm');
+  if(btn){ btn.disabled=true; btn.textContent='Limpiando...'; }
+  if(status) status.textContent='Preparando limpieza...';
+  await purgeManagedGoogleCalendarEvents({skipConfirm:true,statusNode:status,triggerButton:btn,closeModalOnSuccess:true});
+  if(btn){ btn.disabled=false; btn.textContent='Iniciar limpieza'; }
+}
+
+async function purgeManagedGoogleCalendarEvents(opts){
+  const options=(opts&&typeof opts==='object')?opts:{};
   if(!calendarIntegration?.connected){
     alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
     return;
   }
   if(!currentUser||!auth) return;
-  if(!confirm('Esto eliminará del Google Calendar todos los eventos gestionados por RegistroPX. Tus datos dentro de la app no se borran.')) return;
+  if(!options.skipConfirm&&!confirm('Esto eliminará del Google Calendar todos los eventos gestionados por RegistroPX. Tus datos dentro de la app no se borran.')) return;
 
-  const btn=document.getElementById('btn-calendar-clean');
-  if(btn){ btn.disabled=true; btn.textContent='Limpiando...'; }
+  const btn=options.triggerButton||document.getElementById('btn-calendar-clean');
+  const statusNode=options.statusNode||null;
+  const defaultCleanTitle='Elimina del Google Calendar todos los eventos gestionados por la app';
+  if(btn){
+    btn.disabled=true;
+    btn.textContent='Limpiando...';
+    btn.title='Limpiando... iniciando proceso.';
+  }
+  if(statusNode) statusNode.textContent='Limpiando... iniciando proceso.';
 
   try {
     const idToken=await currentUser.getIdToken();
@@ -1888,13 +1930,25 @@ async function purgeManagedGoogleCalendarEvents(){
       totalDeleted+=Number(data.deleted)||0;
       totalProcessed+=Number(data.processed)||0;
       hasMore=!!data.hasMore;
+      const progressText=`Lote ${rounds}. Revisados: ${totalProcessed}. Eliminados: ${totalDeleted}${hasMore?'. Aún quedan eventos por revisar.':'. Último lote en progreso.'}`;
+      if(btn){
+        btn.title=`Limpiando... ${progressText}`;
+      }
+      if(statusNode) statusNode.textContent=progressText;
     } while(hasMore&&rounds<20);
 
+    if(statusNode) statusNode.textContent=`Limpieza lista. Revisados: ${totalProcessed}. Eliminados: ${totalDeleted}${hasMore?'. Quedaron eventos pendientes; ejecuta otra limpieza para continuar.':''}`;
     alert(`Limpieza de Google Calendar lista.\n\nEventos eliminados: ${totalDeleted}\nEventos revisados: ${totalProcessed}${hasMore?'\nQuedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':''}`);
+    if(options.closeModalOnSuccess) closeModal();
   } catch(err){
+    if(statusNode) statusNode.textContent=`No se pudo limpiar Google Calendar: ${err.message||err}`;
     alert(`No se pudo limpiar Google Calendar: ${err.message||err}`);
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent='Limpiar Calendario de Google'; }
+    if(btn){
+      btn.disabled=false;
+      btn.textContent=options.triggerButton?'Iniciar limpieza':'Limpiar Calendario de Google';
+      btn.title=defaultCleanTitle;
+    }
   }
 }
 
@@ -1975,7 +2029,7 @@ async function upsertCalendarEventForSession(p,ses,opts){
       sessionId:ses.id,
       title:patientCalendarTitle(p,ses),
       description:calendarSessionDescriptionForPatient(p,ses),
-      colorId:patientReferralSourceColorId(p),
+      colorId:calendarColorIdForSession(p,ses),
       startIso:windowIso.startIso,
       endIso:windowIso.endIso
     })
@@ -3401,7 +3455,7 @@ function renderTherapistProfileView(){
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button class="btn-primary btn-sm" onclick="startGoogleCalendarConnect()">${calConnected?'Reconectar Calendar':'Conectar Calendar'}</button>
             <button class="btn-sec btn-sm" onclick="fetchCalendarIntegrationStatus().then(()=>renderTherapistProfileView())">Actualizar estado</button>
-            ${calConnected?`<button id="btn-calendar-clean" class="btn-sec btn-sm" onclick="purgeManagedGoogleCalendarEvents()" title="Elimina del Google Calendar todos los eventos gestionados por la app">Limpiar Calendario de Google</button><button class="btn-sec btn-sm" onclick="openCalendarResyncModal()" title="Reconstruye los eventos correctos desde una fecha elegida">Resincronizar desde...</button>`:''}
+            ${calConnected?`<button id="btn-calendar-clean" class="btn-sec btn-sm" onclick="openCalendarCleanModal()" title="Elimina del Google Calendar todos los eventos gestionados por la app">Limpiar Calendario de Google</button><button class="btn-sec btn-sm" onclick="openCalendarResyncModal()" title="Reconstruye los eventos correctos desde una fecha elegida">Resincronizar desde...</button>`:''}
           </div>
         </div>
       </div>
