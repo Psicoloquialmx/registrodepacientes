@@ -1905,9 +1905,8 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
       const m=await runCalendarSyncBatch(monthItems,{progressEvery:1,onProgress:makeProgress(weekItems.length)});
       const s=await runCalendarSyncBatch(sixMonthsItems,{progressEvery:1,onProgress:makeProgress(weekItems.length+monthItems.length)});
       const totalFail=(w.fail||0)+(m.fail||0)+(s.fail||0);
-      if(totalFail===0){
-        writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
-      }
+      // Mark the week even with partial failures to prevent repeated retries on each login.
+      writeWeeklyAutoSyncMarker(currentUser.uid,weekIso);
       console.info('[CalSync] Weekly auto-sync finished',{weekIso,week:w,month:m,sixMonths:s,totalFail});
     } catch(err){
       console.warn('[CalSync] Weekly auto-sync failed',err);
@@ -2395,13 +2394,13 @@ function getStoreSnapshot(){
 
 function applyStore(data){
   const empty=getEmptyStore();
+  therapistProfile=normalizeTherapistProfile(data?.therapistProfile||empty.therapistProfile);
   patients=Array.isArray(data?.patients)?data.patients.map(normalizePatient):empty.patients;
   nextId=data?.nextId||empty.nextId;
   nextSesId=data?.nextSesId||empty.nextSesId;
   nextPayId=data?.nextPayId||empty.nextPayId;
   nextNoteId=data?.nextNoteId||empty.nextNoteId;
   nextPauseId=data?.nextPauseId||empty.nextPauseId;
-  therapistProfile=normalizeTherapistProfile(data?.therapistProfile||empty.therapistProfile);
   applyTherapistProfileDisplay();
   patients.forEach(exposeSesMap);
 }
@@ -3216,12 +3215,12 @@ function renderHoy(){
         </div>
       </div>`;
     }
-    if(r.ses?.therapistCancel){
+    if(r.ses?.therapistCancel||r.ses?.tipo==='cancelada'){
       return `<div class="today-card">
         <div class="today-head"><div><div class="today-name">${getConfidentialName(p, activePatients())}</div><div class="today-meta">${r.hora} · ${pagoLabel(p.pago)}</div></div><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button></div>
         <div class="today-form" style="padding-top:4px">
           <div class="today-status-label">Cancelación del terapeuta</div>
-          <button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="undoTerapeutaCancel(${p.id})">Deshacer</button>
+          ${r.ses?.therapistCancel?`<button class="btn-sec btn-sm" style="align-self:flex-start;margin-top:4px" onclick="undoTerapeutaCancel(${p.id})">Deshacer</button>`:''}
         </div>
       </div>`;
     }
@@ -3248,7 +3247,8 @@ function renderHoy(){
     const tv=tarifaVigente(p);
     const attendedYes=tipoActual==='asistio'||tipoActual==='reposicion'||tipoActual==='extra';
     const chargeOnMiss=attendedYes?true:tipoActual==='falta'?!r.ses?.noCharge:false;
-    const paidYes=!!r.autoPay;
+    const paidAllowed=attendedYes||chargeOnMiss;
+    const paidYes=paidAllowed?!!r.autoPay:false;
     const paidMethod=r.autoPay?.metodo||'transferencia';
     const esReposicion=tipoActual==='reposicion';
     return `<div class="today-card${esReposicion?' repo-target':''}">
@@ -3441,7 +3441,7 @@ function saveTodaySession(pid){
     return;
   }
   const defaultHora=horaDiaFecha(p,dateStr);
-  let ses=p.sesiones.find(s=>s.fecha===dateStr&&!s.skipped);
+  let ses=p.sesiones.find(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr&&!s.skipped&&s.tipo!=='reprogramada');
   if(ses){
     const ant=ses.tipo;
     const antNoCharge=!!ses.noCharge;
@@ -3497,7 +3497,7 @@ function unlockTodayCard(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   const dateStr=getTodayViewDate();
-  const ses=p.sesiones.find(s=>s.fecha===dateStr&&!s.skipped);
+  const ses=p.sesiones.find(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr&&!s.skipped&&s.tipo!=='reprogramada');
   if(!ses) return;
   ses.todaySaved=false;
   saveState();
@@ -3510,7 +3510,7 @@ function saveTerapeutaCancel(pid){
   const dateStr=getTodayViewDate();
   const tv=tarifaVigente(p);
   const billable=t=>t==='asistio'||t==='falta'||t==='extra';
-  let ses=p.sesiones.find(s=>s.fecha===dateStr&&!s.skipped);
+  let ses=p.sesiones.find(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr&&!s.skipped&&s.tipo!=='reprogramada');
   if(ses){
     if(p.pago==='sesion'&&billable(ses.tipo)&&!ses.noCharge) p.adeudo=Math.max(0,p.adeudo-tv);
     ses.tipo='cancelada';
@@ -4372,11 +4372,13 @@ function registrarDesdePop(pid,dateStr,tipo){
     }
     existing.tipo=finalTipo;
     existing.noCharge=requestedNoCharge||finalTipo==='cancelada';
+    if(finalTipo==='cancelada') existing.therapistCancel=true;
+    else delete existing.therapistCancel;
     if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete existing.noCharge;
     if(finalTipo==='falta'||ant==='falta') addLog(p,'datos',`Sesión ${dateStr}: ${ant}${antNoCharge?' (sin costo)':''} → ${finalTipo}${requestedNoCharge?' (sin costo)':''}`);
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo:finalTipo,noCharge:requestedNoCharge||finalTipo==='cancelada'});
+    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo:finalTipo,noCharge:requestedNoCharge||finalTipo==='cancelada',therapistCancel:finalTipo==='cancelada'});
     if(finalTipo!=='falta'&&finalTipo!=='cancelada') delete p.sesiones[p.sesiones.length-1].noCharge;
     if(p.pago==='sesion'&&isBillable(finalTipo,requestedNoCharge)) p.adeudo+=tv;
     if(finalTipo==='falta') addLog(p,'datos',`Falta del paciente: ${dateStr}${requestedNoCharge?' (sin costo)':''}`);
