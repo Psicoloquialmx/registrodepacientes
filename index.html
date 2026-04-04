@@ -38,6 +38,7 @@ body.auth-locked .auth-screen{display:flex}
 .auth-axo-wrap{display:flex;justify-content:flex-end;align-items:flex-end;min-height:220px;pointer-events:none}
 .auth-axo{width:170px;max-width:100%;object-fit:contain;transform-origin:70% 88%;animation:authAxoWave 2.6s ease-in-out infinite;pointer-events:none}
 @keyframes authAxoWave{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(6deg) translateY(-3px)}}
+
 .auth-logo{width:100%;max-width:240px;height:auto;display:block;margin:0 0 .85rem}
 .auth-title{font-family:'Lora',serif;font-size:28px;color:var(--ink);margin-bottom:.35rem;line-height:1.2}
 .auth-sub{display:none}
@@ -54,9 +55,6 @@ body.auth-locked .auth-screen{display:flex}
 .auth-primary-google:hover{background:#9e4f2e;border-color:#9e4f2e}
 .auth-email-toggle{font-size:13px;padding:8px 12px}
 .auth-secondary-caption{font-size:11px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.06em;margin:.9rem 0 .55rem}
-.auth-email-toggle{width:100%;justify-content:center}
-.auth-email-panel{display:none}
-.auth-email-panel.open{display:block}
 .auth-actions{display:flex;gap:8px;align-items:center;margin-top:1rem}
 .auth-note{font-size:11px;color:var(--ink-light);margin-top:.85rem;line-height:1.5}
 .sidebar-auth{margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:6px}
@@ -1567,7 +1565,8 @@ function patientCalendarPrefixForSession(ses){
 }
 
 function patientCalendarTitle(p,ses){
-  return `${patientCalendarPrefixForSession(ses)}${patientCalendarLabel(p)}`;
+  const plannedPrefix=String(ses?.id||'').startsWith('plan_')?'· ':'';
+  return `${plannedPrefix}${patientCalendarPrefixForSession(ses)}${patientCalendarLabel(p)}`;
 }
 
 function calendarColorIdForSession(p,ses){
@@ -1726,18 +1725,8 @@ function getExpectedCalendarStateForDate(p,dateStr){
   const explicit=daySessions.find(s=>!(s.skipped||s.replaced||s.tipo==='reprogramada'))||null;
 
   if(explicit){
-    const explicitShouldExist=sessionShouldExistInCalendar(explicit);
-    if(!explicitShouldExist&&isFixedScheduledOnDate(p,dateStr)){
-      const planned=buildPlannedCalendarSession(p,dateStr,fallbackHora);
-      return {
-        shouldExist:true,
-        targetSession:planned,
-        targetHora:planned.hora,
-        dayCandidateIds:[...candidateIds]
-      };
-    }
     return {
-      shouldExist:explicitShouldExist,
+      shouldExist:sessionShouldExistInCalendar(explicit),
       targetSession:explicit,
       targetHora:explicit.hora||fallbackHora,
       dayCandidateIds:[...candidateIds]
