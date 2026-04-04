@@ -1769,31 +1769,35 @@ async function reconcileCalendarRangeFromDate(startDate,opts){
   for(let dayOffset=0;dayOffset<totalDays;dayOffset++){
     const dateStr=addDaysToIsoDate(startDate,dayOffset);
 
-    for(const p of targetPatients){
-      if(isBeforeTreatmentStart(p,dateStr)) continue;
-      if(getPatientStatusAtDate(p,dateStr)==='inactive') continue;
+    // Process all patients for this day in parallel to prevent mobile browser timeouts
+    const patientResults=await Promise.allSettled(
+      targetPatients.map(async p=>{
+        if(isBeforeTreatmentStart(p,dateStr)) return {u:0,d:0,f:0};
+        if(getPatientStatusAtDate(p,dateStr)==='inactive') return {u:0,d:0,f:0};
+        const expected=getExpectedCalendarStateForDate(p,dateStr);
+        let u=0,d=0,f=0;
+        try {
+          const expectedSessionId=expected.shouldExist&&expected.targetSession?.id?String(expected.targetSession.id):'';
+          for(const sessionId of expected.dayCandidateIds){
+            if(expectedSessionId&&sessionId===expectedSessionId) continue;
+            const dedupeKey=`${p.id}_${sessionId}`;
+            if(processedDeleteIds.has(dedupeKey)) continue;
+            processedDeleteIds.add(dedupeKey);
+            await deleteCalendarEventForSessionId(p,sessionId);
+            d++;
+          }
+          if(expected.shouldExist&&expected.targetSession){
+            await upsertCalendarEventForSession(p,expected.targetSession,{dateStr,hora:expected.targetHora});
+            u++;
+          }
+        } catch(_err){ f++; }
+        return {u,d,f};
+      })
+    );
 
-      const expected=getExpectedCalendarStateForDate(p,dateStr);
-
-      try {
-        const expectedSessionId=expected.shouldExist&&expected.targetSession?.id?String(expected.targetSession.id):'';
-
-        for(const sessionId of expected.dayCandidateIds){
-          if(expectedSessionId&&sessionId===expectedSessionId) continue;
-          const dedupeKey=`${p.id}_${sessionId}`;
-          if(processedDeleteIds.has(dedupeKey)) continue;
-          processedDeleteIds.add(dedupeKey);
-          await deleteCalendarEventForSessionId(p,sessionId);
-          deletes++;
-        }
-
-        if(expected.shouldExist&&expected.targetSession){
-          await upsertCalendarEventForSession(p,expected.targetSession,{dateStr,hora:expected.targetHora});
-          upserts++;
-        }
-      } catch(_err){
-        fails++;
-      }
+    for(const r of patientResults){
+      if(r.status==='fulfilled'){ upserts+=r.value.u; deletes+=r.value.d; fails+=r.value.f; }
+      else fails++;
     }
 
     if(typeof options.onProgress==='function') options.onProgress({done:dayOffset+1,total:totalDays,upserts,deletes,fails});
