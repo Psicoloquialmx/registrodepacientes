@@ -1726,8 +1726,18 @@ function getExpectedCalendarStateForDate(p,dateStr){
   const explicit=daySessions.find(s=>!(s.skipped||s.replaced||s.tipo==='reprogramada'))||null;
 
   if(explicit){
+    const explicitShouldExist=sessionShouldExistInCalendar(explicit);
+    if(!explicitShouldExist&&isFixedScheduledOnDate(p,dateStr)){
+      const planned=buildPlannedCalendarSession(p,dateStr,fallbackHora);
+      return {
+        shouldExist:true,
+        targetSession:planned,
+        targetHora:planned.hora,
+        dayCandidateIds:[...candidateIds]
+      };
+    }
     return {
-      shouldExist:sessionShouldExistInCalendar(explicit),
+      shouldExist:explicitShouldExist,
       targetSession:explicit,
       targetHora:explicit.hora||fallbackHora,
       dayCandidateIds:[...candidateIds]
@@ -1757,6 +1767,19 @@ function getExpectedCalendarStateForDate(p,dateStr){
   return {shouldExist:false,targetSession:null,targetHora:fallbackHora,dayCandidateIds:[...candidateIds]};
 }
 
+async function withCalendarRetry(task,attempts=3){
+  let lastErr=null;
+  for(let i=0;i<attempts;i++){
+    try {
+      return await task();
+    } catch(err){
+      lastErr=err;
+      if(i<attempts-1) await new Promise(r=>setTimeout(r,220*(i+1)));
+    }
+  }
+  throw lastErr||new Error('Calendar operation failed');
+}
+
 async function reconcileCalendarRangeFromDate(startDate,opts){
   const options=(opts&&typeof opts==='object')?opts:{};
   const totalDays=Math.max(1,Math.min(366,parseInt(options.maxDays,10)||366));
@@ -1783,11 +1806,11 @@ async function reconcileCalendarRangeFromDate(startDate,opts){
             const dedupeKey=`${p.id}_${sessionId}`;
             if(processedDeleteIds.has(dedupeKey)) continue;
             processedDeleteIds.add(dedupeKey);
-            await deleteCalendarEventForSessionId(p,sessionId);
+            await withCalendarRetry(()=>deleteCalendarEventForSessionId(p,sessionId));
             d++;
           }
           if(expected.shouldExist&&expected.targetSession){
-            await upsertCalendarEventForSession(p,expected.targetSession,{dateStr,hora:expected.targetHora});
+            await withCalendarRetry(()=>upsertCalendarEventForSession(p,expected.targetSession,{dateStr,hora:expected.targetHora}));
             u++;
           }
         } catch(_err){ f++; }
