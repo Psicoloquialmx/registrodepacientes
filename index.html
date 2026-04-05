@@ -433,10 +433,12 @@ input[type="file"].form-input{cursor:pointer}
 .pr-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap}
 .pr-left{display:flex;align-items:center;gap:8px}
 .pr-nums{display:flex;gap:1rem;font-size:12px;flex-wrap:wrap}
-.pr-bar-wrap{background:var(--cream);border-radius:999px;height:9px;overflow:hidden;margin-bottom:5px;display:flex}
+.pr-bar-wrap{background:#e8e8e8;border-radius:999px;height:9px;overflow:visible;margin-bottom:5px;display:flex;position:relative}
 .pr-bar-fill{height:100%;transition:width .4s}
 .pr-bar-fill.cobrado{background:#2d7a6e}
 .pr-bar-fill.adeudo{background:#b95d37}
+.pr-bar-fill.vacio{background:#e8e8e8}
+.pr-overpay-indicator{position:absolute;right:-12px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:bold;color:#2d7a6e}
 .pr-mode{font-size:11px;color:var(--ink-light);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .pr-bar-note{font-size:11px;color:#aaa}
 
@@ -3568,11 +3570,11 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
   const pendingEnd=Math.max(0,startingDebt+chargesPeriod-paymentsPeriod);
   const paidVsDemand=Math.min(paymentsPeriod,Math.max(0,startingDebt+chargesPeriod));
   const coverageBase=Math.max(1,startingDebt+chargesPeriod);
-  const paidPct=Math.min(100,Math.round((paidVsDemand/coverageBase)*100));
-  const debtPct=Math.max(0,100-paidPct);
 
   const projectedIdeal=Math.max(0,sesionesProgramadasEntreFechas(p,startIso,endIso))*tarifaVigente(p);
   const netoEstimado=Math.max(0,projectedIdeal-pendingEnd);
+  const paidPct=projectedIdeal>0?Math.min(100,Math.round((paymentsPeriod/projectedIdeal)*100)):0;
+  const debtPct=projectedIdeal>0?Math.min(100,Math.round((pendingEnd/projectedIdeal)*100)):0;
 
   return {
     carryDebt,
@@ -6603,9 +6605,8 @@ function renderProspectado(){
         </div>
         <div class="pr-nums">
           <span style="color:var(--ink-light)">Prosp: <strong style="color:var(--ink)">$${prosp.toLocaleString('es-MX')}</strong></span>
-          <span style="color:#2d7a6e">Ganado: <strong>$${cut.paymentsPeriod.toLocaleString('es-MX')}</strong></span>
+          <span style="color:#2d7a6e">Pagado: <strong>$${cut.paymentsPeriod.toLocaleString('es-MX')}</strong></span>
           <span style="color:#9e3020">Adeudo: <strong>$${cut.pendingEnd.toLocaleString('es-MX')}</strong></span>
-          <span style="color:${diff>=0?'#2d7a6e':'#9e3020'}">Neto: <strong>$${diff.toLocaleString('es-MX')}</strong></span>
         </div>
       </div>
       <div class="pr-mode">
@@ -6616,8 +6617,8 @@ function renderProspectado(){
         </select>
         ${includeCarry&&cut.carryDebt>0?`<span class="today-locked-pill" style="padding:2px 8px;font-size:10px">Arrastre $${cut.carryDebt.toLocaleString('es-MX')}</span>`:''}
       </div>
-      <div class="pr-bar-wrap"><div class="pr-bar-fill cobrado" style="width:${cut.paidPct}%"></div><div class="pr-bar-fill adeudo" style="width:${cut.debtPct}%"></div></div>
-      <div class="pr-bar-note">${Math.round(cut.paidPct)}% cubierto · ${pct}% adeudado · ${pagoLabel(p.pago)}</div>
+      <div class="pr-bar-wrap">${cut.debtPct>0?`<div class="pr-bar-fill adeudo" style="width:${cut.debtPct}%"></div>`:''}${cut.paidPct>0?`<div class="pr-bar-fill cobrado" style="width:${cut.paidPct}%"></div>`:''}${cut.paidPct+cut.debtPct<100?`<div class="pr-bar-fill vacio" style="width:${100-cut.paidPct-cut.debtPct}%;background:#e8e8e8"></div>`:''}${cut.paymentsPeriod>cut.pendingEnd?`<span class="pr-overpay-indicator">+</span>`:''}</div>
+      <div class="pr-bar-note">${Math.round(cut.debtPct)}% adeudado · ${Math.round(cut.paidPct)}% pagado · ${pagoLabel(p.pago)}</div>
     </div>`;
   }).join('');
   document.getElementById('prosp-content').innerHTML=`
@@ -6650,9 +6651,8 @@ function renderProspectado(){
       <div style="flex:1"><div class="prosp-head">${periodLabel} · corte por periodo</div>
         <div class="prosp-nums">
           <div><div class="pn-val col-white">$${totalProsp.toLocaleString('es-MX')}</div><div class="pn-label col-white">prospectado ideal</div></div>
-          <div><div class="pn-val col-green">$${totalGanado.toLocaleString('es-MX')}</div><div class="pn-label col-white">ganado en periodo</div></div>
+          <div><div class="pn-val col-green">$${totalGanado.toLocaleString('es-MX')}</div><div class="pn-label col-white">pagado en periodo</div></div>
           <div><div class="pn-val col-red">$${totalDeuda.toLocaleString('es-MX')}</div><div class="pn-label col-white">adeudo al cierre</div></div>
-          <div><div class="pn-val col-green">$${neto.toLocaleString('es-MX')}</div><div class="pn-label col-white">ganado menos adeudo</div></div>
         </div>
         <div class="prosp-legend">
           <span class="prosp-legend-item"><span class="prosp-legend-dot" style="background:#2d7a6e"></span>Cubierto</span>
