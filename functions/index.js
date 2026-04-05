@@ -140,11 +140,12 @@ async function deleteEventsBySessionKey(calendar, calendarIds, sessionKey) {
   return deletedCount;
 }
 
-async function purgeManagedSourceEvents(calendar, calendarIds, maxDeletes) {
+async function purgeManagedSourceEvents(calendar, calendarIds, maxDeletes, filterOpts = {}) {
   const ids = Array.from(new Set((Array.isArray(calendarIds) ? calendarIds : []).filter(Boolean)));
   let deleted = 0;
   let processed = 0;
   let hasMore = false;
+  const timeMin = filterOpts.timeMin || undefined;
 
   outer:
   for (let index = 0; index < ids.length; index++) {
@@ -158,6 +159,7 @@ async function purgeManagedSourceEvents(calendar, calendarIds, maxDeletes) {
         maxResults: 100,
         pageToken,
         showDeleted: false,
+        timeMin,
       });
 
       const events = listResp.data.items || [];
@@ -640,14 +642,16 @@ exports.googleCalendarPurgeRemnants = functions.https.onRequest(async (req, res)
     const body = req.body || {};
     const maxDeletesRaw = parseInt(body.maxDeletes, 10);
     const maxDeletes = Math.max(10, Math.min(150, Number.isFinite(maxDeletesRaw) ? maxDeletesRaw : 50));
+    const fromDate = String(body.fromDate || '').trim();
+    const timeMin = /^\d{4}-\d{2}-\d{2}$/.test(fromDate) ? `${fromDate}T00:00:00Z` : undefined;
 
     const uid = decoded.uid;
     const { calendar, calendarId } = await getCalendarClientForUser(uid);
     const targetCalendarIds = calendarId === 'primary' ? ['primary'] : [calendarId, 'primary'];
-    const result = await purgeManagedSourceEvents(calendar, targetCalendarIds, maxDeletes);
+    const result = await purgeManagedSourceEvents(calendar, targetCalendarIds, maxDeletes, { timeMin });
 
-    console.info('googleCalendarPurgeRemnants finished', { uid, calendarIds: targetCalendarIds, maxDeletes, ...result });
-    return res.status(200).json({ ok: true, maxDeletes, calendarIds: targetCalendarIds, ...result });
+    console.info('googleCalendarPurgeRemnants finished', { uid, calendarIds: targetCalendarIds, maxDeletes, fromDate: fromDate || null, ...result });
+    return res.status(200).json({ ok: true, maxDeletes, fromDate: fromDate || null, calendarIds: targetCalendarIds, ...result });
   } catch (err) {
     console.error('googleCalendarPurgeRemnants error', err);
     return res.status(500).json({

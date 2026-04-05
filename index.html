@@ -1769,59 +1769,54 @@ async function withCalendarRetry(task,attempts=3){
   throw lastErr||new Error('Calendar operation failed');
 }
 
-async function reconcileCalendarRangeFromDate(startDate,opts){
+async function rebuildCalendarRangeFromDate(startDate,opts){
   const options=(opts&&typeof opts==='object')?opts:{};
-  const totalDays=Math.max(1,Math.min(366,parseInt(options.maxDays,10)||366));
+  const totalDays=Math.max(1,Math.min(5000,parseInt(options.maxDays,10)||366));
   const targetPatients=Array.isArray(options.patientList)&&options.patientList.length?options.patientList:activePatients();
-  const processedDeleteIds=new Set();
   let upserts=0;
-  let deletes=0;
   let fails=0;
 
   for(let dayOffset=0;dayOffset<totalDays;dayOffset++){
     const dateStr=addDaysToIsoDate(startDate,dayOffset);
 
-    // Process all patients for this day in parallel to prevent mobile browser timeouts
     const patientResults=await Promise.allSettled(
       targetPatients.map(async p=>{
         if(isBeforeTreatmentStart(p,dateStr)) return {u:0,d:0,f:0};
         if(getPatientStatusAtDate(p,dateStr)==='inactive') return {u:0,d:0,f:0};
         const expected=getExpectedCalendarStateForDate(p,dateStr);
+        if(!expected.shouldExist||!expected.targetSession) return {u:0,d:0,f:0};
         let u=0,d=0,f=0;
         try {
-          const expectedSessionId=expected.shouldExist&&expected.targetSession?.id?String(expected.targetSession.id):'';
-          for(const sessionId of expected.dayCandidateIds){
-            if(expectedSessionId&&sessionId===expectedSessionId) continue;
-            const dedupeKey=`${p.id}_${sessionId}`;
-            if(processedDeleteIds.has(dedupeKey)) continue;
-            processedDeleteIds.add(dedupeKey);
-            await withCalendarRetry(()=>deleteCalendarEventForSessionId(p,sessionId));
-            d++;
-          }
-          if(expected.shouldExist&&expected.targetSession){
-            await withCalendarRetry(()=>upsertCalendarEventForSession(p,expected.targetSession,{dateStr,hora:expected.targetHora}));
-            u++;
-          }
+          await withCalendarRetry(()=>upsertCalendarEventForSession(p,expected.targetSession,{dateStr,hora:expected.targetHora}));
+          u++;
         } catch(_err){ f++; }
         return {u,d,f};
       })
     );
 
     for(const r of patientResults){
-      if(r.status==='fulfilled'){ upserts+=r.value.u; deletes+=r.value.d; fails+=r.value.f; }
+      if(r.status==='fulfilled'){ upserts+=r.value.u; fails+=r.value.f; }
       else fails++;
     }
 
-    if(typeof options.onProgress==='function') options.onProgress({done:dayOffset+1,total:totalDays,upserts,deletes,fails});
+    if(typeof options.onProgress==='function') options.onProgress({done:dayOffset+1,total:totalDays,upserts,fails});
   }
 
-  return {upserts,deletes,fails,totalDays};
+  return {upserts,fails,totalDays};
 }
 
 function addDaysToIsoDate(baseIso,days){
   const dt=new Date(`${baseIso}T12:00:00`);
   dt.setDate(dt.getDate()+days);
   return dt.toISOString().split('T')[0];
+}
+
+function getEarliestCalendarRebuildStartDate(){
+  const candidateDates=activePatients()
+    .map(p=>String(p?.inicio||'').trim())
+    .filter(dateStr=>/^\d{4}-\d{2}-\d{2}$/.test(dateStr))
+    .sort();
+  return candidateDates[0]||today();
 }
 
 async function movePrimaryEventsToAgenda(){
@@ -1918,6 +1913,8 @@ async function startCalendarCleanFromModal(){
 async function purgeManagedGoogleCalendarEvents(opts){
   const options=(opts&&typeof opts==='object')?opts:{};
   const isModalReport=options.reportMode==='modal';
+  const skipFinalReport=!!options.skipFinalReport;
+  const fromDate=String(options.fromDate||'').trim();
   if(!calendarIntegration?.connected){
     alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
     return;
@@ -1925,9 +1922,9 @@ async function purgeManagedGoogleCalendarEvents(opts){
   if(!currentUser||!auth) return;
   if(!options.skipConfirm&&!confirm('Esto eliminará del Google Calendar todos los eventos gestionados por RegistroPX. Tus datos dentro de la app no se borran.')) return;
 
-  const btn=options.triggerButton||document.getElementById('btn-calendar-clean');
+  const btn=options.triggerButton||document.getElementById('btn-calendar-clean')||document.getElementById('btn-calendar-rebuild');
   const statusNode=options.statusNode||null;
-  const defaultCleanTitle='Elimina del Google Calendar todos los eventos gestionados por la app';
+  const defaultCleanTitle=options.buttonIdleTitle||'Elimina del Google Calendar todos los eventos gestionados por la app';
   if(btn){
     btn.disabled=true;
     btn.textContent='Limpiando...';
@@ -1947,7 +1944,7 @@ async function purgeManagedGoogleCalendarEvents(opts){
       const resp=await fetch(`${getFunctionsBaseUrl()}/googleCalendarPurgeRemnantsProxy`,{
         method:'POST',
         headers:{Authorization:`Bearer ${idToken}`,'Content-Type':'application/json'},
-        body:JSON.stringify({maxDeletes:40})
+        body:JSON.stringify({maxDeletes:40,fromDate:/^\d{4}-\d{2}-\d{2}$/.test(fromDate)?fromDate:undefined})
       });
       const raw=await resp.text();
       let data={};
@@ -1970,7 +1967,9 @@ async function purgeManagedGoogleCalendarEvents(opts){
       if(statusNode) statusNode.textContent=progressText;
     } while(hasMore&&rounds<20);
 
-    if(statusNode) statusNode.textContent=`Limpieza lista. Revisados: ${totalProcessed}. Eliminados: ${totalDeleted}${hasMore?'. Quedaron eventos pendientes; ejecuta otra limpieza para continuar.':''}`;
+    const cleanSummary={deleted:totalDeleted,processed:totalProcessed,rounds,hasMore};
+    if(statusNode) statusNode.textContent=`Limpieza lista${fromDate?` desde ${displayDate(fromDate)}`:''}. Revisados: ${totalProcessed}. Eliminados: ${totalDeleted}${hasMore?'. Quedaron eventos pendientes; ejecuta otra limpieza para continuar.':''}`;
+    if(skipFinalReport) return cleanSummary;
     if(isModalReport){
       const modalBody=document.getElementById('modal-body');
       if(modalBody){
@@ -1983,14 +1982,15 @@ async function purgeManagedGoogleCalendarEvents(opts){
               <span class="resync-report-chip">Revisados: ${totalProcessed}</span>
               <span class="resync-report-chip">Lotes: ${rounds}</span>
             </div>
-            <div style="font-size:12px;color:var(--ink-light)">${hasMore?'Quedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':'No quedaron eventos pendientes en este ciclo.'}</div>
+            <div style="font-size:12px;color:var(--ink-light)">${fromDate?`Se limpiaron únicamente eventos desde ${displayDate(fromDate)} en adelante. `:''}${hasMore?'Quedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':'No quedaron eventos pendientes en este ciclo.'}</div>
             <div style="display:flex;justify-content:flex-end"><button class="btn-primary" type="button" onclick="closeModal()">Cerrar</button></div>
           </div>`;
       }
     } else {
-      alert(`Limpieza de Google Calendar lista.\n\nEventos eliminados: ${totalDeleted}\nEventos revisados: ${totalProcessed}${hasMore?'\nQuedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':''}`);
+      alert(`Limpieza de Google Calendar lista${fromDate?` desde ${displayDate(fromDate)}`:''}.\n\nEventos eliminados: ${totalDeleted}\nEventos revisados: ${totalProcessed}${hasMore?'\nQuedaron eventos pendientes; puedes ejecutar la limpieza otra vez para continuar.':''}`);
       if(options.closeModalOnSuccess) closeModal();
     }
+    return cleanSummary;
   } catch(err){
     if(statusNode) statusNode.textContent=`No se pudo limpiar Google Calendar: ${err.message||err}`;
     if(isModalReport){
@@ -2007,12 +2007,154 @@ async function purgeManagedGoogleCalendarEvents(opts){
     } else {
       alert(`No se pudo limpiar Google Calendar: ${err.message||err}`);
     }
+    throw err;
   } finally {
     if(btn){
       btn.disabled=false;
-      btn.textContent=options.triggerButton?'Iniciar limpieza':'Limpiar Calendario de Google';
+      btn.textContent=options.buttonIdleText||(options.triggerButton?'Iniciar limpieza':'Limpiar Calendario de Google');
       btn.title=defaultCleanTitle;
     }
+  }
+}
+
+function openCalendarRebuildModal(){
+  if(!calendarIntegration?.connected){
+    alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
+    return;
+  }
+  const defaultDate=getTodayViewDate();
+  const earliestDate=getEarliestCalendarRebuildStartDate();
+  document.getElementById('modal-title').textContent='Actualizar Google Calendar';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Este proceso primero limpia eventos gestionados por la app y después reconstruye lo que sí debe existir. Mantente en línea unos minutos.</div>
+      <div class="resync-axo-wrap"><img class="resync-axo swing" src="Assets/Axolotl/Pensando-1.svg" alt="Ajolote reconstruyendo calendario"></div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label" for="calendar-rebuild-scope">Qué quieres reconstruir</label>
+        <select class="form-input" id="calendar-rebuild-scope" onchange="updateCalendarRebuildScopeUI()">
+          <option value="from-date">Desde una fecha</option>
+          <option value="all">Todo el calendario</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group" id="calendar-rebuild-start-wrap" style="margin:0">
+          <label class="form-label" for="calendar-rebuild-start">Actualizar desde</label>
+          <input class="form-input" id="calendar-rebuild-start" type="date" value="${escAttr(defaultDate)}">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label" id="calendar-rebuild-months-label" for="calendar-rebuild-months">Hasta cuándo</label>
+          <select class="form-input" id="calendar-rebuild-months">
+            ${Array.from({length:12},(_,i)=>{const n=i+1;return `<option value="${n}"${n===6?' selected':''}>${n} mes${n>1?'es':''}</option>`;}).join('')}
+          </select>
+        </div>
+      </div>
+      <div id="calendar-rebuild-scope-hint" style="font-size:12px;color:var(--ink-light)">Paso 1: limpia Google Calendar desde ${displayDate(defaultDate)}. Paso 2: reconstruye desde ${displayDate(defaultDate)} durante el rango elegido.</div>
+      <div style="font-size:12px;color:var(--ink-light)">Si eliges Todo el calendario, la limpieza sí será completa y se reconstruirá desde el primer inicio activo registrado (${displayDate(earliestDate)}).</div>
+      <div id="calendar-rebuild-status" style="font-size:12px;color:var(--ink-light);min-height:18px">Listo para iniciar.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="btn-sec" type="button" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="btn-calendar-rebuild-confirm" type="button" onclick="startCalendarRebuildFromModal()">Actualizar Google Calendar</button>
+      </div>
+    </div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  updateCalendarRebuildScopeUI();
+}
+
+function updateCalendarRebuildScopeUI(){
+  const scope=String(document.getElementById('calendar-rebuild-scope')?.value||'from-date');
+  const dateWrap=document.getElementById('calendar-rebuild-start-wrap');
+  const dateInput=document.getElementById('calendar-rebuild-start');
+  const monthsLabel=document.getElementById('calendar-rebuild-months-label');
+  const hint=document.getElementById('calendar-rebuild-scope-hint');
+  const earliestDate=getEarliestCalendarRebuildStartDate();
+  if(dateWrap) dateWrap.style.opacity=scope==='all'?'0.5':'1';
+  if(dateInput) dateInput.disabled=scope==='all';
+  if(monthsLabel) monthsLabel.textContent=scope==='all'?'Próximos meses a incluir':'Hasta cuándo';
+  if(hint){
+    hint.textContent=scope==='all'
+      ? `Paso 1: limpia todo Google Calendar. Paso 2: reconstruye desde ${displayDate(earliestDate)} hasta los próximos meses elegidos.`
+      : 'Paso 1: limpia Google Calendar desde la fecha elegida. Paso 2: reconstruye desde la fecha elegida durante el rango seleccionado.';
+  }
+}
+
+async function startCalendarRebuildFromModal(){
+  if(!calendarIntegration?.connected){
+    alert('Primero conecta Google Calendar desde Perfil del terapeuta.');
+    return;
+  }
+  const scope=String(document.getElementById('calendar-rebuild-scope')?.value||'from-date');
+  const input=document.getElementById('calendar-rebuild-start');
+  const monthsInput=document.getElementById('calendar-rebuild-months');
+  const status=document.getElementById('calendar-rebuild-status');
+  const btn=document.getElementById('btn-calendar-rebuild-confirm');
+  const months=Math.max(1,Math.min(12,parseInt(monthsInput?.value,10)||0));
+  let fromDate=String(input?.value||'').trim();
+  if(scope==='all'){
+    fromDate=getEarliestCalendarRebuildStartDate();
+  }
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)){
+    alert('Selecciona una fecha válida para actualizar el calendario.');
+    return;
+  }
+  if(!(months>=1&&months<=12)){
+    alert('Selecciona un lapso válido entre 1 y 12 meses.');
+    return;
+  }
+
+  const startDt=new Date(`${fromDate}T12:00:00`);
+  const endDt=new Date(`${(scope==='all'?today():fromDate)}T12:00:00`);
+  endDt.setMonth(endDt.getMonth()+months);
+  endDt.setDate(endDt.getDate()-1);
+  const endDateIso=isoDateFromDateObj(endDt);
+  const maxDays=Math.max(1,Math.round((endDt-startDt)/(24*60*60*1000))+1);
+
+  if(btn){ btn.disabled=true; btn.textContent='Limpiando...'; }
+  if(status) status.textContent='Paso 1/2. Preparando limpieza de Google Calendar...';
+
+  try {
+    const cleanResult=await purgeManagedGoogleCalendarEvents({
+      skipConfirm:true,
+      skipFinalReport:true,
+      fromDate:scope==='all'?'':fromDate,
+      statusNode:status,
+      triggerButton:btn,
+      buttonIdleText:'Actualizar Google Calendar',
+      buttonIdleTitle:'Limpia Google Calendar y luego reconstruye los eventos correctos según el alcance elegido'
+    });
+    if(btn){ btn.disabled=true; btn.textContent='Actualizando...'; }
+    if(status) status.textContent=`Paso 2/2. Reconstruyendo de ${displayDate(fromDate)} a ${displayDate(endDateIso)}...`;
+
+    const result=await rebuildCalendarRangeFromDate(fromDate,{
+      maxDays,
+      onProgress:progress=>{
+        if(status) status.textContent=`Paso 2/2. Procesando ${progress.done}/${progress.total} días. Actualizados: ${progress.upserts}. Incidencias: ${progress.fails}.`;
+      }
+    });
+
+    const modalBody=document.getElementById('modal-body');
+    if(modalBody){
+      modalBody.innerHTML=`
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="resync-axo-wrap"><img class="resync-axo" src="Assets/Axolotl/Pensando-4.svg" alt="Ajolote actualización completada"></div>
+          <div style="font-size:13px;color:var(--ink);line-height:1.6;font-weight:600">Calendario actualizado.</div>
+          <div class="resync-report">
+            <span class="resync-report-chip">Eliminados al limpiar: ${cleanResult?.deleted||0}</span>
+            <span class="resync-report-chip">Revisados al limpiar: ${cleanResult?.processed||0}</span>
+            <span class="resync-report-chip">Actualizados: ${result.upserts}</span>
+            <span class="resync-report-chip">Incidencias: ${result.fails}</span>
+          </div>
+          <div style="font-size:12px;color:var(--ink-light)">${scope==='all'?'Alcance: todo el calendario':'Alcance: desde una fecha'} · Limpieza: ${scope==='all'?'completa':`desde ${displayDate(fromDate)}`} · Reconstrucción: ${displayDate(fromDate)} a ${displayDate(endDateIso)} · ${scope==='all'?'Próximos':''} ${months} mes${months>1?'es':''}${cleanResult?.hasMore?'. La limpieza quedó parcial; puedes correr el proceso otra vez para seguir depurando eventos viejos.':''}</div>
+          <div style="display:flex;justify-content:flex-end"><button class="btn-primary" type="button" onclick="closeModal()">Cerrar</button></div>
+        </div>`;
+    } else if(status){
+      status.textContent=`Calendario actualizado. Eliminados al limpiar: ${cleanResult?.deleted||0}. Actualizados: ${result.upserts}. Incidencias: ${result.fails}.`;
+    }
+    await fetchCalendarIntegrationStatus();
+    renderTherapistProfileView();
+  } catch(err){
+    if(status) status.textContent=`No se pudo actualizar el calendario: ${err.message||err}`;
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Actualizar Google Calendar'; }
   }
 }
 
@@ -2027,6 +2169,7 @@ function openCalendarResyncModal(){
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Este proceso tomará unos minutos. Mantente en línea, relájate y ve por un café o algo de tomar.</div>
       <div class="resync-axo-wrap"><img class="resync-axo swing" src="Assets/Axolotl/Pensando-1.svg" alt="Ajolote resincronizando"></div>
+      <div style="font-size:12px;color:var(--ink-light)">Esta resincronización reconstruye únicamente lo que sí debe existir en Google Calendar. Para evitar arrastres, úsala después de "Limpiar Google Calendar".</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group" style="margin:0">
           <label class="form-label" for="calendar-resync-start">Resincronizar desde</label>
@@ -2079,10 +2222,10 @@ async function startCalendarResyncFromModal(){
   if(status) status.textContent=`Preparando resincronización de ${displayDate(fromDate)} a ${displayDate(endDateIso)}...`;
 
   try {
-    const result=await reconcileCalendarRangeFromDate(fromDate,{
+    const result=await rebuildCalendarRangeFromDate(fromDate,{
       maxDays,
       onProgress:progress=>{
-        if(status) status.textContent=`Procesando ${progress.done}/${progress.total} días. Actualizados: ${progress.upserts}. Eliminados: ${progress.deletes}. Incidencias: ${progress.fails}.`;
+        if(status) status.textContent=`Procesando ${progress.done}/${progress.total} días. Actualizados: ${progress.upserts}. Incidencias: ${progress.fails}.`;
       }
     });
     const modalBody=document.getElementById('modal-body');
@@ -2093,14 +2236,13 @@ async function startCalendarResyncFromModal(){
           <div style="font-size:13px;color:var(--ink);line-height:1.6;font-weight:600">Resincronización completada.</div>
           <div class="resync-report">
             <span class="resync-report-chip">Actualizados: ${result.upserts}</span>
-            <span class="resync-report-chip">Eliminados: ${result.deletes}</span>
             <span class="resync-report-chip">Incidencias: ${result.fails}</span>
           </div>
-          <div style="font-size:12px;color:var(--ink-light)">Desde: ${displayDate(fromDate)} · Hasta: ${displayDate(endDateIso)} · Rango: ${months} mes${months>1?'es':''}</div>
+          <div style="font-size:12px;color:var(--ink-light)">Desde: ${displayDate(fromDate)} · Hasta: ${displayDate(endDateIso)} · Rango: ${months} mes${months>1?'es':''}. Este paso no elimina eventos viejos: reconstruye lo esperado después de la limpieza previa.</div>
           <div style="display:flex;justify-content:flex-end"><button class="btn-primary" type="button" onclick="closeModal()">Cerrar</button></div>
         </div>`;
     } else if(status){
-      status.textContent=`Resincronización lista. Actualizados: ${result.upserts}. Eliminados: ${result.deletes}. Incidencias: ${result.fails}.`;
+      status.textContent=`Resincronización lista. Actualizados: ${result.upserts}. Incidencias: ${result.fails}.`;
     }
     await fetchCalendarIntegrationStatus();
     renderTherapistProfileView();
@@ -3558,7 +3700,7 @@ function renderTherapistProfileView(){
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button class="btn-primary btn-sm" onclick="startGoogleCalendarConnect()">${calConnected?'Reconectar Calendar':'Conectar Calendar'}</button>
             <button class="btn-sec btn-sm" onclick="fetchCalendarIntegrationStatus().then(()=>renderTherapistProfileView())">Actualizar estado</button>
-            ${calConnected?`<button id="btn-calendar-clean" class="btn-sec btn-sm" onclick="openCalendarCleanModal()" title="Elimina del Google Calendar todos los eventos gestionados por la app">Limpiar Calendario de Google</button><button class="btn-sec btn-sm" onclick="openCalendarResyncModal()" title="Reconstruye los eventos correctos desde una fecha elegida">Resincronizar desde...</button>`:''}
+            ${calConnected?`<button id="btn-calendar-rebuild" class="btn-sec btn-sm" onclick="openCalendarRebuildModal()" title="Limpia Google Calendar y luego reconstruye los eventos correctos desde una fecha elegida">Actualizar Google Calendar</button>`:''}
           </div>
         </div>
       </div>
