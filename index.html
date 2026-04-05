@@ -157,8 +157,11 @@ body.auth-locked .auth-screen{display:flex}
 .today-status-label{font-size:13px;font-weight:600;color:var(--ink);padding:6px 0 2px}
 .today-extra-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .today-extra-actions .btn-sec{font-size:11px;padding:4px 10px;border-radius:6px}
-.today-legend{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#3d6b62;margin-top:6px}
+.today-toolbar{display:flex;flex-direction:column;gap:10px;margin:0 0 12px}
+.today-legend{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#3d6b62;padding:6px 10px;border-radius:999px;border:1px solid rgba(56,104,96,.24);background:rgba(165,196,188,.22);width:fit-content;max-width:100%}
 .today-legend-dot{width:8px;height:8px;border-radius:50%;background:#a5c4bc;border:1px solid rgba(56,104,96,.4);display:inline-block;flex-shrink:0}
+.today-unplanned-cta{display:flex;align-items:center;justify-content:center;width:100%;background:var(--terra);border:1px solid var(--terra);color:white;padding:13px 16px;border-radius:14px;font-size:24px;line-height:1;cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 4px 12px rgba(185,93,55,.2)}
+.today-unplanned-cta:hover{background:#9e4f2e;border-color:#9e4f2e}
 .today-locked{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px}
 .today-locked-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .today-locked-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(56,70,81,.2);background:rgba(56,70,81,.09);color:var(--ink);padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600}
@@ -402,6 +405,15 @@ input[type="file"].form-input{cursor:pointer}
 .bval{font-size:10px;color:var(--ink);font-weight:600;position:absolute;top:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;display:none}
 .bcol:hover .bval{display:block}
 .bval.bval-show{display:block}
+.bar-chart-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.bar-chart.month-mode{min-width:760px}
+.bar-chart.month-mode .bcol{min-width:18px}
+
+.resumen-patient-header,.resumen-patient-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 64px 84px;gap:0 8px;align-items:center}
+.resumen-patient-header{padding:4px 0 8px;border-bottom:2px solid #ede9e6;margin-bottom:2px}
+.resumen-patient-row{padding:6px 0;border-bottom:1px solid #f5f0ed}
+.resumen-patient-name{font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resumen-patient-num{font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
 
 /* " - ? PROSPECTADO " - ? */
 .prosp-banner{background:linear-gradient(135deg,#384651 0%,#2f3d47 100%);border:1px solid rgba(255,255,255,.08);box-shadow:0 8px 18px rgba(56,70,81,.22);border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1.5rem;overflow:hidden}
@@ -545,6 +557,17 @@ input[type="file"].form-input{cursor:pointer}
   #view-detalle .content{padding:1rem;padding-left:calc(1rem + env(safe-area-inset-left,0px));padding-right:calc(1rem + env(safe-area-inset-right,0px));overflow-x:hidden}
   #view-detalle,.dtab-panel,#view-detalle .detail-grid,#view-detalle .dsec{max-width:100%;min-width:0}
   #view-detalle .dtabs{max-width:100%}
+
+  #view-pacientes .content,#view-inactivos .content,#view-resumen .content{overflow-x:hidden}
+  #view-pacientes .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #view-pacientes .stat-card{min-width:0;padding:.75rem .8rem}
+  #view-pacientes .stat-value{font-size:18px}
+  #view-pacientes .toolbar-row input.form-input,
+  #view-inactivos .toolbar-row input.form-input{max-width:100% !important;width:100%}
+  #view-inactivos .period-switch{display:flex;flex-wrap:wrap}
+
+  .resumen-patient-header,.resumen-patient-row{grid-template-columns:minmax(0,1fr) 52px 52px 68px;gap:0 6px}
+  .resumen-patient-name,.resumen-patient-num{font-size:12px}
 
   #view-perfil .content{padding:1rem;padding-left:calc(1rem + env(safe-area-inset-left,0px));padding-right:calc(1rem + env(safe-area-inset-right,0px));overflow-x:hidden}
   #view-perfil .profile-grid,#view-perfil .dsec,#view-perfil .form-grid,#view-perfil .form-group{max-width:100%;min-width:0}
@@ -1747,7 +1770,7 @@ function syncCalendarExpectationForSession(p,ses,dateStr){
 
 function inferTodayUndoMeta(p,ses,dateStr){
   if(ses?.undoMeta&&typeof ses.undoMeta==='object') return ses.undoMeta;
-  if(ses?.todaySavedFrom==='today'||ses?.createdFromToday){
+  if(ses?.todaySavedFrom==='today'||ses?.todaySavedFrom==='calendar'||ses?.createdFromToday){
     if(isFixedScheduledOnDate(p,dateStr)){
       return {originKind:'pending-fixed',plannedSnapshot:buildPlannedCalendarSession(p,dateStr,ses?.hora||horaDiaFecha(p,dateStr))};
     }
@@ -3938,11 +3961,11 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="dsec"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Agregar sesión no prevista</button></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada. Si necesitas agregar una, puedes hacerlo desde el calendario de cada paciente.</p></div>`;
+    el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+</button></div><div class="dsec"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada.</p></div>`;
     return;
   }
 
-  el.innerHTML=`<div class="dsec" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">${viewLabel}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Revisa y registra las sesiones de la fecha seleccionada.</p><div class="today-legend"><span class="today-legend-dot"></span><span>Azul: el paciente faltó</span></div></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div></div>
+  el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+</button></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
     if(r.movedFrom){
@@ -4584,10 +4607,37 @@ function setProspectadoBaseDate(value){
   renderProspectado();
 }
 
+function setProspectadoBaseMonth(value){
+  if(!/^\d{4}-\d{2}$/.test(value||'')) return;
+  const [yy,mm]=value.split('-').map(Number);
+  const d=new Date((prospBaseDate||today())+'T12:00');
+  d.setFullYear(yy,mm-1,1);
+  prospBaseDate=d.toISOString().split('T')[0];
+  renderProspectado();
+}
+
+function setProspectadoBaseYear(value){
+  const year=parseInt(value,10);
+  if(!Number.isFinite(year)||year<2000||year>2100) return;
+  const d=new Date((prospBaseDate||today())+'T12:00');
+  d.setFullYear(year);
+  prospBaseDate=d.toISOString().split('T')[0];
+  renderProspectado();
+}
+
 function setPatientProspDebtMode(pid,mode){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   p.prospCarryDebt=(mode!=='zero');
+  saveState();
+  renderProspectado();
+}
+
+function setAllPatientsProspDebtMode(mode){
+  if(mode!=='carry'&&mode!=='zero') return;
+  activePatients().forEach(p=>{
+    p.prospCarryDebt=(mode==='carry');
+  });
   saveState();
   renderProspectado();
 }
@@ -6453,6 +6503,7 @@ function renderResumen(){
   }
   const mx=Math.max(...chartCols.map(c=>c.value),1);
   const barGap=resumenPeriod==='mes'?'2px':resumenPeriod==='semana'?'8px':'4px';
+  const chartModeClass=resumenPeriod==='mes'?' month-mode':'';
   const bars=chartCols.map(c=>{
     const h=Math.max(3,Math.round(c.value/mx*80));
     return `<div class="bcol"><div class="bval">${c.value>0?c.value:''}</div><div class="bbar${c.cur?' cur':''}" style="height:${h}px"></div><div class="blabel">${c.label}</div></div>`;
@@ -6479,7 +6530,7 @@ function renderResumen(){
       </div>
       <div class="drow"><span class="dkey">Sesiones dadas en el periodo</span><span class="dval">${activeCount}</span></div>
     </div>
-    <div class="dsec" style="background:white"><div class="sec-title">${chartTitle}</div><div class="bar-chart" style="gap:${barGap}">${bars}</div></div>
+    <div class="dsec" style="background:white"><div class="sec-title">${chartTitle}</div><div class="bar-chart-scroll"><div class="bar-chart${chartModeClass}" style="gap:${barGap}">${bars}</div></div></div>
     <div class="dsec" style="background:white;margin-top:1rem">
       <div class="sec-title-row" style="cursor:pointer" onclick="toggleResumenPorPaciente()">
         <div style="display:flex;flex-direction:column;gap:2px">
@@ -6489,12 +6540,12 @@ function renderResumen(){
       </div>
       <div id="resumen-por-paciente-content" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid #ede9e6">
         ${(()=>{
-          const hdr=`<div style="display:grid;grid-template-columns:1fr repeat(3,80px);padding:4px 0 8px;border-bottom:2px solid #ede9e6;margin-bottom:2px;gap:0 8px"><span style="font-size:10px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.5px">Paciente</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Sesiones</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Faltas</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Canceladas</span></div>`;
+          const hdr=`<div class="resumen-patient-header"><span style="font-size:10px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.5px">Paciente</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Sesiones</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Faltas</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Canceladas</span></div>`;
           const rows=activos.map(p=>{
             const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end,{strictResumen:true});
             const faltas=faltasEnRango(p,activeBounds.start,activeBounds.end);
             const cancels=cancelacionesTerapeutaEnRango(p,activeBounds.start,activeBounds.end);
-            return `<div style="display:grid;grid-template-columns:1fr repeat(3,80px);padding:6px 0;border-bottom:1px solid #f5f0ed;align-items:center;gap:0 8px"><span style="font-size:13px;color:var(--ink)">${p.nombre}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums">${np}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:${faltas>0?'#b95d37':'var(--ink-light)'}">${faltas||'—'}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:${cancels>0?'#384651':'var(--ink-light)'}">${cancels||'—'}</span></div>`;
+            return `<div class="resumen-patient-row"><span class="resumen-patient-name">${p.nombre}</span><span class="resumen-patient-num">${np}</span><span class="resumen-patient-num" style="color:${faltas>0?'#b95d37':'var(--ink-light)'}">${faltas||'—'}</span><span class="resumen-patient-num" style="color:${cancels>0?'#384651':'var(--ink-light)'}">${cancels||'—'}</span></div>`;
           }).join('');
           return hdr+rows;
         })()}
@@ -6506,16 +6557,27 @@ function renderResumen(){
 function renderProspectado(){
   const activos=activePatients();
   const refDate=new Date((prospBaseDate||today())+'T12:00');
+  const baseIso=refDate.toISOString().split('T')[0];
+  const baseMonth=baseIso.slice(0,7);
+  const baseYear=String(refDate.getFullYear());
   const bounds=getPeriodBounds(prospPeriod,refDate);
   const startIso=bounds.start.toISOString().split('T')[0];
   const endIso=bounds.end.toISOString().split('T')[0];
   const periodLabel=formatPeriodLabel(prospPeriod,bounds);
+  const periodSelectorHtml=prospPeriod==='mes'
+    ?`<input class="form-input" type="month" style="max-width:170px" value="${baseMonth}" onchange="setProspectadoBaseMonth(this.value)">`
+    :prospPeriod==='anio'
+      ?`<input class="form-input" type="number" min="2000" max="2100" style="max-width:120px" value="${baseYear}" onchange="setProspectadoBaseYear(this.value)">`
+      :`<input class="form-input" type="date" style="max-width:170px" value="${baseIso}" onchange="setProspectadoBaseDate(this.value)">`;
 
   const rowsData=activos.map(p=>{
     const includeCarry=p.prospCarryDebt!==false;
     const cut=calcPatientFinancialCut(p,startIso,endIso,includeCarry);
     return {p,includeCarry,cut};
   });
+  const allCarry=rowsData.every(row=>row.includeCarry);
+  const allZero=rowsData.every(row=>!row.includeCarry);
+  const globalDebtMode=allCarry?'carry':allZero?'zero':'mixed';
 
   const totalProsp=rowsData.reduce((a,row)=>a+row.cut.projectedIdeal,0);
   const totalGanado=rowsData.reduce((a,row)=>a+row.cut.paymentsPeriod,0);
@@ -6566,7 +6628,15 @@ function renderProspectado(){
           <button class="period-btn${prospPeriod==='mes'?' active':''}" onclick="setProspectadoPeriod('mes')">Mes</button>
           <button class="period-btn${prospPeriod==='anio'?' active':''}" onclick="setProspectadoPeriod('anio')">Año</button>
         </div>
-        <input class="form-input" type="date" style="max-width:170px" value="${prospBaseDate||today()}" onchange="setProspectadoBaseDate(this.value)">
+        ${periodSelectorHtml}
+      </div>
+      <div class="pr-mode" style="margin-bottom:8px">
+        <label for="prosp-all-mode">Default para pacientes:</label>
+        <select class="inp-sm" id="prosp-all-mode" onchange="setAllPatientsProspDebtMode(this.value)">
+          <option value="carry"${globalDebtMode==='carry'?' selected':''}>Arrastrar adeudo</option>
+          <option value="zero"${globalDebtMode==='zero'?' selected':''}>Iniciar en ceros</option>
+          <option value="mixed"${globalDebtMode==='mixed'?' selected':''} disabled>Configuración mixta</option>
+        </select>
       </div>
       <div class="week-nav">
         <button class="btn-ghost btn-sm" onclick="moveProspectadoRange(-1)">&larr; Anterior</button>
