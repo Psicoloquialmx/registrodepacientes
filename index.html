@@ -3887,9 +3887,9 @@ function renderHoy(){
             <div class="today-name">${getConfidentialName(p, activePatients())}${tipoInfo==='reposicion'?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
             <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} · ${pagoLabel(p.pago)}</div>
           </div>
-          ${isCalCancelled
-            ?`<button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>`
-            :`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button><span style="font-size:10px;color:var(--ink-light);font-style:italic">Solo informativo</span></div>`
+          ${(!isCalCancelled&&!attendedInfo)
+            ?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button><span style="font-size:10px;color:var(--ink-light);font-style:italic">Solo informativo</span></div>`
+            :`<button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>`
           }
         </div>
         <div class="today-locked"${isCalCancelled?' style="margin-bottom:8px"':''}>
@@ -3899,7 +3899,7 @@ function renderHoy(){
           </div>
           <button class="today-reset-btn" type="button" title="Volver al estado previo" onclick="unlockTodayCard(${p.id})">&times;</button>
         </div>
-        ${isCalCancelled?'':`<div class="today-form" style="opacity:.82">
+        ${(!isCalCancelled&&!attendedInfo)?`<div class="today-form" style="opacity:.82">
           <div class="yn-row">
             <label class="form-label">¿Asistió?</label>
             <div class="yn-toggle">
@@ -3921,7 +3921,7 @@ function renderHoy(){
               <button type="button" class="yn-btn${!paidInfo?' active':''}" disabled>No</button>
             </div>
           </div>
-        </div>`}
+        </div>`:''}
       </div>`;
     }
     if(r.ses?.therapistCancel||r.ses?.tipo==='cancelada'){
