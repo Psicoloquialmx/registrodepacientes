@@ -1024,16 +1024,19 @@ function recomputePatientDebt(p){
   
   // When there's a cutoff, only count payments after cutoff
   const pagosTotal=(p.pagos||[]).reduce((sum,py)=>{
-    if(cutoffDate&&py.fecha<cutoffDate) return sum;
+    const pyDate=paymentDateIso(py);
+    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   p.pagado=pagosTotal;
   
   const cargos=(p.sesiones||[]).reduce((sum,s)=>{
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return sum;
+    const sesDate=sessionDateIso(s);
+    if(!sesDate) return sum;
     // Exclude sessions before paidUpToDate cutoff
-    if(cutoffDate&&s.fecha<cutoffDate) return sum;
-    return sum+tarifaEnFecha(p,s.fecha);
+    if(cutoffDate&&sesDate<cutoffDate) return sum;
+    return sum+tarifaEnFecha(p,sesDate);
   },0);
   p.adeudo=Math.max(0,cargos-pagosTotal);
   return p.adeudo;
@@ -1043,17 +1046,32 @@ function calcBalanceDesde(p,fechaIso){
   const firstFreeId=getFirstFreeSessionId(p);
   const cutoffDate=p.paidUpToDate||null;
   const effectiveStartDate=cutoffDate&&cutoffDate>fechaIso?cutoffDate:fechaIso;
-  const cargos=p.sesiones
-    .filter(s=>s.fecha>=effectiveStartDate&&isSessionBillableForDebt(p,s,firstFreeId))
-    .reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
-  const pagos=p.pagos.filter(py=>py.fecha>=effectiveStartDate).reduce((sum,py)=>sum+py.monto,0);
+  const cargos=(p.sesiones||[])
+    .filter(s=>{
+      if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
+      const sesDate=sessionDateIso(s);
+      return !!sesDate&&sesDate>=effectiveStartDate;
+    })
+    .reduce((sum,s)=>sum+tarifaEnFecha(p,sessionDateIso(s)),0);
+  const pagos=(p.pagos||[])
+    .filter(py=>{
+      const pyDate=paymentDateIso(py);
+      return !!pyDate&&pyDate>=effectiveStartDate;
+    })
+    .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   return{cargos,pagos,saldo:Math.max(0,cargos-pagos)};
 }
 function calcSesionesSinCubrir(p){
   const firstFreeId=getFirstFreeSessionId(p);
   const cutoffDate=p.paidUpToDate||null;
   const billableRegistradas=(p.sesiones||[])
+    .map(s=>{
+      const sesDate=sessionDateIso(s);
+      if(!sesDate) return null;
+      return {...s,fecha:sesDate};
+    })
     .filter(s=>{
+      if(!s) return false;
       if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
       // Exclude sessions before paidUpToDate cutoff
       if(cutoffDate&&s.fecha<cutoffDate) return false;
@@ -1063,7 +1081,8 @@ function calcSesionesSinCubrir(p){
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
   // When there's a cutoff, only count payments after cutoff
   let saldo=(p.pagos||[]).reduce((sum,py)=>{
-    if(cutoffDate&&py.fecha<cutoffDate) return sum;
+    const pyDate=paymentDateIso(py);
+    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   const sinCubrir=[];
@@ -1211,77 +1230,58 @@ function sesionesEnMes(p,year,month){
   let scheduled=0;
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    // Exclude days before paidUpToDate cutoff
     if(cutoffDate&&dateStr<cutoffDate) continue;
     if(isFixedScheduledOnDate(p,dateStr)) scheduled++;
   }
-  const monthDates=n=>{
-    const d=new Date(n.fecha+'T12:00');
+  const monthDates=s=>{
+    const iso=sessionDateIso(s);
+    if(!iso) return false;
+    const d=new Date(iso+'T12:00');
     return d.getFullYear()===year && d.getMonth()===month;
   };
-  const reprogramadas=p.sesiones.filter(s=>s.tipo==='reprogramada' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
-  const canceladas=p.sesiones.filter(s=>s.tipo==='cancelada' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
-  const reposiciones=p.sesiones.filter(s=>s.tipo==='reposicion' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
-  // Agrega reposiciones y quita reprogramaciones/cancelaciones de la programación original
-    const pyDate=paymentDateIso(py);
-    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
+  const reprogramadas=(p.sesiones||[]).filter(s=>s.tipo==='reprogramada'&&monthDates(s)&&(!cutoffDate||sessionDateIso(s)>=cutoffDate)).length;
+  const canceladas=(p.sesiones||[]).filter(s=>s.tipo==='cancelada'&&monthDates(s)&&(!cutoffDate||sessionDateIso(s)>=cutoffDate)).length;
+  const reposiciones=(p.sesiones||[]).filter(s=>s.tipo==='reposicion'&&monthDates(s)&&(!cutoffDate||sessionDateIso(s)>=cutoffDate)).length;
+  return Math.max(0,scheduled-reprogramadas-canceladas+reposiciones);
 }
 function ingresoProspMes(p,year,month){
   const hoy=new Date();
   return sesionesEnMes(p,year??hoy.getFullYear(),month??hoy.getMonth())*tarifaVigente(p);
 }
 function sesionesPendientes(p){
-    const sesDate=sessionDateIso(s);
-    if(!sesDate) return sum;
   const hoy=new Date();
-    if(cutoffDate&&sesDate<cutoffDate) return sum;
-    return sum+tarifaEnFecha(p,sesDate);
+  const year=hoy.getFullYear(),month=hoy.getMonth();
+  const daysInMonth=new Date(year,month+1,0).getDate();
   const todayNum=hoy.getDate();
   const pending=[];
   for(let d=1;d<=Math.min(todayNum,daysInMonth);d++){
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     if(!isFixedScheduledOnDate(p,dateStr)) continue;
-    if(p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr && (s.skipped||s.replaced||s.tipo==='reprogramada'))) continue;
-    if(!p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
+    if((p.sesiones||[]).some(s=>sessionDateIso(s)===dateStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))) continue;
+    if(!(p.sesiones||[]).some(s=>sessionDateIso(s)===dateStr)) pending.push(dateStr);
   }
   return pending;
-  const cargos=(p.sesiones||[])
-    .filter(s=>{
-      if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
-      const sesDate=sessionDateIso(s);
-      return !!sesDate&&sesDate>=effectiveStartDate;
-    })
-    .reduce((sum,s)=>sum+tarifaEnFecha(p,sessionDateIso(s)),0);
-  const pagos=(p.pagos||[])
-    .filter(py=>{
-      const pyDate=paymentDateIso(py);
-      return !!pyDate&&pyDate>=effectiveStartDate;
-    })
-    .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+}
+function getUnregisteredFixedSessionDates(p,startIso,endIso){
+  if(!p) return [];
+  const start=startIso||p.paidUpToDate||p.inicio||today();
   const end=endIso||today();
   if(start>end) return [];
 
   const pending=[];
   const startDate=new Date(start+'T12:00');
-  const billableRegistradas=(p.sesiones||[])
-    .map(s=>{
-      const sesDate=sessionDateIso(s);
-      if(!sesDate) return null;
-      return {...s,fecha:sesDate};
-    })
-    .filter(s=>{
-      if(!s) return false;
-      if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
-      // Exclude sessions before paidUpToDate cutoff
-      if(cutoffDate&&s.fecha<cutoffDate) return false;
-      return true;
-    });
+  const endDate=new Date(end+'T12:00');
+  for(let d=new Date(startDate);d<=endDate;d.setDate(d.getDate()+1)){
+    const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(!isFixedScheduledOnDate(p,dateStr)) continue;
+    if((p.sesiones||[]).some(s=>sessionDateIso(s)===dateStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))) continue;
+    if(!(p.sesiones||[]).some(s=>sessionDateIso(s)===dateStr)) pending.push(dateStr);
+  }
   return pending;
 }
 function totalPendientesHoy(){
   return patients.reduce((a,p)=>a+sesionesPendientes(p).length,0);
-    const pyDate=paymentDateIso(py);
-    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
+}
 let nextNoteId=200;
 function addNota(p,titulo,cuerpo,tag){
   if(!p.notas) p.notas=[];
