@@ -1030,7 +1030,9 @@ function recomputePatientDebt(p){
     if(cutoffDate&&s.fecha<cutoffDate) return sum;
     return sum+tarifaEnFecha(p,s.fecha);
   },0);
-  p.adeudo=Math.max(0,cargos-pagosTotal);
+  const pendientesSinRegistrar=getUnregisteredFixedSessionDates(p,cutoffDate||p.inicio,today())
+    .reduce((sum,dateStr)=>sum+tarifaEnFecha(p,dateStr),0);
+  p.adeudo=Math.max(0,(cargos+pendientesSinRegistrar)-pagosTotal);
   return p.adeudo;
 }
 function calcBalanceDesde(p,fechaIso){
@@ -1047,19 +1049,26 @@ function calcBalanceDesde(p,fechaIso){
 function calcSesionesSinCubrir(p){
   const firstFreeId=getFirstFreeSessionId(p);
   const cutoffDate=p.paidUpToDate||null;
-  const billable=(p.sesiones||[])
+  const billableRegistradas=(p.sesiones||[])
     .filter(s=>{
       if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
       // Exclude sessions before paidUpToDate cutoff
       if(cutoffDate&&s.fecha<cutoffDate) return false;
       return true;
-    })
+    });
+  const billablePendientes=getUnregisteredFixedSessionDates(p,cutoffDate||p.inicio,today()).map(dateStr=>({
+    id:`pend-${dateStr}`,
+    fecha:dateStr,
+    hora:horaDiaFecha(p,dateStr),
+    tipo:'pendiente'
+  }));
+  const billable=[...billableRegistradas,...billablePendientes]
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
-    // When there's a cutoff, only count payments after cutoff
-    let saldo=(p.pagos||[]).reduce((sum,py)=>{
-      if(cutoffDate&&py.fecha<cutoffDate) return sum;
-      return sum+Math.max(0,Number(py.monto)||0);
-    },0);
+  // When there's a cutoff, only count payments after cutoff
+  let saldo=(p.pagos||[]).reduce((sum,py)=>{
+    if(cutoffDate&&py.fecha<cutoffDate) return sum;
+    return sum+Math.max(0,Number(py.monto)||0);
+  },0);
   const sinCubrir=[];
   for(const s of billable){
     const costo=tarifaEnFecha(p,s.fecha);
@@ -1218,6 +1227,23 @@ function sesionesPendientes(p){
     if(!isFixedScheduledOnDate(p,dateStr)) continue;
     if(p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr && (s.skipped||s.replaced||s.tipo==='reprogramada'))) continue;
     if(!p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
+  }
+  return pending;
+}
+function getUnregisteredFixedSessionDates(p,startIso,endIso){
+  if(!p) return [];
+  const start=startIso||p.paidUpToDate||p.inicio||today();
+  const end=endIso||today();
+  if(start>end) return [];
+
+  const pending=[];
+  const startDate=new Date(start+'T12:00');
+  const endDate=new Date(end+'T12:00');
+  for(let d=new Date(startDate);d<=endDate;d.setDate(d.getDate()+1)){
+    const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(!isFixedScheduledOnDate(p,dateStr)) continue;
+    if((p.sesiones||[]).some(s=>s.fecha.split(' ')[0]===dateStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))) continue;
+    if(!(p.sesiones||[]).some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
   }
   return pending;
 }
@@ -5542,7 +5568,7 @@ function renderDetalle(p){
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
   // Sesiones sin cubrir
   const sinCubrir=calcSesionesSinCubrir(p);
-  const _tipoLbl={asistio:'Asistió',falta:'Falta',extra:'Extra',reposicion:'Reposición'};
+  const _tipoLbl={asistio:'Asistió',falta:'Falta',extra:'Extra',reposicion:'Reposición',pendiente:'Pendiente por registrar'};
   const sinCubrirHtml=sinCubrir.length===0
     ? `<div style="font-size:13px;color:#2d7a6e;padding:6px 0">✓ Todas las sesiones están cubiertas.</div>`
     : sinCubrir.map(s=>{
