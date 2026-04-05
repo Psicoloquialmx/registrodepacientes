@@ -1014,11 +1014,16 @@ function isSessionBillableForDebt(p,s,firstFreeId=null){
 }
 function recomputePatientDebt(p){
   if(!p) return 0;
-  const pagosTotal=(p.pagos||[]).reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
-  p.pagado=pagosTotal;
-  
   const firstFreeId=getFirstFreeSessionId(p);
   const cutoffDate=p.paidUpToDate||null;
+  
+  // When there's a cutoff, only count payments after cutoff
+  const pagosTotal=(p.pagos||[]).reduce((sum,py)=>{
+    if(cutoffDate&&py.fecha<cutoffDate) return sum;
+    return sum+Math.max(0,Number(py.monto)||0);
+  },0);
+  p.pagado=pagosTotal;
+  
   const cargos=(p.sesiones||[]).reduce((sum,s)=>{
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return sum;
     // Exclude sessions before paidUpToDate cutoff
