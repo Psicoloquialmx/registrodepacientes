@@ -157,6 +157,8 @@ body.auth-locked .auth-screen{display:flex}
 .today-status-label{font-size:13px;font-weight:600;color:var(--ink);padding:6px 0 2px}
 .today-extra-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
 .today-extra-actions .btn-sec{font-size:11px;padding:4px 10px;border-radius:6px}
+.today-legend{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#3d6b62;margin-top:6px}
+.today-legend-dot{width:8px;height:8px;border-radius:50%;background:#a5c4bc;border:1px solid rgba(56,104,96,.4);display:inline-block;flex-shrink:0}
 .today-locked{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px}
 .today-locked-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .today-locked-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(56,70,81,.2);background:rgba(56,70,81,.09);color:var(--ink);padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600}
@@ -409,13 +411,21 @@ input[type="file"].form-input{cursor:pointer}
 .pn-val{font-family:'Lora',serif;font-size:28px;font-weight:600}
 .pn-label{font-size:11px;margin-top:1px;opacity:.9}
 .col-white{color:#fff}.col-red{color:#ffb4a6}.col-green{color:#aeead8}
+.prosp-controls{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:1rem}
+.prosp-period-label{font-size:12px;color:var(--ink-light)}
+.prosp-legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.prosp-legend-item{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light)}
+.prosp-legend-dot{width:9px;height:9px;border-radius:999px;display:inline-block}
 .prosp-row{padding:10px 0;border-bottom:1px solid var(--cream)}
 .prosp-row:last-child{border-bottom:none}
 .pr-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap}
 .pr-left{display:flex;align-items:center;gap:8px}
 .pr-nums{display:flex;gap:1rem;font-size:12px;flex-wrap:wrap}
-.pr-bar-wrap{background:var(--cream);border-radius:4px;height:5px;overflow:hidden;margin-bottom:3px}
-.pr-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.pr-bar-wrap{background:var(--cream);border-radius:999px;height:9px;overflow:hidden;margin-bottom:5px;display:flex}
+.pr-bar-fill{height:100%;transition:width .4s}
+.pr-bar-fill.cobrado{background:#2d7a6e}
+.pr-bar-fill.adeudo{background:#b95d37}
+.pr-mode{font-size:11px;color:var(--ink-light);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .pr-bar-note{font-size:11px;color:#aaa}
 
 /* " - ? EDIT " - ? */
@@ -954,6 +964,11 @@ function isSessionCountedAsGiven(s){
   if(s.tipo==='reposicion') return !s.repoRespuesta||s.repoRespuesta==='asistio';
   return s.tipo==='asistio'||s.tipo==='extra';
 }
+function isSessionCountedAsGivenForResumen(s){
+  if(!s) return false;
+  if(s.tipo==='reposicion') return s.repoRespuesta==='asistio';
+  return s.tipo==='asistio'||s.tipo==='extra';
+}
 function isChargeableSessionRecord(s){
   if(!s) return false;
   if(s.tipo==='reposicion') return s.repoRespuesta!=='cancelada';
@@ -1272,6 +1287,7 @@ function normalizePatient(p){
   p.statusNote=p.statusNote||'';
   p.statusReason=p.statusReason||inferStatusReason(p);
   p.manualEstimateOverride=!!p.manualEstimateOverride;
+  p.prospCarryDebt=(p.prospCarryDebt!==false);
   normalizarStatusHistory(p);
   normalizarFrecuencias(p);
   normalizarPausas(p);
@@ -1402,7 +1418,10 @@ let nextPauseId=50;
 let curId=null,curTab='sesiones',curBitTab='log';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
 let resumenPeriod='mes';
+let resumenBaseDate=today();
 let detallePeriod='mes';
+let prospPeriod='mes';
+let prospBaseDate=today();
 let semanaViewMode='semana';
 let semanaBaseDate=today();
 let todayViewOffset=0;
@@ -3453,8 +3472,9 @@ function getPeriodBounds(period,baseDate){
   };
 }
 
-function sesionesDadasEnRango(p,start,end){
-  const cs=s=>isSessionCountedAsGiven(s);
+function sesionesDadasEnRango(p,start,end,opts={}){
+  const strictResumen=!!opts.strictResumen;
+  const cs=s=>strictResumen?isSessionCountedAsGivenForResumen(s):isSessionCountedAsGiven(s);
   return p.sesiones.filter(s=>{
     const d=new Date(s.fecha+'T12:00');
     return cs(s) && d>=start && d<=end;
@@ -3487,6 +3507,61 @@ function sesionesProgramadasEntreFechas(p,startDate,endDate){
     cursor.setDate(cursor.getDate()+1);
   }
   return total;
+}
+
+function formatPeriodLabel(period,bounds){
+  if(period==='semana') return `Semana del ${bounds.start.toLocaleDateString('es-MX',{day:'2-digit',month:'short'})} al ${bounds.end.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})}`;
+  if(period==='anio') return String(bounds.start.getFullYear());
+  return bounds.start.toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+}
+
+function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
+  const firstFreeId=getFirstFreeSessionId(p);
+  const cutoffDate=p.paidUpToDate||null;
+  const validSession=s=>{
+    if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
+    if(cutoffDate&&s.fecha<cutoffDate) return false;
+    return true;
+  };
+
+  const billable=(p.sesiones||[]).filter(validSession);
+  const chargesBefore=billable
+    .filter(s=>s.fecha<startIso)
+    .reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
+  const paymentsBefore=(p.pagos||[])
+    .filter(py=>py.fecha<startIso)
+    .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+  const carryDebt=Math.max(0,chargesBefore-paymentsBefore);
+
+  const chargesPeriod=billable
+    .filter(s=>s.fecha>=startIso&&s.fecha<=endIso)
+    .reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
+  const sessionsPeriod=billable.filter(s=>s.fecha>=startIso&&s.fecha<=endIso).length;
+  const paymentsPeriod=(p.pagos||[])
+    .filter(py=>py.fecha>=startIso&&py.fecha<=endIso)
+    .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+
+  const startingDebt=includeCarryDebt?carryDebt:0;
+  const pendingEnd=Math.max(0,startingDebt+chargesPeriod-paymentsPeriod);
+  const paidVsDemand=Math.min(paymentsPeriod,Math.max(0,startingDebt+chargesPeriod));
+  const coverageBase=Math.max(1,startingDebt+chargesPeriod);
+  const paidPct=Math.min(100,Math.round((paidVsDemand/coverageBase)*100));
+  const debtPct=Math.max(0,100-paidPct);
+
+  const projectedIdeal=Math.max(0,sesionesProgramadasEntreFechas(p,startIso,endIso))*tarifaVigente(p);
+  const netoEstimado=Math.max(0,projectedIdeal-pendingEnd);
+
+  return {
+    carryDebt,
+    sessionsPeriod,
+    chargesPeriod,
+    paymentsPeriod,
+    pendingEnd,
+    paidPct,
+    debtPct,
+    projectedIdeal,
+    netoEstimado
+  };
 }
 
 function overlapDays(startA,endA,startB,endB){
@@ -3867,7 +3942,7 @@ function renderHoy(){
     return;
   }
 
-  el.innerHTML=`<div class="dsec" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">${viewLabel}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Revisa y registra las sesiones de la fecha seleccionada.</p></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div></div>
+  el.innerHTML=`<div class="dsec" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><div class="sec-title">${viewLabel}</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">Revisa y registra las sesiones de la fecha seleccionada.</p><div class="today-legend"><span class="today-legend-dot"></span><span>Azul: el paciente faltó</span></div></div><button class="btn-primary btn-sm" onclick="openUnplannedSessionModal()">+ Sesión no prevista</button></div></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
     if(r.movedFrom){
@@ -4470,6 +4545,15 @@ function setResumenPeriod(period){
   renderResumen();
 }
 
+function moveResumenRange(delta){
+  const base=new Date((resumenBaseDate||today())+'T12:00');
+  if(resumenPeriod==='anio') base.setFullYear(base.getFullYear()+delta);
+  else if(resumenPeriod==='semana') base.setDate(base.getDate()+(delta*7));
+  else base.setMonth(base.getMonth()+delta);
+  resumenBaseDate=base.toISOString().split('T')[0];
+  renderResumen();
+}
+
 function toggleResumenPorPaciente(){
   const content=document.getElementById('resumen-por-paciente-content');
   const title=document.getElementById('resumen-por-paciente-title');
@@ -4477,6 +4561,35 @@ function toggleResumenPorPaciente(){
   const isOpen=content.style.display!=='none';
   content.style.display=isOpen?'none':'block';
   title.textContent=(isOpen?'▶':'▼')+' Por paciente';
+}
+
+function setProspectadoPeriod(period){
+  if(period!=='semana'&&period!=='mes'&&period!=='anio') return;
+  prospPeriod=period;
+  renderProspectado();
+}
+
+function moveProspectadoRange(delta){
+  const base=new Date((prospBaseDate||today())+'T12:00');
+  if(prospPeriod==='anio') base.setFullYear(base.getFullYear()+delta);
+  else if(prospPeriod==='semana') base.setDate(base.getDate()+(delta*7));
+  else base.setMonth(base.getMonth()+delta);
+  prospBaseDate=base.toISOString().split('T')[0];
+  renderProspectado();
+}
+
+function setProspectadoBaseDate(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(value||'')) return;
+  prospBaseDate=value;
+  renderProspectado();
+}
+
+function setPatientProspDebtMode(pid,mode){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  p.prospCarryDebt=(mode!=='zero');
+  saveState();
+  renderProspectado();
 }
 
 function setDetallePeriod(period){
@@ -6294,40 +6407,47 @@ function moveSemanaRange(delta){
 function renderResumen(){
   const activos=activePatients();
   const hoy=new Date();
+  const resumenRefDate=new Date((resumenBaseDate||today())+'T12:00');
   const semBounds=getPeriodBounds('semana',hoy);
   const mesBounds=getPeriodBounds('mes',hoy);
   const anioBounds=getPeriodBounds('anio',hoy);
-  const sem=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,semBounds.start,semBounds.end),0);
-  const mes=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,mesBounds.start,mesBounds.end),0);
-  const anio=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,anioBounds.start,anioBounds.end),0);
-  const activeBounds=getPeriodBounds(resumenPeriod,hoy);
-  const activeCount=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,activeBounds.start,activeBounds.end),0);
+  const sem=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,semBounds.start,semBounds.end,{strictResumen:true}),0);
+  const mes=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,mesBounds.start,mesBounds.end,{strictResumen:true}),0);
+  const anio=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,anioBounds.start,anioBounds.end,{strictResumen:true}),0);
+  const activeBounds=getPeriodBounds(resumenPeriod,resumenRefDate);
+  const activeCount=activos.reduce((a,p)=>a+sesionesDadasEnRango(p,activeBounds.start,activeBounds.end,{strictResumen:true}),0);
+  const resumenPeriodLabel=resumenPeriod==='semana'
+    ?`Semana del ${activeBounds.start.toLocaleDateString('es-MX',{day:'2-digit',month:'short'})} al ${activeBounds.end.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'})}`
+    :resumenPeriod==='anio'
+      ?String(activeBounds.start.getFullYear())
+      :activeBounds.start.toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+  const resumenCountFn=isSessionCountedAsGivenForResumen;
   // --- Build chart data based on resumenPeriod ---
   let chartTitle='',chartCols=[];
   if(resumenPeriod==='anio'){
     const meses=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     const pm=Array(12).fill(0);
     activos.forEach(p=>p.sesiones.forEach(s=>{
-      if(isSessionCountedAsGiven(s)){const d=new Date(s.fecha+'T12:00');if(d.getFullYear()===hoy.getFullYear()) pm[d.getMonth()]++;}
+      if(resumenCountFn(s)){const d=new Date(s.fecha+'T12:00');if(d.getFullYear()===resumenRefDate.getFullYear()) pm[d.getMonth()]++;}
     }));
-    chartTitle=`Sesiones por mes — ${hoy.getFullYear()}`;
-    chartCols=pm.map((v,i)=>({label:meses[i],value:v,cur:i===hoy.getMonth()}));
+    chartTitle=`Sesiones por mes — ${resumenRefDate.getFullYear()}`;
+    chartCols=pm.map((v,i)=>({label:meses[i],value:v,cur:i===hoy.getMonth()&&resumenRefDate.getFullYear()===hoy.getFullYear()}));
   } else if(resumenPeriod==='mes'){
-    const year=hoy.getFullYear(),month=hoy.getMonth();
+    const year=resumenRefDate.getFullYear(),month=resumenRefDate.getMonth();
     const daysInMonth=new Date(year,month+1,0).getDate();
     const pd=Array(daysInMonth).fill(0);
     activos.forEach(p=>p.sesiones.forEach(s=>{
-      if(isSessionCountedAsGiven(s)){const d=new Date(s.fecha+'T12:00');if(d.getFullYear()===year&&d.getMonth()===month) pd[d.getDate()-1]++;}
+      if(resumenCountFn(s)){const d=new Date(s.fecha+'T12:00');if(d.getFullYear()===year&&d.getMonth()===month) pd[d.getDate()-1]++;}
     }));
-    chartTitle=`Sesiones por día — ${hoy.toLocaleString('es-MX',{month:'long',year:'numeric'})}`;
-    chartCols=pd.map((v,i)=>({label:String(i+1),value:v,cur:(i+1)===hoy.getDate()}));
+    chartTitle=`Sesiones por día — ${resumenRefDate.toLocaleString('es-MX',{month:'long',year:'numeric'})}`;
+    chartCols=pd.map((v,i)=>({label:String(i+1),value:v,cur:(i+1)===hoy.getDate()&&month===hoy.getMonth()&&year===hoy.getFullYear()}));
   } else {
-    const dow=(hoy.getDay()+6)%7;
+    const dow=(resumenRefDate.getDay()+6)%7;
     const diasLabels=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-    const weekDates=Array(7).fill(null).map((_,i)=>{const d=new Date(hoy);d.setDate(hoy.getDate()-dow+i);return d.toISOString().split('T')[0];});
+    const weekDates=Array(7).fill(null).map((_,i)=>{const d=new Date(resumenRefDate);d.setDate(resumenRefDate.getDate()-dow+i);return d.toISOString().split('T')[0];});
     chartTitle=`Sesiones esta semana`;
     chartCols=weekDates.map((dateStr,i)=>{
-      let v=0;activos.forEach(p=>p.sesiones.forEach(s=>{if(isSessionCountedAsGiven(s)&&s.fecha.split(' ')[0]===dateStr) v++;}));
+      let v=0;activos.forEach(p=>p.sesiones.forEach(s=>{if(resumenCountFn(s)&&s.fecha.split(' ')[0]===dateStr) v++;}));
       return{label:diasLabels[i],value:v,cur:dateStr===today()};
     });
   }
@@ -6352,21 +6472,26 @@ function renderResumen(){
           <button class="period-btn${resumenPeriod==='anio'?' active':''}" onclick="setResumenPeriod('anio')">Año</button>
         </div>
       </div>
-      <div class="drow"><span class="dkey">Sesiones dadas ${textoPeriodo(resumenPeriod)}</span><span class="dval">${activeCount}</span></div>
+      <div class="week-nav" style="margin-top:8px;margin-bottom:8px">
+        <button class="btn-ghost btn-sm" onclick="moveResumenRange(-1)">&larr; Anterior</button>
+        <span class="week-period">${resumenPeriodLabel}</span>
+        <button class="btn-ghost btn-sm" onclick="moveResumenRange(1)">Siguiente &rarr;</button>
+      </div>
+      <div class="drow"><span class="dkey">Sesiones dadas en el periodo</span><span class="dval">${activeCount}</span></div>
     </div>
     <div class="dsec" style="background:white"><div class="sec-title">${chartTitle}</div><div class="bar-chart" style="gap:${barGap}">${bars}</div></div>
     <div class="dsec" style="background:white;margin-top:1rem">
       <div class="sec-title-row" style="cursor:pointer" onclick="toggleResumenPorPaciente()">
         <div style="display:flex;flex-direction:column;gap:2px">
           <span class="sec-title" id="resumen-por-paciente-title">▶ Por paciente</span>
-          <span style="font-size:11px;color:var(--ink-light)">${resumenPeriod==='semana'?'Esta semana':resumenPeriod==='mes'?'Este mes':'Este año'}</span>
+          <span style="font-size:11px;color:var(--ink-light)">${resumenPeriodLabel}</span>
         </div>
       </div>
       <div id="resumen-por-paciente-content" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid #ede9e6">
         ${(()=>{
           const hdr=`<div style="display:grid;grid-template-columns:1fr repeat(3,80px);padding:4px 0 8px;border-bottom:2px solid #ede9e6;margin-bottom:2px;gap:0 8px"><span style="font-size:10px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.5px">Paciente</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Sesiones</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Faltas</span><span style="font-size:10px;color:var(--ink-light);text-align:right;text-transform:uppercase;letter-spacing:.5px">Canceladas</span></div>`;
           const rows=activos.map(p=>{
-            const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end);
+            const np=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end,{strictResumen:true});
             const faltas=faltasEnRango(p,activeBounds.start,activeBounds.end);
             const cancels=cancelacionesTerapeutaEnRango(p,activeBounds.start,activeBounds.end);
             return `<div style="display:grid;grid-template-columns:1fr repeat(3,80px);padding:6px 0;border-bottom:1px solid #f5f0ed;align-items:center;gap:0 8px"><span style="font-size:13px;color:var(--ink)">${p.nombre}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums">${np}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:${faltas>0?'#b95d37':'var(--ink-light)'}">${faltas||'—'}</span><span style="font-size:13px;text-align:right;font-variant-numeric:tabular-nums;color:${cancels>0?'#384651':'var(--ink-light)'}">${cancels||'—'}</span></div>`;
@@ -6380,50 +6505,94 @@ function renderResumen(){
 // " - ? PROSPECTADO " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderProspectado(){
   const activos=activePatients();
-  const hoy=new Date();const y=hoy.getFullYear(),m=hoy.getMonth();
-  const totalProsp=activos.reduce((a,p)=>a+ingresoProspMes(p,y,m),0);
-  const totalDeuda=activos.reduce((a,p)=>a+p.adeudo,0);
-  const neto=Math.max(0,totalProsp-totalDeuda);
+  const refDate=new Date((prospBaseDate||today())+'T12:00');
+  const bounds=getPeriodBounds(prospPeriod,refDate);
+  const startIso=bounds.start.toISOString().split('T')[0];
+  const endIso=bounds.end.toISOString().split('T')[0];
+  const periodLabel=formatPeriodLabel(prospPeriod,bounds);
+
+  const rowsData=activos.map(p=>{
+    const includeCarry=p.prospCarryDebt!==false;
+    const cut=calcPatientFinancialCut(p,startIso,endIso,includeCarry);
+    return {p,includeCarry,cut};
+  });
+
+  const totalProsp=rowsData.reduce((a,row)=>a+row.cut.projectedIdeal,0);
+  const totalGanado=rowsData.reduce((a,row)=>a+row.cut.paymentsPeriod,0);
+  const totalDeuda=rowsData.reduce((a,row)=>a+row.cut.pendingEnd,0);
+  const neto=Math.max(0,totalGanado-totalDeuda);
   const ratio=totalProsp>0?totalDeuda/totalProsp:0;
+
   const rowsHtml=activos.map(p=>{
-    const prosp=ingresoProspMes(p,y,m);
-    const numSes=sesionesEnMes(p,y,m);
+    const includeCarry=p.prospCarryDebt!==false;
+    const cut=calcPatientFinancialCut(p,startIso,endIso,includeCarry);
+    const prosp=cut.projectedIdeal;
+    const numSes=cut.sessionsPeriod;
     const tv=tarifaVigente(p);
-    const pct=prosp>0?Math.min(100,Math.round((p.adeudo/prosp)*100)):0;
-    const diff=prosp-p.adeudo;
-    const barColor=pct>50?'#c0392a':pct>25?'#b95d37':'#a5c4bc';
+    const pct=cut.debtPct;
+    const diff=cut.netoEstimado;
     const diasHoras=scheduleSummary(p,false);
     return `<div class="prosp-row">
       <div class="pr-header">
         <div class="pr-left">
           <div class="person-avatar" style="width:28px;height:28px"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
           <div><div style="font-size:13px;font-weight:500;color:var(--ink);font-family:'Lora',serif">${p.nombre}</div>
-          <div style="font-size:11px;color:var(--ink-light)">${numSes} sesiones en ${MESES[m]} · ${diasHoras} · $${tv.toLocaleString('es-MX')}/ses</div></div>
+          <div style="font-size:11px;color:var(--ink-light)">${numSes} registros cobrables · ${periodLabel} · ${diasHoras} · $${tv.toLocaleString('es-MX')}/ses</div></div>
         </div>
         <div class="pr-nums">
           <span style="color:var(--ink-light)">Prosp: <strong style="color:var(--ink)">$${prosp.toLocaleString('es-MX')}</strong></span>
-          <span style="color:#9e3020">Adeudo: <strong>$${p.adeudo.toLocaleString('es-MX')}</strong></span>
+          <span style="color:#2d7a6e">Ganado: <strong>$${cut.paymentsPeriod.toLocaleString('es-MX')}</strong></span>
+          <span style="color:#9e3020">Adeudo: <strong>$${cut.pendingEnd.toLocaleString('es-MX')}</strong></span>
           <span style="color:${diff>=0?'#2d7a6e':'#9e3020'}">Neto: <strong>$${diff.toLocaleString('es-MX')}</strong></span>
         </div>
       </div>
-      <div class="pr-bar-wrap"><div class="pr-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <div class="pr-bar-note">${pct}% adeudado · ${pagoLabel(p.pago)}</div>
+      <div class="pr-mode">
+        <label for="pr-mode-${p.id}">Corte:</label>
+        <select class="inp-sm" id="pr-mode-${p.id}" onchange="setPatientProspDebtMode(${p.id},this.value)">
+          <option value="carry"${includeCarry?' selected':''}>Arrastrar adeudo previo</option>
+          <option value="zero"${!includeCarry?' selected':''}>Iniciar periodo en ceros</option>
+        </select>
+        ${includeCarry&&cut.carryDebt>0?`<span class="today-locked-pill" style="padding:2px 8px;font-size:10px">Arrastre $${cut.carryDebt.toLocaleString('es-MX')}</span>`:''}
+      </div>
+      <div class="pr-bar-wrap"><div class="pr-bar-fill cobrado" style="width:${cut.paidPct}%"></div><div class="pr-bar-fill adeudo" style="width:${cut.debtPct}%"></div></div>
+      <div class="pr-bar-note">${Math.round(cut.paidPct)}% cubierto · ${pct}% adeudado · ${pagoLabel(p.pago)}</div>
     </div>`;
   }).join('');
   document.getElementById('prosp-content').innerHTML=`
+    <div class="dsec" style="background:white;margin-bottom:1rem">
+      <div class="prosp-controls">
+        <div class="period-switch">
+          <button class="period-btn${prospPeriod==='semana'?' active':''}" onclick="setProspectadoPeriod('semana')">Semana</button>
+          <button class="period-btn${prospPeriod==='mes'?' active':''}" onclick="setProspectadoPeriod('mes')">Mes</button>
+          <button class="period-btn${prospPeriod==='anio'?' active':''}" onclick="setProspectadoPeriod('anio')">Año</button>
+        </div>
+        <input class="form-input" type="date" style="max-width:170px" value="${prospBaseDate||today()}" onchange="setProspectadoBaseDate(this.value)">
+      </div>
+      <div class="week-nav">
+        <button class="btn-ghost btn-sm" onclick="moveProspectadoRange(-1)">&larr; Anterior</button>
+        <span class="week-period">${periodLabel}</span>
+        <button class="btn-ghost btn-sm" onclick="moveProspectadoRange(1)">Siguiente &rarr;</button>
+      </div>
+      <div class="prosp-period-label">Corte financiero al cierre del periodo seleccionado</div>
+    </div>
     <div class="prosp-banner">
       <img src="${axoProsp(ratio)}" class="prosp-axo" alt="">
-      <div style="flex:1"><div class="prosp-head">${MESES[m]} ${y}  -  sesiones por horario real</div>
+      <div style="flex:1"><div class="prosp-head">${periodLabel} · corte por periodo</div>
         <div class="prosp-nums">
           <div><div class="pn-val col-white">$${totalProsp.toLocaleString('es-MX')}</div><div class="pn-label col-white">prospectado ideal</div></div>
-          <div><div class="pn-val col-red">$${totalDeuda.toLocaleString('es-MX')}</div><div class="pn-label col-white">adeudo actual</div></div>
-          <div><div class="pn-val col-green">$${neto.toLocaleString('es-MX')}</div><div class="pn-label col-white">ingreso neto est.</div></div>
+          <div><div class="pn-val col-green">$${totalGanado.toLocaleString('es-MX')}</div><div class="pn-label col-white">ganado en periodo</div></div>
+          <div><div class="pn-val col-red">$${totalDeuda.toLocaleString('es-MX')}</div><div class="pn-label col-white">adeudo al cierre</div></div>
+          <div><div class="pn-val col-green">$${neto.toLocaleString('es-MX')}</div><div class="pn-label col-white">ganado menos adeudo</div></div>
+        </div>
+        <div class="prosp-legend">
+          <span class="prosp-legend-item"><span class="prosp-legend-dot" style="background:#2d7a6e"></span>Cubierto</span>
+          <span class="prosp-legend-item"><span class="prosp-legend-dot" style="background:#b95d37"></span>Adeudo</span>
         </div>
       </div>
     </div>
-    <div class="dsec" style="background:white"><div class="sec-title">Desglose  -  ${MESES[m]}</div>${rowsHtml}</div>
+    <div class="dsec" style="background:white"><div class="sec-title">Desglose - ${periodLabel}</div>${rowsHtml}</div>
     <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Metodología</div>
-      <p style="font-size:13px;color:var(--ink-light);line-height:1.6">Cuenta los días exactos del mes en que caen los horarios de cada paciente. Sin promedios.</p>
+      <p style="font-size:13px;color:var(--ink-light);line-height:1.6">El corte calcula lo cobrado y lo adeudado dentro del periodo elegido. En cada paciente puedes decidir si el periodo arranca en cero o si arrastra adeudo previo.</p>
     </div>`;
 }
 
