@@ -3961,11 +3961,11 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+</button></div><div class="dsec"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada.</p></div>`;
+    el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+ Sesión no prevista</button></div><div class="dsec"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada.</p></div>`;
     return;
   }
 
-  el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+</button></div>
+  el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+ Sesión no prevista</button></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
     if(r.movedFrom){
