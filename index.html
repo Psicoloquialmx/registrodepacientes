@@ -982,7 +982,12 @@ function tarifaEnFecha(p,fechaStr){
   return match?match.monto:sorted[sorted.length-1].monto;
 }
 function isChargeableSessionType(tipo){
-  return tipo==='asistio'||tipo==='falta'||tipo==='reposicion'||tipo==='extra';
+  const normalized=String(tipo||'')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'');
+  return normalized==='asistio'||normalized==='falta'||normalized==='reposicion'||normalized==='extra';
 }
 function isSessionCountedAsGiven(s){
   if(!s) return false;
@@ -1030,9 +1035,7 @@ function recomputePatientDebt(p){
     if(cutoffDate&&s.fecha<cutoffDate) return sum;
     return sum+tarifaEnFecha(p,s.fecha);
   },0);
-  const pendientesSinRegistrar=getUnregisteredFixedSessionDates(p,cutoffDate||p.inicio,today())
-    .reduce((sum,dateStr)=>sum+tarifaEnFecha(p,dateStr),0);
-  p.adeudo=Math.max(0,(cargos+pendientesSinRegistrar)-pagosTotal);
+  p.adeudo=Math.max(0,cargos-pagosTotal);
   return p.adeudo;
 }
 function calcBalanceDesde(p,fechaIso){
@@ -1056,13 +1059,7 @@ function calcSesionesSinCubrir(p){
       if(cutoffDate&&s.fecha<cutoffDate) return false;
       return true;
     });
-  const billablePendientes=getUnregisteredFixedSessionDates(p,cutoffDate||p.inicio,today()).map(dateStr=>({
-    id:`pend-${dateStr}`,
-    fecha:dateStr,
-    hora:horaDiaFecha(p,dateStr),
-    tipo:'pendiente'
-  }));
-  const billable=[...billableRegistradas,...billablePendientes]
+  const billable=billableRegistradas
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
   // When there's a cutoff, only count payments after cutoff
   let saldo=(p.pagos||[]).reduce((sum,py)=>{
