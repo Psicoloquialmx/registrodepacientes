@@ -1183,6 +1183,22 @@ function displayDate(isoDate){
   const [year,month,day]=isoDate.split('-');
   return `${day}-${month}-${year}`;
 }
+function toIsoDateLoose(value){
+  const raw=String(value||'').trim();
+  if(!raw) return null;
+  const base=raw.split(' ')[0].split('T')[0];
+  if(/^\d{4}-\d{2}-\d{2}$/.test(base)) return base;
+  if(/^\d{4}\/\d{2}\/\d{2}$/.test(base)) return base.replace(/\//g,'-');
+  const dmy=base.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
+  if(dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+  return null;
+}
+function sessionDateIso(s){
+  return toIsoDateLoose(s?.fecha);
+}
+function paymentDateIso(py){
+  return toIsoDateLoose(py?.fecha);
+}
 function scheduleSummary(p,useFull=false){
   const sch=getScheduleAtDate(p,today());
   if(sch?.noFixedSchedule) return 'Sin horario fijo';
@@ -1207,16 +1223,19 @@ function sesionesEnMes(p,year,month){
   const canceladas=p.sesiones.filter(s=>s.tipo==='cancelada' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
   const reposiciones=p.sesiones.filter(s=>s.tipo==='reposicion' && monthDates(s) && (!cutoffDate||s.fecha>=cutoffDate)).length;
   // Agrega reposiciones y quita reprogramaciones/cancelaciones de la programación original
-  return Math.max(0, scheduled - reprogramadas - canceladas + reposiciones);
+    const pyDate=paymentDateIso(py);
+    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
 }
 function ingresoProspMes(p,year,month){
   const hoy=new Date();
   return sesionesEnMes(p,year??hoy.getFullYear(),month??hoy.getMonth())*tarifaVigente(p);
 }
 function sesionesPendientes(p){
+    const sesDate=sessionDateIso(s);
+    if(!sesDate) return sum;
   const hoy=new Date();
-  const year=hoy.getFullYear(),month=hoy.getMonth();
-  const daysInMonth=new Date(year,month+1,0).getDate();
+    if(cutoffDate&&sesDate<cutoffDate) return sum;
+    return sum+tarifaEnFecha(p,sesDate);
   const todayNum=hoy.getDate();
   const pending=[];
   for(let d=1;d<=Math.min(todayNum,daysInMonth);d++){
@@ -1226,27 +1245,43 @@ function sesionesPendientes(p){
     if(!p.sesiones.some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
   }
   return pending;
-}
-function getUnregisteredFixedSessionDates(p,startIso,endIso){
-  if(!p) return [];
-  const start=startIso||p.paidUpToDate||p.inicio||today();
+  const cargos=(p.sesiones||[])
+    .filter(s=>{
+      if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
+      const sesDate=sessionDateIso(s);
+      return !!sesDate&&sesDate>=effectiveStartDate;
+    })
+    .reduce((sum,s)=>sum+tarifaEnFecha(p,sessionDateIso(s)),0);
+  const pagos=(p.pagos||[])
+    .filter(py=>{
+      const pyDate=paymentDateIso(py);
+      return !!pyDate&&pyDate>=effectiveStartDate;
+    })
+    .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   const end=endIso||today();
   if(start>end) return [];
 
   const pending=[];
   const startDate=new Date(start+'T12:00');
-  const endDate=new Date(end+'T12:00');
-  for(let d=new Date(startDate);d<=endDate;d.setDate(d.getDate()+1)){
-    const dateStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if(!isFixedScheduledOnDate(p,dateStr)) continue;
-    if((p.sesiones||[]).some(s=>s.fecha.split(' ')[0]===dateStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))) continue;
-    if(!(p.sesiones||[]).some(s=>s.fecha.split(' ')[0]===dateStr)) pending.push(dateStr);
-  }
+  const billableRegistradas=(p.sesiones||[])
+    .map(s=>{
+      const sesDate=sessionDateIso(s);
+      if(!sesDate) return null;
+      return {...s,fecha:sesDate};
+    })
+    .filter(s=>{
+      if(!s) return false;
+      if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
+      // Exclude sessions before paidUpToDate cutoff
+      if(cutoffDate&&s.fecha<cutoffDate) return false;
+      return true;
+    });
   return pending;
 }
 function totalPendientesHoy(){
   return patients.reduce((a,p)=>a+sesionesPendientes(p).length,0);
-}
+    const pyDate=paymentDateIso(py);
+    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
 let nextNoteId=200;
 function addNota(p,titulo,cuerpo,tag){
   if(!p.notas) p.notas=[];
@@ -4752,6 +4787,15 @@ function resetPaidUpToDate(pid){
   renderDetalle(p);
 }
 
+function actualizarAdeudoManual(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  normalizePatient(p);
+  recomputePatientDebt(p);
+  saveState();
+  renderDetalle(p);
+}
+
 function onEstDateChange(pid){
   const p=patients.find(x=>x.id===pid);
   if(p) renderDetalle(p);
@@ -5718,6 +5762,9 @@ function renderDetalle(p){
         <div class="dsec">
           <div class="sec-title">Historial de pagos</div>
           <div class="pay-log">${payLog}</div>
+          <div style="display:flex;justify-content:flex-end;margin-top:.6rem">
+            <button class="btn-sec btn-sm" onclick="actualizarAdeudoManual(${p.id})">Actualizar adeudo</button>
+          </div>
           <div class="reg-row" style="margin-top:1rem">
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Monto ($)</div>
             <input class="inp-sm" type="number" id="pay-in2" min="0" step="${Math.max(1,tv)}" value="${tv}"></div>
