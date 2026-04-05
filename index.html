@@ -75,6 +75,10 @@ body.auth-locked .auth-screen{display:flex}
 .brand-name{font-family:'Lora',serif;color:white;font-size:14px;font-weight:600}
 .brand-role{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px}
 .profile-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}
+.profile-visible-row{display:flex;gap:12px;align-items:center;margin-top:.5rem;min-width:0}
+.profile-visible-copy{min-width:0;flex:1}
+.profile-visible-meta{font-size:11px;color:var(--ink-light);margin-top:2px;line-height:1.4;overflow-wrap:anywhere}
+.profile-cal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .nav-section{padding:.875rem 0 .25rem}
 .nav-label{font-size:10px;letter-spacing:.09em;color:rgba(255,255,255,.25);padding:0 1.25rem;margin-bottom:5px;text-transform:uppercase}
 .nav-item{display:flex;align-items:center;gap:9px;padding:8px 1.25rem;font-size:13px;color:rgba(255,255,255,.55);cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:all .15s;font-family:'DM Sans',sans-serif;position:relative}
@@ -135,6 +139,10 @@ body.auth-locked .auth-screen{display:flex}
 .today-card.muted-state .today-name{color:#4c5a64}
 .today-card.muted-state .today-meta,.today-card.muted-state .today-status-label{color:#6d7a84}
 .today-card.muted-state .today-locked-pill{background:rgba(111,122,131,.11);border-color:rgba(111,122,131,.28);color:#4c5a64}
+.today-card.falta-state{background:#e8f3f1;border-color:#a5c4bc}
+.today-card.falta-state .today-name{color:#2a4f48}
+.today-card.falta-state .today-meta{color:#3d6b62}
+.today-card.falta-state .today-locked-pill{background:rgba(56,104,96,.13);border-color:rgba(56,104,96,.32);color:#2a4f48}
 .today-card.repo-target,.today-card.repo-origin{background:#fcf4f8;border-color:#edd7e3}
 .today-card.repo-origin{border-style:dashed}
 .today-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.65rem}
@@ -527,6 +535,16 @@ input[type="file"].form-input{cursor:pointer}
   #view-detalle .content{padding:1rem;padding-left:calc(1rem + env(safe-area-inset-left,0px));padding-right:calc(1rem + env(safe-area-inset-right,0px));overflow-x:hidden}
   #view-detalle,.dtab-panel,#view-detalle .detail-grid,#view-detalle .dsec{max-width:100%;min-width:0}
   #view-detalle .dtabs{max-width:100%}
+
+  #view-perfil .content{padding:1rem;padding-left:calc(1rem + env(safe-area-inset-left,0px));padding-right:calc(1rem + env(safe-area-inset-right,0px));overflow-x:hidden}
+  #view-perfil .profile-grid,#view-perfil .dsec,#view-perfil .form-grid,#view-perfil .form-group{max-width:100%;min-width:0}
+  #view-perfil .profile-visible-row{flex-direction:column;align-items:flex-start;gap:.65rem}
+  #view-perfil .profile-visible-row .person-avatar{width:100px !important;height:56px !important}
+  #view-perfil .profile-visible-copy{width:100%}
+  #view-perfil .profile-visible-copy > div{word-break:break-word}
+  #view-perfil .profile-cal-actions{flex-direction:column;align-items:stretch}
+  #view-perfil .profile-cal-actions .btn-primary,
+  #view-perfil .profile-cal-actions .btn-sec{width:100%;max-width:100%;white-space:normal;text-align:center}
 
   .detail-hero{padding:1rem;display:grid;grid-template-columns:56px 1fr;align-items:start;column-gap:.75rem;row-gap:.65rem}
   .hero-axo{width:56px;height:56px}
@@ -2026,7 +2044,7 @@ function openCalendarRebuildModal(){
   }
   const defaultDate=getTodayViewDate();
   const earliestDate=getEarliestCalendarRebuildStartDate();
-  document.getElementById('modal-title').textContent='Actualizar Google Calendar';
+  document.getElementById('modal-title').textContent='Sincronizar con Google Calendar';
   document.getElementById('modal-body').innerHTML=`
     <div style="display:flex;flex-direction:column;gap:12px">
       <div style="font-size:13px;color:var(--ink-light);line-height:1.6">Este proceso primero limpia eventos gestionados por la app y después reconstruye lo que sí debe existir. Mantente en línea unos minutos.</div>
@@ -2055,7 +2073,7 @@ function openCalendarRebuildModal(){
       <div id="calendar-rebuild-status" style="font-size:12px;color:var(--ink-light);min-height:18px">Listo para iniciar.</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         <button class="btn-sec" type="button" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" id="btn-calendar-rebuild-confirm" type="button" onclick="startCalendarRebuildFromModal()">Actualizar Google Calendar</button>
+        <button class="btn-primary" id="btn-calendar-rebuild-confirm" type="button" onclick="startCalendarRebuildFromModal()">Sincronizar con Google Calendar</button>
       </div>
     </div>`;
   document.getElementById('modal-overlay').classList.add('open');
@@ -2120,7 +2138,7 @@ async function startCalendarRebuildFromModal(){
       fromDate:scope==='all'?'':fromDate,
       statusNode:status,
       triggerButton:btn,
-      buttonIdleText:'Actualizar Google Calendar',
+      buttonIdleText:'Sincronizar con Google Calendar',
       buttonIdleTitle:'Limpia Google Calendar y luego reconstruye los eventos correctos según el alcance elegido'
     });
     if(btn){ btn.disabled=true; btn.textContent='Actualizando...'; }
@@ -2156,7 +2174,7 @@ async function startCalendarRebuildFromModal(){
   } catch(err){
     if(status) status.textContent=`No se pudo actualizar el calendario: ${err.message||err}`;
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent='Actualizar Google Calendar'; }
+    if(btn){ btn.disabled=false; btn.textContent='Sincronizar con Google Calendar'; }
   }
 }
 
@@ -3679,12 +3697,12 @@ function renderTherapistProfileView(){
     <div class="profile-grid">
       <div class="dsec">
         <div class="sec-title">Perfil visible</div>
-        <div style="display:flex;gap:12px;align-items:center;margin-top:.5rem">
+        <div class="profile-visible-row">
           <div class="person-avatar" style="width:120px;height:64px;border-radius:10px"><img style="object-fit:contain;border-radius:0;padding:6px" src="${escAttr(p.logoUrl||'Assets/Branding/Logo-Reducido-Alt.svg')}" alt="Logo"></div>
-          <div>
+          <div class="profile-visible-copy">
             <div style="font-family:'Lora',serif;font-size:20px;color:var(--ink)">${escAttr(displayName)}</div>
             <div style="font-size:12px;color:var(--ink-light)">${escAttr(summaryLabel)}</div>
-            <div style="font-size:11px;color:var(--ink-light);margin-top:2px">${escAttr(clinicLabel)} · ${escAttr(affiliationLabel)} · ${escAttr(p.currency)} · ${escAttr(timezoneLabel(p.timezone))}</div>
+            <div class="profile-visible-meta">${escAttr(clinicLabel)} · ${escAttr(affiliationLabel)} · ${escAttr(p.currency)} · ${escAttr(timezoneLabel(p.timezone))}</div>
           </div>
         </div>
         <div style="margin-top:.85rem;font-size:12px;color:var(--ink-light);line-height:1.6">${escAttr(p.bio||'Agrega una biografía corta para mostrar tu enfoque clínico en reportes y vistas compartidas.')}</div>
@@ -3699,10 +3717,10 @@ function renderTherapistProfileView(){
           <div style="font-size:11px;color:var(--ink-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Google Calendar</div>
           <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px">${calStatus}</div>
           <div style="font-size:12px;color:var(--ink-light);line-height:1.5">${calMeta}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <div class="profile-cal-actions">
             <button class="btn-primary btn-sm" onclick="startGoogleCalendarConnect()">${calConnected?'Reconectar Calendar':'Conectar Calendar'}</button>
-            <button class="btn-sec btn-sm" onclick="fetchCalendarIntegrationStatus().then(()=>renderTherapistProfileView())">Actualizar estado</button>
-            ${calConnected?`<button id="btn-calendar-rebuild" class="btn-sec btn-sm" onclick="openCalendarRebuildModal()" title="Limpia Google Calendar y luego reconstruye los eventos correctos desde una fecha elegida">Actualizar Google Calendar</button>`:''}
+            <button class="btn-sec btn-sm" onclick="fetchCalendarIntegrationStatus().then(()=>renderTherapistProfileView())">Revisar conexión con Google</button>
+            ${calConnected?`<button id="btn-calendar-rebuild" class="btn-sec btn-sm" onclick="openCalendarRebuildModal()" title="Limpia Google Calendar y luego reconstruye los eventos correctos desde una fecha elegida">Sincronizar con Google Calendar</button>`:''}
           </div>
         </div>
       </div>
@@ -3878,16 +3896,17 @@ function renderHoy(){
       const tipoInfo=r.ses?.tipo||'asistio';
       const tipoCalendarInfo=tipoInfo==='reposicion'?(r.ses?.repoRespuesta||'reposicion'):tipoInfo;
       const isCalCancelled=tipoCalendarInfo==='cancelada';
+      const isFalta=tipoCalendarInfo==='falta';
       const attendedInfo=tipoCalendarInfo==='asistio'||tipoCalendarInfo==='reposicion'||tipoCalendarInfo==='extra';
-      const chargeInfo=tipoCalendarInfo==='falta'?!r.ses?.noCharge:false;
-      const paidInfo=(attendedInfo||chargeInfo)?!!r.autoPay:false;
-      return `<div class="today-card${isCalCancelled?' muted-state':''}${tipoInfo==='reposicion'?' repo-target':''}">
+      const chargeInfo=isFalta?!r.ses?.noCharge:false;
+      const paidInfo=chargeInfo?!!r.autoPay:false;
+      return `<div class="today-card${isCalCancelled?' muted-state':isFalta?' falta-state':''}${tipoInfo==='reposicion'?' repo-target':''}">
         <div class="today-head">
           <div>
             <div class="today-name">${getConfidentialName(p, activePatients())}${tipoInfo==='reposicion'?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
             <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} · ${pagoLabel(p.pago)}</div>
           </div>
-          ${(!isCalCancelled&&!attendedInfo)
+          ${isFalta
             ?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button><span style="font-size:10px;color:var(--ink-light);font-style:italic">Solo informativo</span></div>`
             :`<button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>`
           }
@@ -3899,29 +3918,6 @@ function renderHoy(){
           </div>
           <button class="today-reset-btn" type="button" title="Volver al estado previo" onclick="unlockTodayCard(${p.id})">&times;</button>
         </div>
-        ${(!isCalCancelled&&!attendedInfo)?`<div class="today-form" style="opacity:.82">
-          <div class="yn-row">
-            <label class="form-label">¿Asistió?</label>
-            <div class="yn-toggle">
-              <button type="button" class="yn-btn${attendedInfo?' active':''}" disabled>Sí</button>
-              <button type="button" class="yn-btn${!attendedInfo?' active':''}" disabled>No</button>
-            </div>
-          </div>
-          <div class="yn-row" style="display:${attendedInfo?'none':'block'}">
-            <label class="form-label">¿Se cobra la sesión?</label>
-            <div class="yn-toggle">
-              <button type="button" class="yn-btn${chargeInfo?' active':''}" disabled>Sí</button>
-              <button type="button" class="yn-btn${!chargeInfo?' active':''}" disabled>No</button>
-            </div>
-          </div>
-          <div class="yn-row" style="display:${attendedInfo||chargeInfo?'block':'none'}">
-            <label class="form-label">¿Pagó?</label>
-            <div class="yn-toggle">
-              <button type="button" class="yn-btn${paidInfo?' active':''}" disabled>Sí</button>
-              <button type="button" class="yn-btn${!paidInfo?' active':''}" disabled>No</button>
-            </div>
-          </div>
-        </div>`:''}
       </div>`;
     }
     if(r.ses?.therapistCancel||r.ses?.tipo==='cancelada'){
@@ -3935,7 +3931,7 @@ function renderHoy(){
     }
     if(r.ses?.todaySaved){
       const repoTargetClass=r.ses?.tipo==='reposicion'?' repo-target':'';
-      const savedMutedClass=r.ses?.tipo==='cancelada'?' muted-state':'';
+      const savedMutedClass=r.ses?.tipo==='cancelada'?' muted-state':r.ses?.tipo==='falta'?' falta-state':'';
       return `<div class="today-card${repoTargetClass}${savedMutedClass}">
         <div class="today-head">
           <div>
@@ -3961,7 +3957,7 @@ function renderHoy(){
     const paidYes=paidAllowed?!!r.autoPay:false;
     const paidMethod=r.autoPay?.metodo||'transferencia';
     const esReposicion=tipoActual==='reposicion';
-    const mutedEditableClass=tipoActual==='cancelada'?' muted-state':'';
+    const mutedEditableClass=tipoActual==='cancelada'?' muted-state':tipoActual==='falta'?' falta-state':'';
     return `<div class="today-card${esReposicion?' repo-target':''}${mutedEditableClass}">
       <div class="today-head">
         <div>
