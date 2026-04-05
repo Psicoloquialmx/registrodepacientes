@@ -3877,24 +3877,29 @@ function renderHoy(){
     if(isRecordedFromCalendar){
       const tipoInfo=r.ses?.tipo||'asistio';
       const tipoCalendarInfo=tipoInfo==='reposicion'?(r.ses?.repoRespuesta||'reposicion'):tipoInfo;
+      const isCalCancelled=tipoCalendarInfo==='cancelada';
       const attendedInfo=tipoCalendarInfo==='asistio'||tipoCalendarInfo==='reposicion'||tipoCalendarInfo==='extra';
       const chargeInfo=tipoCalendarInfo==='falta'?!r.ses?.noCharge:false;
       const paidInfo=(attendedInfo||chargeInfo)?!!r.autoPay:false;
-      return `<div class="today-card muted-state${tipoInfo==='reposicion'?' repo-target':''}">
+      return `<div class="today-card${isCalCancelled?' muted-state':''}${tipoInfo==='reposicion'?' repo-target':''}">
         <div class="today-head">
           <div>
             <div class="today-name">${getConfidentialName(p, activePatients())}${tipoInfo==='reposicion'?` <span style="font-size:10px;font-weight:600;background:var(--sage-soft);color:var(--ink);border-radius:20px;padding:2px 8px;vertical-align:middle;margin-left:6px">Sesión repuesta</span>`:''}</div>
             <div class="today-meta">${r.hora} · ${p.noFixedSchedule?'Sin horario fijo':r.fixedToday?'Horario fijo de hoy':'Registro manual'} · ${pagoLabel(p.pago)}</div>
           </div>
-          <button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>
+          ${isCalCancelled
+            ?`<button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button>`
+            :`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><button class="btn-ghost" onclick="showDetalle(${p.id})">Abrir expediente</button><span style="font-size:10px;color:var(--ink-light);font-style:italic">Solo informativo</span></div>`
+          }
         </div>
-        <div class="today-locked" style="margin-bottom:8px">
+        <div class="today-locked"${isCalCancelled?' style="margin-bottom:8px"':''}>
           <div class="today-locked-left">
-            <button class="btn-sec btn-sm" type="button" style="cursor:default;pointer-events:none">Guardado desde Calendario</button>
-            <span class="today-locked-pill">Solo informativo</span>
+            <button class="${isCalCancelled?'btn-sec':'btn-primary'} btn-sm" type="button" style="cursor:default;pointer-events:none">${isCalCancelled?'Guardado desde Calendario':'Guardado'}</button>
+            <span class="today-locked-pill">${isCalCancelled?'Solo informativo':'Registrado desde Calendario'}</span>
           </div>
+          <button class="today-reset-btn" type="button" title="Volver al estado previo" onclick="unlockTodayCard(${p.id})">&times;</button>
         </div>
-        <div class="today-form" style="opacity:.82">
+        ${isCalCancelled?'':`<div class="today-form" style="opacity:.82">
           <div class="yn-row">
             <label class="form-label">¿Asistió?</label>
             <div class="yn-toggle">
@@ -3916,7 +3921,7 @@ function renderHoy(){
               <button type="button" class="yn-btn${!paidInfo?' active':''}" disabled>No</button>
             </div>
           </div>
-        </div>
+        </div>`}
       </div>`;
     }
     if(r.ses?.therapistCancel||r.ses?.tipo==='cancelada'){
@@ -3930,7 +3935,7 @@ function renderHoy(){
     }
     if(r.ses?.todaySaved){
       const repoTargetClass=r.ses?.tipo==='reposicion'?' repo-target':'';
-      const savedMutedClass=(r.ses?.tipo==='cancelada'||(r.ses?.tipo==='falta'&&!!r.ses?.noCharge))?' muted-state':'';
+      const savedMutedClass=r.ses?.tipo==='cancelada'?' muted-state':'';
       return `<div class="today-card${repoTargetClass}${savedMutedClass}">
         <div class="today-head">
           <div>
@@ -3956,7 +3961,7 @@ function renderHoy(){
     const paidYes=paidAllowed?!!r.autoPay:false;
     const paidMethod=r.autoPay?.metodo||'transferencia';
     const esReposicion=tipoActual==='reposicion';
-    const mutedEditableClass=(tipoActual==='cancelada'||(tipoActual==='falta'&&!!r.ses?.noCharge))?' muted-state':'';
+    const mutedEditableClass=tipoActual==='cancelada'?' muted-state':'';
     return `<div class="today-card${esReposicion?' repo-target':''}${mutedEditableClass}">
       <div class="today-head">
         <div>
