@@ -1055,7 +1055,11 @@ function calcSesionesSinCubrir(p){
       return true;
     })
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
-  let saldo=(p.pagos||[]).reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+    // When there's a cutoff, only count payments after cutoff
+    let saldo=(p.pagos||[]).reduce((sum,py)=>{
+      if(cutoffDate&&py.fecha<cutoffDate) return sum;
+      return sum+Math.max(0,Number(py.monto)||0);
+    },0);
   const sinCubrir=[];
   for(const s of billable){
     const costo=tarifaEnFecha(p,s.fecha);
