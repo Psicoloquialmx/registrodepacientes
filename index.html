@@ -6836,7 +6836,7 @@ function guardarNuevo(){
 
 function openUnplannedSessionModal(){
   const todayStr=today();
-  const activos=activePatients();
+  const activos=sortPatientsByName(activePatients());
   document.getElementById('modal-title').textContent='Agregar sesión no prevista';
   document.getElementById('modal-body').innerHTML=`
     <div class="form-grid">
