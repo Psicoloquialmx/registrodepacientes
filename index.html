@@ -5774,7 +5774,7 @@ function renderDetalle(p){
         </div>
       </div>
       <div class="dsec full" style="margin-top:1rem">
-        <div class="sec-title">Al corriente con pagos hasta</div>
+        <div class="sec-title">Corte de prospección</div>
         <p style="font-size:12px;color:var(--ink-light);margin-bottom:1rem;line-height:1.5">Usar esta fecha para marcar un punto de corte contable solo en Prospección. No modifica el adeudo real del paciente ni las sesiones cubiertas en esta vista.</p>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
           <div>
@@ -6526,7 +6526,7 @@ function moveSemanaRange(delta){
 
 // " - ? RESUMEN " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderResumen(){
-  const activos=activePatients();
+  const activos=sortPatientsByName(activePatients());
   const hoy=new Date();
   const resumenRefDate=new Date((resumenBaseDate||today())+'T12:00');
   const semBounds=getPeriodBounds('semana',hoy);
@@ -6626,7 +6626,7 @@ function renderResumen(){
 
 // " - ? PROSPECTADO " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 function renderProspectado(){
-  const activos=activePatients();
+  const activos=sortPatientsByName(activePatients());
   const refDate=new Date((prospBaseDate||today())+'T12:00');
   const baseIso=refDate.toISOString().split('T')[0];
   const baseMonth=baseIso.slice(0,7);
