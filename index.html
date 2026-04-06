@@ -1504,6 +1504,10 @@ function normalizePatient(p){
   if(p.estimationChoice!=='manual'&&p.estimationChoice!=='estimacion') p.estimationChoice='';
   if(!p.estimationChoice&&p.manualEstimateOverride) p.estimationChoice='estimacion';
   p.hideEstimationExplanation=!!p.hideEstimationExplanation;
+  const anchorDate=toIsoDateLoose(p.estimationAnchorDate);
+  const anchorSession=parseInt(p.estimationAnchorSession,10);
+  p.estimationAnchorDate=anchorDate||'';
+  p.estimationAnchorSession=Number.isFinite(anchorSession)&&anchorSession>0?anchorSession:null;
   p.prospCarryDebt=(p.prospCarryDebt!==false);
   normalizarStatusHistory(p);
   normalizarFrecuencias(p);
@@ -1572,6 +1576,32 @@ function toggleEstimationExplanation(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   p.hideEstimationExplanation=!p.hideEstimationExplanation;
+  saveState();
+  renderDetalle(p);
+}
+
+function guardarPuntoReferenciaEstimacion(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const fechaRaw=document.getElementById('est-anchor-date')?.value||'';
+  const fecha=toIsoDateLoose(fechaRaw);
+  const sesion=parseInt(document.getElementById('est-anchor-session')?.value||'',10);
+  if(!fecha){alert('Selecciona una fecha válida para el punto de referencia.');return;}
+  if(fecha<p.inicio){alert('La fecha del punto de referencia no puede ser anterior al inicio de tratamiento.');return;}
+  if(!Number.isFinite(sesion)||sesion<=0){alert('Escribe un número de sesión válido (mayor a 0).');return;}
+  p.estimationAnchorDate=fecha;
+  p.estimationAnchorSession=sesion;
+  addLog(p,'datos',`Punto de referencia de estimación: sesión #${sesion} en ${displayDate(fecha)}`);
+  saveState();
+  renderDetalle(p);
+}
+
+function resetPuntoReferenciaEstimacion(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  p.estimationAnchorDate='';
+  p.estimationAnchorSession=null;
+  addLog(p,'datos','Punto de referencia de estimación restablecido');
   saveState();
   renderDetalle(p);
 }
@@ -3889,7 +3919,7 @@ function calcularPausasEnTramos(p,tramos,targetDateStr){
   return result;
 }
 
-function estimarSesionActual(p,targetDateStr){
+function estimarSesionBase(p,targetDateStr){
   const start=new Date(p.inicio+'T12:00');
   const end=new Date(targetDateStr+'T12:00');
   if(isNaN(start.getTime())||isNaN(end.getTime())||end<start){
@@ -3908,6 +3938,25 @@ function estimarSesionActual(p,targetDateStr){
   const canceladasEstimadas=therapistEstimated+patientEstimated+therapistPauses+patientPauses;
   const estimada=Math.max(0,planned-canceladasEstimadas);
   return {estimada,programadas:planned,canceladasEstimadas,semanas:weeks,tramos,therapistEstimated,patientEstimated,therapistPauses,patientPauses};
+}
+
+function estimarSesionActual(p,targetDateStr){
+  const base=estimarSesionBase(p,targetDateStr);
+  const anchorDate=toIsoDateLoose(p?.estimationAnchorDate);
+  const anchorSession=parseInt(p?.estimationAnchorSession,10);
+  if(!anchorDate||!Number.isFinite(anchorSession)||anchorSession<=0) return base;
+  if(anchorDate<p.inicio) return base;
+  const anchorBase=estimarSesionBase(p,anchorDate);
+  const delta=base.estimada-anchorBase.estimada;
+  const recalibrada=Math.max(0,anchorSession+delta);
+  return {
+    ...base,
+    estimada:recalibrada,
+    anchorApplied:true,
+    anchorDate,
+    anchorSession,
+    baseEnAncla:anchorBase.estimada
+  };
 }
 
 function textoPeriodo(period){
@@ -5780,6 +5829,8 @@ function renderDetalle(p){
   const estToday=estimarSesionActual(p,today());
   const sessionAtSelectedDate=useManualConfirmedMode?getManualCurrentSessionCount(p,estTarget):est.estimada;
   const currentSessionNumber=useManualConfirmedMode?manualCurrentCount:estToday.estimada;
+  const anchorDateValue=p.estimationAnchorDate||p.inicio;
+  const anchorSessionValue=p.estimationAnchorSession||'';
 
   const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><img class="alert-icon" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Alerta"><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
 
@@ -5906,6 +5957,23 @@ function renderDetalle(p){
               </div>
               <div class="est-main">Sesión actual #${currentSessionNumber}</div>
               <div class="est-sub">Número al ${displayDate(estTarget)}: #${sessionAtSelectedDate}</div>
+              ${useEstimatedMode?`
+                <div class="form-grid" style="margin-top:.5rem">
+                  <div class="form-group">
+                    <label class="form-label">Fecha exacta conocida</label>
+                    <input class="form-input" type="date" id="est-anchor-date" value="${anchorDateValue}" min="${p.inicio}">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Número de sesión exacto</label>
+                    <input class="form-input" type="number" id="est-anchor-session" min="1" step="1" value="${anchorSessionValue}" placeholder="Ej: 146">
+                  </div>
+                </div>
+                <div class="est-row" style="margin-top:2px">
+                  <button class="btn-primary btn-sm" onclick="guardarPuntoReferenciaEstimacion(${p.id})">Guardar punto de referencia</button>
+                  ${p.estimationAnchorDate&&p.estimationAnchorSession?`<button class="btn-ghost btn-sm" onclick="resetPuntoReferenciaEstimacion(${p.id})">Restablecer referencia</button>`:''}
+                </div>
+                ${est.anchorApplied?`<div class="est-sub">Referencia activa: sesión #${est.anchorSession} en ${displayDate(est.anchorDate)}. La estimación se recalibra desde ese punto para reducir suposiciones.</div>`:''}
+              `:''}
               ${showEstimationExplanation?`
                 ${useEstimatedMode?`
                   <div class="est-sub">Estimación desde ${displayDate(p.inicio)}. Programadas: ${est.programadas} · Ajuste total: -${est.canceladasEstimadas}.</div>
@@ -6180,6 +6248,18 @@ function buildEditPanel(p){
       </div>
       <div class="dsec full">
         <div class="sec-title">Días y horas de sesión</div>
+        <div class="form-grid" style="margin-top:.25rem">
+          <div class="form-group">
+            <label class="form-label">Aplicar cambio de horario desde</label>
+            <input class="form-input" id="e-schedule-effective-date" type="date" value="${today()>p.inicio?today():p.inicio}" min="${p.inicio}">
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-light)">
+              <input type="checkbox" id="e-sync-freq-schedule" checked>
+              Sincronizar frecuencia con este cambio (mejora estimación)
+            </label>
+          </div>
+        </div>
         <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:.75rem">
           <input type="checkbox" id="e-no-fixed-schedule" ${baseNoFixed?'checked':''} onchange="toggleNoFixedEdit(this.checked)">
           <label class="form-label" for="e-no-fixed-schedule" style="margin:0">Sin horario fijo (selección manual en calendario)</label>
@@ -6187,7 +6267,7 @@ function buildEditPanel(p){
         <div id="e-fixed-days-wrap" style="margin-bottom:.75rem;${baseNoFixed?'display:none;':''}"><div class="form-label" style="margin-bottom:8px">Días fijos</div>
         <div class="days-row" id="e-dias">${diasBtns}</div></div>
         <div id="e-fixed-hours-wrap" style="${baseNoFixed?'display:none;':''}"><div id="e-horas-container">${horasRows}</div></div>
-        <div class="alert-box" id="e-fixed-alert" style="${baseNoFixed?'display:none;':''}">Al guardar cambios de horario, se te pedirá la fecha a partir de la cual aplica para conservar el historial previo.</div>
+        <div class="alert-box" id="e-fixed-alert" style="${baseNoFixed?'display:none;':''}">Puedes aplicar cambios con fecha histórica (desde inicio de tratamiento) para conservar y ajustar el historial real.</div>
         <div style="margin-top:.875rem"><button class="btn-primary" onclick="guardarDatosGenerales(${p.id})">${getEditSaveButtonLabel(p.id,'cambios','Guardar cambios','Cambios guardados')}</button></div>
       </div>
       <div class="dsec full">
@@ -6200,7 +6280,7 @@ function buildEditPanel(p){
         <div style="margin-top:.5rem"><button class="btn-primary" onclick="guardarSeccionAusencias(${p.id})">${getEditSaveButtonLabel(p.id,'ausencias','Guardar ausencias','Ausencias guardadas')}</button></div>
         <div class="form-grid" style="margin-top:.75rem">
           <div class="form-group"><label class="form-label">Nueva frecuencia</label><input class="form-input" id="e-freq-veces" type="number" min="1" max="7" value="${freqActual.vecesSemana}"></div>
-          <div class="form-group"><label class="form-label">Vigente desde</label><input class="form-input" id="e-freq-desde" type="date" value="${today()}"></div>
+          <div class="form-group"><label class="form-label">Vigente desde (histórico)</label><input class="form-input" id="e-freq-desde" type="date" value="${today()}"></div>
         </div>
         <div class="est-row">
           <button class="btn-primary" onclick="agregarCambioFrecuencia(${p.id})">Registrar cambio de frecuencia</button>
@@ -6295,7 +6375,7 @@ function confirmScheduleEffectiveDate(){
 function applyGuardarDatosGenerales(id,payload,desdeHorario=null){
   const p=patients.find(x=>x.id===id);
   if(!p) return;
-  const {diasSel,nuevasHoras,noFixedSchedule,cambios,scheduleChanged}=payload;
+  const {diasSel,nuevasHoras,noFixedSchedule,cambios,scheduleChanged,syncFreqWithSchedule}=payload;
   if(scheduleChanged&&desdeHorario){
     const nuevoHorario={desde:desdeHorario,dias:[...diasSel],horas:{...nuevasHoras},noFixedSchedule};
     const idx=(p.scheduleHistory||[]).findIndex(h=>h.desde===desdeHorario);
@@ -6303,6 +6383,21 @@ function applyGuardarDatosGenerales(id,payload,desdeHorario=null){
     else p.scheduleHistory.push(nuevoHorario);
     normalizarHistorialHorario(p);
     cambios.push(`Horario aplicado desde ${displayDate(desdeHorario)}`);
+    if(syncFreqWithSchedule){
+      const derivedFreq=Math.max(1,noFixedSchedule?1:(diasSel||[]).length||1);
+      normalizarFrecuencias(p);
+      const freqExisting=(p.frecuencias||[]).find(f=>f.desde===desdeHorario);
+      if(freqExisting){
+        if(freqExisting.vecesSemana!==derivedFreq){
+          cambios.push(`Frecuencia sincronizada desde ${displayDate(desdeHorario)}: ${freqExisting.vecesSemana} → ${derivedFreq} sesión(es)/semana`);
+          freqExisting.vecesSemana=derivedFreq;
+        }
+      } else {
+        p.frecuencias.push({desde:desdeHorario,vecesSemana:derivedFreq});
+        cambios.push(`Frecuencia sincronizada desde ${displayDate(desdeHorario)}: ${derivedFreq} sesión(es)/semana`);
+      }
+      normalizarFrecuencias(p);
+    }
   }
   normalizarHistorialHorario(p);
   const vigenteHoy=getScheduleAtDate(p,today());
@@ -6479,8 +6574,9 @@ function guardarDatosGenerales(id){
   const payload={
     diasSel,nuevasHoras,noFixedSchedule,
     cambios:[...cambios],scheduleChanged,
+    syncFreqWithSchedule:document.getElementById('e-sync-freq-schedule')?.checked!==false,
     minDate:p.inicio,
-    suggestedDate:(today()>p.inicio?today():p.inicio)
+    suggestedDate:(document.getElementById('e-schedule-effective-date')?.value||'').trim()|| (today()>p.inicio?today():p.inicio)
   };
   if(scheduleChanged){
     openScheduleEffectiveDateModal(id,payload);
