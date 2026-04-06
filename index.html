@@ -604,7 +604,25 @@ input[type="file"].form-input{cursor:pointer}
   #panel-pagos .pdel{grid-area:del}
   .hora-dia-row{flex-wrap:wrap}
   .hora-dia-label{min-width:0}
-  .month-calendar{width:840px}
+  #view-semana .content{padding:.9rem;padding-left:calc(.9rem + env(safe-area-inset-left,0px));padding-right:calc(.9rem + env(safe-area-inset-right,0px));overflow-x:hidden}
+  #view-semana .week-toolbar{gap:8px}
+  #view-semana .week-nav{width:100%;justify-content:space-between}
+  #view-semana .week-period{font-size:12px;line-height:1.35;text-align:center;flex:1;min-width:0}
+
+  /* Semana móvil: una columna para legibilidad y sin scroll horizontal */
+  #view-semana .week-grid{grid-template-columns:1fr;gap:8px}
+  #view-semana .wday{padding:.65rem .55rem;min-height:0}
+  #view-semana .wday-name{font-size:11px;text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  #view-semana .wslot{font-size:12px;padding:6px 7px;margin-bottom:5px}
+
+  /* Mes móvil: comprimir celdas para evitar desplazamiento lateral */
+  #view-semana .month-scroll{overflow-x:visible}
+  #view-semana .month-calendar{width:100%;max-width:100%}
+  #view-semana .month-dow,#view-semana .month-grid{gap:3px}
+  #view-semana .month-dow{font-size:9px}
+  #view-semana .month-cell{padding:.4rem .28rem;min-height:92px}
+  #view-semana .month-day{font-size:10px;margin-bottom:4px}
+  #view-semana .month-cell .wslot{font-size:10px;padding:4px 5px;line-height:1.25}
 }
 
 @media (min-width:769px){
@@ -933,6 +951,7 @@ document.getElementById('auth-axo').src = 'Assets/Axolotl/Normal-1.svg';
 
 const DIAS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 const DIAS_FULL = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DIAS_CAL = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // " - ? Axo HERO: solo versiones felices/pensativas " -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -1054,8 +1073,9 @@ function calcBalanceDesde(p,fechaIso){
     .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   return{cargos,pagos,saldo:Math.max(0,cargos-pagos)};
 }
-function calcSesionesSinCubrir(p){
+function calcSesionesSinCubrir(p,desdeIso=null){
   const firstFreeId=getFirstFreeSessionId(p);
+  const startIso=desdeIso||null;
   const billableRegistradas=(p.sesiones||[])
     .map(s=>{
       const sesDate=sessionDateIso(s);
@@ -1065,11 +1085,14 @@ function calcSesionesSinCubrir(p){
     .filter(s=>{
       if(!s) return false;
       if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
+      if(startIso&&s.fecha<startIso) return false;
       return true;
     });
   const billable=billableRegistradas
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
   let saldo=(p.pagos||[]).reduce((sum,py)=>{
+    const pyDate=paymentDateIso(py);
+    if(startIso&&pyDate&&pyDate<startIso) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   const sinCubrir=[];
@@ -5510,7 +5533,7 @@ function buildCalendar(p){
   const isFlexible=!!getScheduleAtDate(p,today()).noFixedSchedule;
   const firstDay=new Date(calYear,calMonth,1);
   const lastDay=new Date(calYear,calMonth+1,0);
-  const startDow=(firstDay.getDay()+6)%7;
+  const startDow=firstDay.getDay();
   const totalDays=lastDay.getDate();
   const todayStr=today();
   const hoy=new Date();
@@ -5520,7 +5543,7 @@ function buildCalendar(p){
   const pendientes=new Set(sesionesPendientes(p));
 
   let cells='';
-  cells+=DIAS.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  cells+=DIAS_CAL.map(d=>`<div class="cal-dow">${d}</div>`).join('');
   for(let i=0;i<startDow;i++) cells+=`<div class="cal-day other-month"></div>`;
 
   for(let d=1;d<=totalDays;d++){
@@ -5655,7 +5678,7 @@ function renderDetalle(p){
     <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">&times;</button>
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
   // Sesiones sin cubrir
-  const sinCubrir=calcSesionesSinCubrir(p);
+  const sinCubrir=calcSesionesSinCubrir(p,p.deudaDesde||p.inicio);
   const diag=buildDebtDiagnostics(p,p.deudaDesde||p.inicio);
   const _tipoLbl={asistio:'Asistió',falta:'Falta',extra:'Extra',reposicion:'Reposición',pendiente:'Pendiente por registrar'};
   const sinCubrirHtml=sinCubrir.length===0
@@ -5810,17 +5833,6 @@ function renderDetalle(p){
         <div class="dsec">
           <div class="sec-title">Historial de pagos</div>
           <div class="pay-log">${payLog}</div>
-          <div style="display:flex;justify-content:flex-end;margin-top:.6rem">
-            <button class="btn-sec btn-sm" onclick="actualizarAdeudoManual(${p.id})">Actualizar adeudo</button>
-          </div>
-          <details style="margin-top:10px;border:1px solid var(--ink-border);border-radius:10px;padding:8px 10px;background:var(--bg)">
-            <summary style="cursor:pointer;font-size:12px;color:var(--ink);font-weight:600">Diagnóstico contable</summary>
-            <div style="font-size:11px;color:var(--ink-light);margin-top:8px">Calculado desde: <strong>${displayDate(diag.startIso)}</strong> · Cargos: <strong>$${diag.cargos.toLocaleString('es-MX')}</strong> · Pagos: <strong>$${diag.pagosTotal.toLocaleString('es-MX')}</strong> · Saldo: <strong>$${diag.saldo.toLocaleString('es-MX')}</strong></div>
-            <div style="margin-top:8px;max-height:190px;overflow:auto;display:flex;flex-direction:column;gap:6px">
-              ${(diag.sesiones.length?diag.sesiones.map(s=>`<div class="prow" style="grid-template-columns:minmax(0,1fr) auto;gap:8px"><span class="pdate">Sesión ${s.fecha?displayDate(s.fecha):'sin fecha'}${s.hora?' · '+s.hora:''} · ${s.tipo}<br><span style="font-size:11px;color:var(--ink-light)">${s.motivo}</span></span><span class="pamt" style="color:${s.included?'#2d7a6e':'#9aa8b1'}">${s.included?'+$'+s.costo.toLocaleString('es-MX'):'Excluida'}</span></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin sesiones registradas.</div>')}
-              ${(diag.pagos.length?diag.pagos.map(py=>`<div class="prow" style="grid-template-columns:minmax(0,1fr) auto;gap:8px"><span class="pdate">Pago ${py.fecha?displayDate(py.fecha):'sin fecha'} · ${py.metodo}<br><span style="font-size:11px;color:var(--ink-light)">${py.motivo}</span></span><span class="pamt" style="color:${py.included?'#2d7a6e':'#9aa8b1'}">${py.included?'-$'+py.monto.toLocaleString('es-MX'):'Excluido'}</span></div>`).join(''):'')}
-            </div>
-          </details>
           <div class="reg-row" style="margin-top:1rem">
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Monto ($)</div>
             <input class="inp-sm" type="number" id="pay-in2" min="0" step="${Math.max(1,tv)}" value="${tv}"></div>
@@ -5838,6 +5850,20 @@ function renderDetalle(p){
           </div>
           <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:5px">${sinCubrirHtml}</div>
         </div>
+      </div>
+      <div class="dsec full" style="margin-top:1rem">
+        <div class="sec-title">Herramientas de adeudo</div>
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+          <button class="btn-sec btn-sm" onclick="actualizarAdeudoManual(${p.id})">Actualizar adeudo</button>
+        </div>
+        <details style="border:1px solid var(--ink-border);border-radius:10px;padding:8px 10px;background:var(--bg)">
+          <summary style="cursor:pointer;font-size:12px;color:var(--ink);font-weight:600">Diagnóstico contable</summary>
+          <div style="font-size:11px;color:var(--ink-light);margin-top:8px">Calculado desde: <strong>${displayDate(diag.startIso)}</strong> · Cargos: <strong>$${diag.cargos.toLocaleString('es-MX')}</strong> · Pagos: <strong>$${diag.pagosTotal.toLocaleString('es-MX')}</strong> · Saldo: <strong>$${diag.saldo.toLocaleString('es-MX')}</strong></div>
+          <div style="margin-top:8px;max-height:220px;overflow:auto;display:flex;flex-direction:column;gap:6px">
+            ${(diag.sesiones.length?diag.sesiones.map(s=>`<div class="prow" style="grid-template-columns:minmax(0,1fr) auto;gap:8px"><span class="pdate">Sesión ${s.fecha?displayDate(s.fecha):'sin fecha'}${s.hora?' · '+s.hora:''} · ${s.tipo}<br><span style="font-size:11px;color:var(--ink-light)">${s.motivo}</span></span><span class="pamt" style="color:${s.included?'#2d7a6e':'#9aa8b1'}">${s.included?'+$'+s.costo.toLocaleString('es-MX'):'Excluida'}</span></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin sesiones registradas.</div>')}
+            ${(diag.pagos.length?diag.pagos.map(py=>`<div class="prow" style="grid-template-columns:minmax(0,1fr) auto;gap:8px"><span class="pdate">Pago ${py.fecha?displayDate(py.fecha):'sin fecha'} · ${py.metodo}<br><span style="font-size:11px;color:var(--ink-light)">${py.motivo}</span></span><span class="pamt" style="color:${py.included?'#2d7a6e':'#9aa8b1'}">${py.included?'-$'+py.monto.toLocaleString('es-MX'):'Excluido'}</span></div>`).join(''):'')}
+          </div>
+        </details>
       </div>
       <div class="dsec full" style="margin-top:1rem">
         <div class="sec-title">Corte de prospección</div>
@@ -6517,7 +6543,7 @@ function renderSemana(){
     const month=base.getMonth();
     const firstDay=new Date(year,month,1,12,0,0,0);
     const daysInMonth=new Date(year,month+1,0).getDate();
-    const offset=(firstDay.getDay()+6)%7;
+    const offset=firstDay.getDay();
     const cells=[];
     for(let idx=0;idx<42;idx++){
       const dayNum=idx-offset+1;
@@ -6544,18 +6570,18 @@ function renderSemana(){
       </div>
       <div class="month-scroll">
         <div class="month-calendar">
-          <div class="month-dow">${DIAS.map(d=>`<div>${d}</div>`).join('')}</div>
+          <div class="month-dow">${DIAS_CAL.map(d=>`<div>${d}</div>`).join('')}</div>
           <div class="month-grid">${cells.join('')}</div>
         </div>
       </div>`;
     return;
   }
 
-  const lun=new Date(base);lun.setDate(base.getDate()-((base.getDay()+6)%7));
-  const dom=new Date(lun);dom.setDate(lun.getDate()+6);
-  const weekLabel=`Semana del ${lun.getDate()} al ${dom.getDate()} de ${MESES[lun.getMonth()]} de ${lun.getFullYear()}`;
-  const cols=DIAS.map((dia,i)=>{
-    const fecha=new Date(lun);fecha.setDate(lun.getDate()+i);
+  const dom=new Date(base);dom.setDate(base.getDate()-base.getDay());
+  const sab=new Date(dom);sab.setDate(dom.getDate()+6);
+  const weekLabel=`Semana del ${dom.getDate()} al ${sab.getDate()} de ${MESES[dom.getMonth()]} de ${dom.getFullYear()}`;
+  const cols=DIAS_CAL.map((dia,i)=>{
+    const fecha=new Date(dom);fecha.setDate(dom.getDate()+i);
     const fechaStr=fecha.toISOString().split('T')[0];
     return `<div class="wday"><div class="wday-name">${dia}<br><span style="font-size:9px;opacity:.6">${fechaStr.slice(5)}</span></div>${dayEntries(fechaStr,i)}</div>`;
   }).join('');
