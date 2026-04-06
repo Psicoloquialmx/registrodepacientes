@@ -1348,7 +1348,7 @@ function scheduleSummary(p,useFull=false){
 }
 function sesionesEnMes(p,year,month){
   const daysInMonth=new Date(year,month+1,0).getDate();
-  const cutoffDate=p.paidUpToDate||null;
+  const cutoffDate=p.deudaDesde||null;
   let scheduled=0;
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -3786,7 +3786,7 @@ function formatPeriodLabel(period,bounds){
 
 function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
   const firstFreeId=getFirstFreeSessionId(p);
-  const cutoffDate=p.paidUpToDate||null;
+  const cutoffDate=p.deudaDesde||null;
   const validSession=s=>{
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
     const sesDate=sessionDateIso(s);
@@ -3802,7 +3802,9 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
   const paymentsBefore=(p.pagos||[])
     .filter(py=>{
       const pyDate=paymentDateIso(py);
-      return !!pyDate&&pyDate<startIso;
+      if(!pyDate) return false;
+      if(cutoffDate&&pyDate<cutoffDate) return false;
+      return pyDate<startIso;
     })
     .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   const carryDebt=Math.max(0,chargesBefore-paymentsBefore);
@@ -3820,7 +3822,9 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
   const paymentsPeriod=(p.pagos||[])
     .filter(py=>{
       const pyDate=paymentDateIso(py);
-      return !!pyDate&&pyDate>=startIso&&pyDate<=endIso;
+      if(!pyDate) return false;
+      if(cutoffDate&&pyDate<cutoffDate) return false;
+      return pyDate>=startIso&&pyDate<=endIso;
     })
     .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
 
@@ -4978,36 +4982,6 @@ function resetDeudaDesde(pid){
   renderDetalle(p);
 }
 
-function updatePaidUpToDateDisplay(pid){
-  const p=patients.find(x=>x.id===parseInt(pid));
-  if(!p) return;
-  normalizePatient(p);
-  const fecha=document.getElementById('paid-up-to-date-in')?.value||'';
-  const s=document.getElementById('puto-adeudo-preview-'+pid);
-  if(!s) return;
-  s.textContent=fecha?displayDate(fecha):'Sin fecha de corte';
-}
-
-function guardarPaidUpToDate(pid){
-  const p=patients.find(x=>x.id===parseInt(pid));
-  if(!p) return;
-  const fecha=document.getElementById('paid-up-to-date-in')?.value;
-  if(!fecha) return;
-  p.paidUpToDate=fecha;
-  addLog(p,'datos',`Corte de prospección actualizado a ${displayDate(fecha)} (solo afecta vista de prospección)`);
-  saveState();
-  renderDetalle(p);
-}
-
-function resetPaidUpToDate(pid){
-  const p=patients.find(x=>x.id===parseInt(pid));
-  if(!p) return;
-  delete p.paidUpToDate;
-  addLog(p,'datos','Corte de prospección restablecido (solo afecta vista de prospección)');
-  saveState();
-  renderDetalle(p);
-}
-
 function actualizarAdeudoManual(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
@@ -6054,17 +6028,8 @@ function renderDetalle(p){
         </details>
       </div>
       <div class="dsec full" style="margin-top:1rem">
-        <div class="sec-title">Corte de prospección</div>
-        <p style="font-size:12px;color:var(--ink-light);margin-bottom:1rem;line-height:1.5">Usar esta fecha para marcar un punto de corte contable solo en Prospección. No modifica el adeudo real del paciente ni las sesiones cubiertas en esta vista.</p>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
-          <div>
-            <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha cutoff</div>
-            <input class="inp-sm" type="date" id="paid-up-to-date-in" value="${p.paidUpToDate||''}" onchange="updatePaidUpToDateDisplay(${p.id})" style="width:160px">
-          </div>
-          <button class="btn-primary btn-sm" onclick="guardarPaidUpToDate(${p.id})" style="align-self:flex-end">Guardar fecha</button>
-          ${p.paidUpToDate?`<button class="btn-ghost" style="font-size:11px;align-self:flex-end" onclick="resetPaidUpToDate(${p.id})">Restablecer</button>`:''}
-        </div>
-        ${p.paidUpToDate?`<div style="padding:8px;background:rgba(165,196,188,0.15);border-left:3px solid #a5c4bc;font-size:12px;color:var(--ink)">Corte activo para Prospección: <strong id="puto-adeudo-preview-${p.id}">${displayDate(p.paidUpToDate)}</strong></div>`:''}
+        <div class="sec-title">Prospección unificada</div>
+        <p style="font-size:12px;color:var(--ink-light);line-height:1.5">La vista de Prospección usa la misma fecha de <strong>Calcular desde</strong> de Estado de cuenta (${displayDate(p.deudaDesde||p.inicio)}). Ya no se requiere un cutoff separado en esta sección.</p>
       </div>
     </div>
 
