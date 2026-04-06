@@ -1013,6 +1013,24 @@ function isSessionCountedAsGiven(s){
   if(s.tipo==='reposicion') return !s.repoRespuesta||s.repoRespuesta==='asistio';
   return s.tipo==='asistio'||s.tipo==='extra';
 }
+function isSessionCountedForManualCurrent(s){
+  if(!s||s.skipped) return false;
+  if(s.tipo==='cancelada') return false;
+  if(s.tipo==='falta') return !s.noCharge;
+  if(s.tipo==='reposicion') return s.repoRespuesta==='asistio'||(s.repoRespuesta==='falta'&&!s.noCharge);
+  return s.tipo==='asistio'||s.tipo==='extra';
+}
+function getManualCurrentSessionCount(p,upToDateStr=today()){
+  if(!p) return 0;
+  const startNum=isoDayNumber(p.inicio||today());
+  const endNum=isoDayNumber(upToDateStr||today());
+  if(startNum===null||endNum===null) return 0;
+  return (p.sesiones||[]).filter(s=>{
+    const dNum=isoDayNumber(sessionDateIso(s));
+    if(dNum===null||dNum<startNum||dNum>endNum) return false;
+    return isSessionCountedForManualCurrent(s);
+  }).length;
+}
 function isSessionCountedAsGivenForResumen(s){
   if(!s) return false;
   if(s.tipo==='reposicion') return s.repoRespuesta==='asistio';
@@ -1472,6 +1490,9 @@ function normalizePatient(p){
   p.statusNote=p.statusNote||'';
   p.statusReason=p.statusReason||inferStatusReason(p);
   p.manualEstimateOverride=!!p.manualEstimateOverride;
+  if(p.estimationChoice!=='manual'&&p.estimationChoice!=='estimacion') p.estimationChoice='';
+  if(!p.estimationChoice&&p.manualEstimateOverride) p.estimationChoice='estimacion';
+  p.hideEstimationExplanation=!!p.hideEstimationExplanation;
   p.prospCarryDebt=(p.prospCarryDebt!==false);
   normalizarStatusHistory(p);
   normalizarFrecuencias(p);
@@ -1517,7 +1538,29 @@ function toggleManualEstimation(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   p.manualEstimateOverride=!p.manualEstimateOverride;
-  addLog(p,'datos',`${p.manualEstimateOverride?'Estimación manual activada':'Estimación manual desactivada'} para pacientes de inicio reciente`);
+  p.estimationChoice=p.manualEstimateOverride?'estimacion':'manual';
+  addLog(p,'datos',`${p.manualEstimateOverride?'Estimación activada':'Registro manual activado'} para pacientes de inicio reciente`);
+  saveState();
+  renderDetalle(p);
+}
+
+function setEstimationChoice(pid,choice){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const next=choice==='estimacion'?'estimacion':'manual';
+  p.estimationChoice=next;
+  p.manualEstimateOverride=(next==='estimacion');
+  addLog(p,'datos',next==='estimacion'
+    ?'Estimación activada para número de sesión'
+    :'Registro manual confirmado para número de sesión');
+  saveState();
+  renderDetalle(p);
+}
+
+function toggleEstimationExplanation(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  p.hideEstimationExplanation=!p.hideEstimationExplanation;
   saveState();
   renderDetalle(p);
 }
@@ -3750,6 +3793,17 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
   const paidPct=projectedIdeal>0?Math.min(100,Math.round((paymentsPeriod/projectedIdeal)*100)):0;
   const debtPct=projectedIdeal>0?Math.min(100,Math.round((pendingEnd/projectedIdeal)*100)):0;
 
+  // Barra de prospeccion: siempre sobre el 100% del periodo (projectedIdeal).
+  // Segmentos: generado y pagado, generado con adeudo, y pendiente por generar.
+  const generatedAmount=Math.min(projectedIdeal,Math.max(0,chargesPeriod));
+  const paidOnGeneratedAmount=Math.min(generatedAmount,Math.max(0,paymentsPeriod));
+  const debtOnGeneratedAmount=Math.max(0,generatedAmount-paidOnGeneratedAmount);
+  const pendingGenerationAmount=Math.max(0,projectedIdeal-generatedAmount);
+  const generatedPct=projectedIdeal>0?Math.round((generatedAmount/projectedIdeal)*100):0;
+  const paidOnGeneratedPct=projectedIdeal>0?Math.round((paidOnGeneratedAmount/projectedIdeal)*100):0;
+  const debtOnGeneratedPct=projectedIdeal>0?Math.round((debtOnGeneratedAmount/projectedIdeal)*100):0;
+  const pendingGenerationPct=projectedIdeal>0?Math.round((pendingGenerationAmount/projectedIdeal)*100):0;
+
   return {
     carryDebt,
     sessionsPeriod,
@@ -3759,7 +3813,15 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
     paidPct,
     debtPct,
     projectedIdeal,
-    netoEstimado
+    netoEstimado,
+    generatedAmount,
+    paidOnGeneratedAmount,
+    debtOnGeneratedAmount,
+    pendingGenerationAmount,
+    generatedPct,
+    paidOnGeneratedPct,
+    debtOnGeneratedPct,
+    pendingGenerationPct
   };
 }
 
@@ -5696,7 +5758,17 @@ function renderDetalle(p){
   const referralLabel=patientReferralSourceLabel(p);
   const inicioYear=new Date(p.inicio+'T12:00').getFullYear();
   const startedThisYear=inicioYear===new Date().getFullYear();
-  const useManualMode=startedThisYear && !p.manualEstimateOverride;
+  const estimationChoice=startedThisYear
+    ?(p.estimationChoice||(p.manualEstimateOverride?'estimacion':''))
+    :'estimacion';
+  const showChoiceMode=startedThisYear&&!estimationChoice;
+  const useManualConfirmedMode=startedThisYear&&estimationChoice==='manual';
+  const useEstimatedMode=!startedThisYear||estimationChoice==='estimacion';
+  const manualCurrentCount=getManualCurrentSessionCount(p,today());
+  const showEstimationExplanation=!p.hideEstimationExplanation;
+  const estToday=estimarSesionActual(p,today());
+  const sessionAtSelectedDate=useManualConfirmedMode?getManualCurrentSessionCount(p,estTarget):est.estimada;
+  const currentSessionNumber=useManualConfirmedMode?manualCurrentCount:estToday.estimada;
 
   const alertaHtml=pend.length>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><img class="alert-icon" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Alerta"><div><strong>${pend.length} sesión${pend.length!==1?'es':''} sin registrar</strong> en ${MESES[new Date().getMonth()]}: ${pend.join(', ')}.</div></div>`:'';
 
@@ -5803,27 +5875,35 @@ function renderDetalle(p){
           <div class="drow"><span class="dkey">Primera sesión sin costo</span><span class="dval">${p.primeraSinCosto?'sí':'no'}</span></div>
           <div class="est-card">
             <div class="est-head">Estimador de número de sesión</div>
-            ${useManualMode?`
-              <div class="est-main">Registro manual recomendado</div>
-              <div class="est-sub">Este paciente inició en ${inicioYear}. Como el tratamiento comenzó este año, no hace falta usar una fecha aproximada.</div>
-              <div class="est-sub">Puedes llenar manualmente asistencias e inasistencias en el calendario y el número de sesión se irá reflejando con mayor precisión.</div>
-              <div class="est-sub">Sesiones registradas hasta ahora: ${registradasHastaFecha}.</div>
-              <div class="est-row"><button class="btn-sec btn-sm" onclick="toggleManualEstimation(${p.id})">Activar estimación</button></div>
-            `:`
+            ${showChoiceMode?`
+              <div class="est-main">Elige cómo calcular este paciente</div>
+              <div class="est-sub">Este paciente inició en ${inicioYear}. Puedes mantener el registro manual o activar la estimación automática.</div>
+              <div class="est-sub">Si mantienes manual, se contará la sesión actual desde la fecha de inicio con estas reglas: asistencias, reposiciones marcadas como asistidas y faltas con costo sí cuentan; cancelaciones y faltas sin costo no cuentan.</div>
+              <div class="est-row" style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn-ghost btn-sm" onclick="setEstimationChoice(${p.id},'manual')">Mantener registro manual</button>
+                <button class="btn-sec btn-sm" onclick="setEstimationChoice(${p.id},'estimacion')">Activar estimación</button>
+              </div>
+            `:(useManualConfirmedMode||useEstimatedMode)?`
               <div class="est-row">
                 <div class="form-group">
-                  <label class="form-label">Calcular al día</label>
+                  <label class="form-label">Ver número al día</label>
                   <input class="form-input" type="date" id="est-fecha" value="${estTarget}" onchange="onEstDateChange(${p.id})">
                 </div>
-                ${startedThisYear?`<button class="btn-ghost" onclick="toggleManualEstimation(${p.id})">Volver a registro manual</button>`:''}
+                ${startedThisYear&&useEstimatedMode?`<button class="btn-ghost" onclick="setEstimationChoice(${p.id},'manual')">Mantener registro manual</button>`:''}
+                ${startedThisYear&&useManualConfirmedMode?`<button class="btn-sec btn-sm" onclick="setEstimationChoice(${p.id},'estimacion')">Activar estimación</button>`:''}
+                <button class="btn-ghost" onclick="toggleEstimationExplanation(${p.id})">${showEstimationExplanation?'Quitar explicación':'Mostrar explicación'}</button>
               </div>
-              <div class="est-main">Sesión aproximada #${est.estimada}</div>
-              <div class="est-sub">Programadas en agenda: ${est.programadas} · Ajuste total: -${est.canceladasEstimadas}.</div>
-              ${showTherapistAbsence||showPatientAbsence?`<div class="est-sub">${showTherapistAbsence?`Promedio terapeuta: -${est.therapistEstimated}.`:''} ${showPatientAbsence?`Promedio paciente: -${est.patientEstimated}.`:''}</div>`:''}
-              ${showTherapistAbsence||showPatientAbsence?`<div class="est-sub">${showTherapistAbsence?`Vacaciones/pausas terapeuta: -${est.therapistPauses}.`:''} ${showPatientAbsence?`Vacaciones/pausas paciente: -${est.patientPauses}.`:''}</div>`:''}
-              <div class="est-sub">Registradas en expediente hasta esa fecha: ${registradasHastaFecha}. Si te falta registrar semanas, usa la estimada como referencia.</div>
-              <div class="est-sub">Frecuencia al ${estTarget}: ${freqActual.vecesSemana} por semana. El promedio y las pausas se calculan por separado para terapeuta y paciente.</div>
-            `}
+              <div class="est-main">Sesión actual #${currentSessionNumber}</div>
+              <div class="est-sub">Número al ${displayDate(estTarget)}: #${sessionAtSelectedDate}</div>
+              ${showEstimationExplanation?`
+                ${useEstimatedMode?`
+                  <div class="est-sub">Estimación desde ${displayDate(p.inicio)}. Programadas: ${est.programadas} · Ajuste total: -${est.canceladasEstimadas}.</div>
+                  ${showTherapistAbsence||showPatientAbsence?`<div class="est-sub">${showTherapistAbsence?`Promedio terapeuta: -${est.therapistEstimated}.`:''} ${showPatientAbsence?`Promedio paciente: -${est.patientEstimated}.`:''} ${showTherapistAbsence?`Pausas terapeuta: -${est.therapistPauses}.`:''} ${showPatientAbsence?`Pausas paciente: -${est.patientPauses}.`:''}</div>`:''}
+                `:`
+                  <div class="est-sub">Registro manual desde ${displayDate(p.inicio)}. Cuenta asistencias, reposiciones asistidas y faltas con costo; no cuenta cancelaciones ni faltas sin costo.</div>
+                `}
+              `:''}
+            `:''}
           </div>
         </div>
         <div class="dsec">
@@ -6807,8 +6887,8 @@ function renderProspectado(){
         </select>
         ${includeCarry&&cut.carryDebt>0?`<span class="today-locked-pill" style="padding:2px 8px;font-size:10px">Arrastre $${cut.carryDebt.toLocaleString('es-MX')}</span>`:''}
       </div>
-      <div class="pr-bar-wrap">${cut.debtPct>0?`<div class="pr-bar-fill adeudo" style="width:${cut.debtPct}%"></div>`:''}${cut.paidPct>0?`<div class="pr-bar-fill cobrado" style="width:${cut.paidPct}%"></div>`:''}${cut.paidPct+cut.debtPct<100?`<div class="pr-bar-fill vacio" style="width:${100-cut.paidPct-cut.debtPct}%;background:#e8e8e8"></div>`:''}${cut.paymentsPeriod>cut.pendingEnd?`<span class="pr-overpay-indicator">+</span>`:''}</div>
-      <div class="pr-bar-note">${Math.round(cut.debtPct)}% adeudado · ${Math.round(cut.paidPct)}% pagado · ${pagoLabel(p.pago)}</div>
+      <div class="pr-bar-wrap">${cut.debtOnGeneratedPct>0?`<div class="pr-bar-fill adeudo" style="width:${cut.debtOnGeneratedPct}%"></div>`:''}${cut.paidOnGeneratedPct>0?`<div class="pr-bar-fill cobrado" style="width:${cut.paidOnGeneratedPct}%"></div>`:''}${cut.pendingGenerationPct>0?`<div class="pr-bar-fill vacio" style="width:${cut.pendingGenerationPct}%;background:#e8e8e8"></div>`:''}${cut.paymentsPeriod>cut.chargesPeriod?`<span class="pr-overpay-indicator">+</span>`:''}</div>
+      <div class="pr-bar-note">${Math.round(cut.debtOnGeneratedPct)}% adeudado · ${Math.round(cut.paidOnGeneratedPct)}% pagado · ${Math.round(cut.pendingGenerationPct)}% por generar · ${pagoLabel(p.pago)}</div>
     </div>`;
   }).join('');
   document.getElementById('prosp-content').innerHTML=`
