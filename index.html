@@ -362,7 +362,7 @@ input[type="file"].form-input{cursor:pointer}
 /* " - ? SEMANA " - ? */
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:.75rem}
 .wday{background:white;border:1px solid #ede9e6;border-radius:10px;padding:.75rem .5rem;min-height:100px}
-.wday-name{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.wday-name{font-size:10px;font-weight:500;color:var(--ink-light);text-align:center;margin-bottom:8px;padding-bottom:6px;text-transform:uppercase;letter-spacing:.05em;border-bottom:3px solid rgba(185,93,55,.55)}
 .wslot{background:var(--sage-soft);color:var(--ink);border-radius:6px;padding:5px 6px;font-size:11px;margin-bottom:4px;cursor:pointer;line-height:1.4}
 .wslot:hover{background:rgba(165,196,188,.45)}
 .wslot.repo{background:#fcf4f8;color:var(--ink);border:1px solid #edd7e3}
@@ -381,7 +381,8 @@ input[type="file"].form-input{cursor:pointer}
 .week-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem}
 .week-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .week-period{font-size:13px;color:var(--ink-light)}
-.month-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.month-frame{border:1px solid #e6dfda;border-radius:12px;background:white;padding:.5rem;box-shadow:inset 0 0 0 1px rgba(247,228,241,.3)}
+.month-scroll{overflow:auto;-webkit-overflow-scrolling:touch;max-height:min(68vh,740px);padding-bottom:4px}
 .month-calendar{width:max(100%,980px)}
 .month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:.75rem}
 .month-cell{background:white;border:1px solid #ede9e6;border-radius:10px;padding:.55rem .45rem;min-height:120px}
@@ -390,6 +391,10 @@ input[type="file"].form-input{cursor:pointer}
 .month-day.muted{color:var(--ink-light)}
 .month-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;color:var(--ink-light);font-size:10px;text-transform:uppercase;letter-spacing:.05em}
 .month-dow div{text-align:center}
+.month-scroll::-webkit-scrollbar{height:9px;width:9px}
+.month-scroll::-webkit-scrollbar-track{background:#f0eeec;border-radius:999px}
+.month-scroll::-webkit-scrollbar-thumb{background:#b7c5c0;border-radius:999px;border:2px solid #f0eeec}
+.month-scroll::-webkit-scrollbar-thumb:hover{background:#92a8a1}
 
 /* " - ? RESUMEN " - ? */
 .res-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
@@ -612,15 +617,16 @@ input[type="file"].form-input{cursor:pointer}
   /* Semana móvil: una columna para legibilidad y sin scroll horizontal */
   #view-semana .week-grid{grid-template-columns:1fr;gap:8px}
   #view-semana .wday{padding:.65rem .55rem;min-height:0}
-  #view-semana .wday-name{font-size:11px;text-align:left;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  #view-semana .wday-name{font-size:11px;text-align:left;margin-bottom:7px;padding-bottom:7px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid rgba(185,93,55,.72)}
   #view-semana .wslot{font-size:12px;padding:6px 7px;margin-bottom:5px}
 
-  /* Mes móvil: comprimir celdas para evitar desplazamiento lateral */
-  #view-semana .month-scroll{overflow-x:visible}
-  #view-semana .month-calendar{width:100%;max-width:100%}
-  #view-semana .month-dow,#view-semana .month-grid{gap:3px}
-  #view-semana .month-dow{font-size:9px}
-  #view-semana .month-cell{padding:.4rem .28rem;min-height:92px}
+  /* Mes móvil: contenedor con desplazamiento horizontal/vertical amigable */
+  #view-semana .month-frame{padding:.45rem}
+  #view-semana .month-scroll{overflow:auto;max-height:68vh}
+  #view-semana .month-calendar{width:max(100%,860px)}
+  #view-semana .month-dow,#view-semana .month-grid{gap:4px}
+  #view-semana .month-dow{font-size:10px}
+  #view-semana .month-cell{padding:.45rem .35rem;min-height:104px}
   #view-semana .month-day{font-size:10px;margin-bottom:4px}
   #view-semana .month-cell .wslot{font-size:10px;padding:4px 5px;line-height:1.25}
 }
@@ -1339,6 +1345,9 @@ function sessionDateIso(s){
 }
 function paymentDateIso(py){
   return toIsoDateLoose(py?.fecha);
+}
+function isPaymentForPreviousDebt(py){
+  return py?.applyToPreviousDebt===true||py?.applyToPreviousDebt==='true'||py?.applyToPreviousDebt===1;
 }
 function scheduleSummary(p,useFull=false){
   const sch=getScheduleAtDate(p,today());
@@ -3796,17 +3805,23 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
   };
 
   const billable=(p.sesiones||[]).filter(validSession);
+  const validPayments=(p.pagos||[])
+    .map(py=>({
+      fecha:paymentDateIso(py),
+      monto:Math.max(0,Number(py.monto)||0),
+      prevDebt:isPaymentForPreviousDebt(py)
+    }))
+    .filter(py=>{
+      if(!py.fecha) return false;
+      if(cutoffDate&&py.fecha<cutoffDate) return false;
+      return true;
+    });
   const chargesBefore=billable
     .filter(s=>sessionDateIso(s)<startIso)
     .reduce((sum,s)=>sum+tarifaEnFecha(p,sessionDateIso(s)),0);
-  const paymentsBefore=(p.pagos||[])
-    .filter(py=>{
-      const pyDate=paymentDateIso(py);
-      if(!pyDate) return false;
-      if(cutoffDate&&pyDate<cutoffDate) return false;
-      return pyDate<startIso;
-    })
-    .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+  const paymentsBefore=validPayments
+    .filter(py=>py.fecha<startIso)
+    .reduce((sum,py)=>sum+py.monto,0);
   const carryDebt=Math.max(0,chargesBefore-paymentsBefore);
 
   const chargesPeriod=billable
@@ -3819,16 +3834,18 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
     const sesDate=sessionDateIso(s);
     return !!sesDate&&sesDate>=startIso&&sesDate<=endIso;
   }).length;
-  const paymentsPeriod=(p.pagos||[])
-    .filter(py=>{
-      const pyDate=paymentDateIso(py);
-      if(!pyDate) return false;
-      if(cutoffDate&&pyDate<cutoffDate) return false;
-      return pyDate>=startIso&&pyDate<=endIso;
-    })
-    .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
+  const periodPayments=validPayments.filter(py=>py.fecha>=startIso&&py.fecha<=endIso);
+  const paymentsForPreviousDebt=includeCarryDebt
+    ?periodPayments.filter(py=>py.prevDebt).reduce((sum,py)=>sum+py.monto,0)
+    :0;
+  const carryDebtAfterTagged=includeCarryDebt?Math.max(0,carryDebt-paymentsForPreviousDebt):carryDebt;
+  const overflowFromPreviousDebt=includeCarryDebt?Math.max(0,paymentsForPreviousDebt-carryDebt):0;
+  const regularPaymentsPeriod=periodPayments
+    .filter(py=>!(includeCarryDebt&&py.prevDebt))
+    .reduce((sum,py)=>sum+py.monto,0);
+  const paymentsPeriod=regularPaymentsPeriod+overflowFromPreviousDebt;
 
-  const startingDebt=includeCarryDebt?carryDebt:0;
+  const startingDebt=includeCarryDebt?carryDebtAfterTagged:0;
   const pendingEnd=Math.max(0,startingDebt+chargesPeriod-paymentsPeriod);
   const paidVsDemand=Math.min(paymentsPeriod,Math.max(0,startingDebt+chargesPeriod));
   const coverageBase=Math.max(1,startingDebt+chargesPeriod);
@@ -3854,6 +3871,7 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
     sessionsPeriod,
     chargesPeriod,
     paymentsPeriod,
+    paymentsForPreviousDebt,
     pendingEnd,
     paidPct,
     debtPct,
@@ -5810,7 +5828,7 @@ function renderDetalle(p){
 
   // Pagos  -  - sin confirm
   const payLog=[...p.pagos].reverse().map(py=>{const metodo=py.metodo||'efectivo'; return `<div class="prow">
-    <span class="pdate">${displayDate(py.fecha)} · ${metodo}</span>
+    <span class="pdate">${displayDate(py.fecha)} · ${metodo}${isPaymentForPreviousDebt(py)?' · aplicado a periodos anteriores':''}</span>
     <span class="pamt">+$${py.monto.toLocaleString('es-MX')}</span>
     <button class="pdel" onclick="deletePago('${p.id}','${py.id}')" title="Eliminar pago">&times;</button>
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
@@ -5981,7 +5999,8 @@ function renderDetalle(p){
             <input class="inp-sm" type="date" id="pay-date" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
             <select class="inp-sm" id="pay-method"><option value="efectivo">Efectivo</option><option value="transferencia" selected>Transferencia</option><option value="paypal">PayPal</option></select></div>
-            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in','pay-date','pay-method')">Registrar</button>
+            <div style="display:flex;align-items:flex-end;padding-bottom:6px;min-width:210px"><label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light)"><input type="checkbox" id="pay-prev"> Aplicar a adeudo de periodos anteriores</label></div>
+            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in','pay-date','pay-method','pay-prev')">Registrar</button>
           </div>
         </div>
         <div class="dsec full" id="cal-container">${buildCalendar(p)}</div>
@@ -6002,7 +6021,8 @@ function renderDetalle(p){
             <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
             <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia" selected>Transferencia</option><option value="paypal">PayPal</option></select></div>
-            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2')">Registrar pago</button>
+            <div style="display:flex;align-items:flex-end;padding-bottom:6px;min-width:210px"><label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light)"><input type="checkbox" id="pay-prev2"> Aplicar a adeudo de periodos anteriores</label></div>
+            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2','pay-prev2')">Registrar pago</button>
           </div>
         </div>
         <div class="dsec">
@@ -6567,12 +6587,14 @@ function guardarNuevaTarifa(id){
   curTab='tarifas';renderDetalle(p);
 }
 
-function regPago(id,inputId,dateInputId,methodInputId){
+function regPago(id,inputId,dateInputId,methodInputId,previousDebtInputId=null){
   const p=patients.find(x=>x.id===id);
   const m=parseInt(document.getElementById(inputId).value)||tarifaVigente(p);
   const fecha=document.getElementById(dateInputId)?.value||today();
   const metodo=document.getElementById(methodInputId)?.value||'transferencia';
-  p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo});
+  const applyToPreviousDebt=previousDebtInputId?!!document.getElementById(previousDebtInputId)?.checked:false;
+  p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo,applyToPreviousDebt});
+  if(applyToPreviousDebt) addLog(p,'datos',`Pago registrado para adeudo de periodos anteriores: $${m.toLocaleString('es-MX')} (${metodo})`);
   recomputePatientDebt(p);
   saveState();
   renderDetalle(p);
@@ -6749,10 +6771,12 @@ function renderSemana(){
           <button class="btn-ghost btn-sm" onclick="moveSemanaRange(1)">Siguiente &rarr;</button>
         </div>
       </div>
-      <div class="month-scroll">
-        <div class="month-calendar">
-          <div class="month-dow">${DIAS_CAL.map(d=>`<div>${d}</div>`).join('')}</div>
-          <div class="month-grid">${cells.join('')}</div>
+      <div class="month-frame">
+        <div class="month-scroll">
+          <div class="month-calendar">
+            <div class="month-dow">${DIAS_CAL.map(d=>`<div>${d}</div>`).join('')}</div>
+            <div class="month-grid">${cells.join('')}</div>
+          </div>
         </div>
       </div>`;
     return;
@@ -6959,8 +6983,8 @@ function renderProspectado(){
         </select>
         ${includeCarry&&cut.carryDebt>0?`<span class="today-locked-pill" style="padding:2px 8px;font-size:10px">Arrastre $${cut.carryDebt.toLocaleString('es-MX')}</span>`:''}
       </div>
-      <div class="pr-bar-wrap">${cut.debtOnGeneratedPct>0?`<div class="pr-bar-fill adeudo" style="width:${cut.debtOnGeneratedPct}%"></div>`:''}${cut.paidOnGeneratedPct>0?`<div class="pr-bar-fill cobrado" style="width:${cut.paidOnGeneratedPct}%"></div>`:''}${cut.pendingGenerationPct>0?`<div class="pr-bar-fill vacio" style="width:${cut.pendingGenerationPct}%;background:#e8e8e8"></div>`:''}${cut.paymentsPeriod>cut.chargesPeriod?`<span class="pr-overpay-indicator">+</span>`:''}</div>
-      <div class="pr-bar-note">${Math.round(cut.debtOnGeneratedPct)}% adeudado · ${Math.round(cut.paidOnGeneratedPct)}% pagado · ${Math.round(cut.pendingGenerationPct)}% por generar · ${pagoLabel(p.pago)}</div>
+      <div class="pr-bar-wrap">${cut.paidOnGeneratedPct>0?`<div class="pr-bar-fill cobrado" style="width:${cut.paidOnGeneratedPct}%"></div>`:''}${cut.debtOnGeneratedPct>0?`<div class="pr-bar-fill adeudo" style="width:${cut.debtOnGeneratedPct}%"></div>`:''}${cut.pendingGenerationPct>0?`<div class="pr-bar-fill vacio" style="width:${cut.pendingGenerationPct}%;background:#e8e8e8"></div>`:''}${cut.paymentsPeriod>cut.chargesPeriod?`<span class="pr-overpay-indicator">+</span>`:''}</div>
+      <div class="pr-bar-note">${Math.round(cut.debtOnGeneratedPct)}% adeudado · ${Math.round(cut.paidOnGeneratedPct)}% pagado · ${Math.round(cut.pendingGenerationPct)}% por generar · ${pagoLabel(p.pago)}${cut.paymentsForPreviousDebt>0?` · $${cut.paymentsForPreviousDebt.toLocaleString('es-MX')} aplicado al arrastre`:''}</div>
     </div>`;
   }).join('');
   document.getElementById('prosp-content').innerHTML=`
