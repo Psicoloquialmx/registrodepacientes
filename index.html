@@ -1039,8 +1039,11 @@ function isSessionBillableForDebt(p,s,firstFreeId=null){
 function recomputePatientDebt(p){
   if(!p) return 0;
   const firstFreeId=getFirstFreeSessionId(p);
+  const startIso=p.deudaDesde||p.inicio||today();
   
   const pagosTotal=(p.pagos||[]).reduce((sum,py)=>{
+    const pyDate=paymentDateIso(py);
+    if(pyDate&&pyDate<startIso) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   p.pagado=pagosTotal;
@@ -1049,13 +1052,17 @@ function recomputePatientDebt(p){
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return sum;
     const sesDate=sessionDateIso(s);
     if(!sesDate) return sum;
+    if(sesDate<startIso) return sum;
     return sum+tarifaEnFecha(p,sesDate);
   },0);
   p.adeudo=Math.max(0,cargos-pagosTotal);
   return p.adeudo;
 }
 function calcBalanceDesde(p,fechaIso){
-  if(!fechaIso) return{cargos:p.adeudo+p.pagado,pagos:p.pagado,saldo:p.adeudo};
+  if(!fechaIso){
+    const start=p.deudaDesde||p.inicio||today();
+    return calcBalanceDesde(p,start);
+  }
   const firstFreeId=getFirstFreeSessionId(p);
   const effectiveStartDate=fechaIso;
   const cargos=(p.sesiones||[])
@@ -1075,7 +1082,7 @@ function calcBalanceDesde(p,fechaIso){
 }
 function calcSesionesSinCubrir(p,desdeIso=null){
   const firstFreeId=getFirstFreeSessionId(p);
-  const startIso=desdeIso||null;
+  const startIso=desdeIso||p.deudaDesde||null;
   const billableRegistradas=(p.sesiones||[])
     .map(s=>{
       const sesDate=sessionDateIso(s);
@@ -4814,6 +4821,7 @@ function guardarDeudaDesde(pid){
   const fecha=document.getElementById('deuda-desde-in')?.value;
   if(!fecha) return;
   p.deudaDesde=fecha;
+  recomputePatientDebt(p);
   addLog(p,'datos',`Fecha inicio cálculo de deuda: ${fecha}`);
   saveState();
   renderDetalle(p);
@@ -4822,6 +4830,7 @@ function resetDeudaDesde(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   delete p.deudaDesde;
+  recomputePatientDebt(p);
   addLog(p,'datos','Fecha de cálculo de deuda restablecida al inicio de tratamiento');
   saveState();
   renderDetalle(p);
@@ -5503,9 +5512,9 @@ function deletePago(pid,payId){
   const p=patients.find(x=>x.id===parseInt(pid));
   const pay=p.pagos.find(x=>x.id===payId);
   if(!pay) return;
-  p.pagado-=pay.monto;p.adeudo+=pay.monto;
   addLog(p,'datos',`Pago eliminado: $${pay.monto.toLocaleString('es-MX')} del ${pay.fecha}`);
   p.pagos=p.pagos.filter(x=>x.id!==payId);
+  recomputePatientDebt(p);
   saveState();
   renderDetalle(p);
 }
@@ -6392,7 +6401,7 @@ function regPago(id,inputId,dateInputId,methodInputId){
   const fecha=document.getElementById(dateInputId)?.value||today();
   const metodo=document.getElementById(methodInputId)?.value||'transferencia';
   p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo});
-  p.pagado+=m;p.adeudo=Math.max(0,p.adeudo-m);
+  recomputePatientDebt(p);
   saveState();
   renderDetalle(p);
 }
