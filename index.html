@@ -1036,9 +1036,18 @@ function isSessionCountedAsGivenForResumen(s){
   if(s.tipo==='reposicion') return s.repoRespuesta==='asistio';
   return s.tipo==='asistio'||s.tipo==='extra';
 }
+function isPendingRepositionOutcome(s){
+  if(!s||s.tipo!=='reposicion') return false;
+  return !s.repoRespuesta||s.repoRespuesta==='reposicion';
+}
 function isChargeableSessionRecord(s){
   if(!s) return false;
-  if(s.tipo==='reposicion') return s.repoRespuesta!=='cancelada';
+  if(s.tipo==='reposicion'){
+    if(isPendingRepositionOutcome(s)) return false;
+    if(s.repoRespuesta==='cancelada') return false;
+    if(s.repoRespuesta==='falta') return !s.noCharge;
+    return s.repoRespuesta==='asistio';
+  }
   return isChargeableSessionType(s.tipo);
 }
 function getFirstFreeSessionId(p){
@@ -1147,10 +1156,12 @@ function buildDebtDiagnostics(p,desdeIso){
     .map(s=>{
       const sesDate=sessionDateIso(s);
       const reasons=[];
+      const pendingRepo=isPendingRepositionOutcome(s);
       if(!sesDate) reasons.push('Fecha invalida');
       if(s.skipped) reasons.push('Marcada como movida/skipped');
       if(s.noCharge) reasons.push('Marcada sin cobro');
-      if(!isChargeableSessionRecord(s)) reasons.push('Tipo no cobrable');
+      if(pendingRepo) reasons.push('Pendiente por registrar resultado de reposicion');
+      if(!isChargeableSessionRecord(s)&&!pendingRepo) reasons.push('Tipo no cobrable');
       if(firstFreeId&&s.id===firstFreeId) reasons.push('Primera sesion sin costo');
       const sesNum=isoDayNumber(sesDate);
       if(startNum!==null&&sesNum!==null&&sesNum<startNum) reasons.push(`Antes de calcular desde (${displayDate(startIso)})`);
