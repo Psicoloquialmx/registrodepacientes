@@ -1020,12 +1020,8 @@ function isSessionBillableForDebt(p,s,firstFreeId=null){
 function recomputePatientDebt(p){
   if(!p) return 0;
   const firstFreeId=getFirstFreeSessionId(p);
-  const cutoffDate=p.paidUpToDate||null;
   
-  // When there's a cutoff, only count payments after cutoff
   const pagosTotal=(p.pagos||[]).reduce((sum,py)=>{
-    const pyDate=paymentDateIso(py);
-    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   p.pagado=pagosTotal;
@@ -1034,8 +1030,6 @@ function recomputePatientDebt(p){
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return sum;
     const sesDate=sessionDateIso(s);
     if(!sesDate) return sum;
-    // Exclude sessions before paidUpToDate cutoff
-    if(cutoffDate&&sesDate<cutoffDate) return sum;
     return sum+tarifaEnFecha(p,sesDate);
   },0);
   p.adeudo=Math.max(0,cargos-pagosTotal);
@@ -1044,8 +1038,7 @@ function recomputePatientDebt(p){
 function calcBalanceDesde(p,fechaIso){
   if(!fechaIso) return{cargos:p.adeudo+p.pagado,pagos:p.pagado,saldo:p.adeudo};
   const firstFreeId=getFirstFreeSessionId(p);
-  const cutoffDate=p.paidUpToDate||null;
-  const effectiveStartDate=cutoffDate&&cutoffDate>fechaIso?cutoffDate:fechaIso;
+  const effectiveStartDate=fechaIso;
   const cargos=(p.sesiones||[])
     .filter(s=>{
       if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
@@ -1063,7 +1056,6 @@ function calcBalanceDesde(p,fechaIso){
 }
 function calcSesionesSinCubrir(p){
   const firstFreeId=getFirstFreeSessionId(p);
-  const cutoffDate=p.paidUpToDate||null;
   const billableRegistradas=(p.sesiones||[])
     .map(s=>{
       const sesDate=sessionDateIso(s);
@@ -1073,16 +1065,11 @@ function calcSesionesSinCubrir(p){
     .filter(s=>{
       if(!s) return false;
       if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
-      // Exclude sessions before paidUpToDate cutoff
-      if(cutoffDate&&s.fecha<cutoffDate) return false;
       return true;
     });
   const billable=billableRegistradas
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
-  // When there's a cutoff, only count payments after cutoff
   let saldo=(p.pagos||[]).reduce((sum,py)=>{
-    const pyDate=paymentDateIso(py);
-    if(cutoffDate&&pyDate&&pyDate<cutoffDate) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   const sinCubrir=[];
@@ -1264,7 +1251,7 @@ function sesionesPendientes(p){
 }
 function getUnregisteredFixedSessionDates(p,startIso,endIso){
   if(!p) return [];
-  const start=startIso||p.paidUpToDate||p.inicio||today();
+  const start=startIso||p.inicio||today();
   const end=endIso||today();
   if(start>end) return [];
 
@@ -3612,25 +3599,39 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
   const cutoffDate=p.paidUpToDate||null;
   const validSession=s=>{
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
-    if(cutoffDate&&s.fecha<cutoffDate) return false;
+    const sesDate=sessionDateIso(s);
+    if(!sesDate) return false;
+    if(cutoffDate&&sesDate<cutoffDate) return false;
     return true;
   };
 
   const billable=(p.sesiones||[]).filter(validSession);
   const chargesBefore=billable
-    .filter(s=>s.fecha<startIso)
-    .reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
+    .filter(s=>sessionDateIso(s)<startIso)
+    .reduce((sum,s)=>sum+tarifaEnFecha(p,sessionDateIso(s)),0);
   const paymentsBefore=(p.pagos||[])
-    .filter(py=>py.fecha<startIso)
+    .filter(py=>{
+      const pyDate=paymentDateIso(py);
+      return !!pyDate&&pyDate<startIso;
+    })
     .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   const carryDebt=Math.max(0,chargesBefore-paymentsBefore);
 
   const chargesPeriod=billable
-    .filter(s=>s.fecha>=startIso&&s.fecha<=endIso)
-    .reduce((sum,s)=>sum+tarifaEnFecha(p,s.fecha),0);
-  const sessionsPeriod=billable.filter(s=>s.fecha>=startIso&&s.fecha<=endIso).length;
+    .filter(s=>{
+      const sesDate=sessionDateIso(s);
+      return !!sesDate&&sesDate>=startIso&&sesDate<=endIso;
+    })
+    .reduce((sum,s)=>sum+tarifaEnFecha(p,sessionDateIso(s)),0);
+  const sessionsPeriod=billable.filter(s=>{
+    const sesDate=sessionDateIso(s);
+    return !!sesDate&&sesDate>=startIso&&sesDate<=endIso;
+  }).length;
   const paymentsPeriod=(p.pagos||[])
-    .filter(py=>py.fecha>=startIso&&py.fecha<=endIso)
+    .filter(py=>{
+      const pyDate=paymentDateIso(py);
+      return !!pyDate&&pyDate>=startIso&&pyDate<=endIso;
+    })
     .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
 
   const startingDebt=includeCarryDebt?carryDebt:0;
@@ -4751,18 +4752,9 @@ function updatePaidUpToDateDisplay(pid){
   if(!p) return;
   normalizePatient(p);
   const fecha=document.getElementById('paid-up-to-date-in')?.value||'';
-  const deudaAntes=p.adeudo;
-  if(fecha){
-    // Temporarily set paidUpToDate to preview the impact
-    const prevPaidUpToDate=p.paidUpToDate;
-    p.paidUpToDate=fecha;
-    recomputePatientDebt(p);
-    const deudaDespues=p.adeudo;
-    p.paidUpToDate=prevPaidUpToDate;
-    recomputePatientDebt(p);
-    const s=document.getElementById('puto-adeudo-preview-'+pid);
-    if(s) s.textContent='$'+deudaDespues.toLocaleString('es-MX');
-  }
+  const s=document.getElementById('puto-adeudo-preview-'+pid);
+  if(!s) return;
+  s.textContent=fecha?displayDate(fecha):'Sin fecha de corte';
 }
 
 function guardarPaidUpToDate(pid){
@@ -4771,8 +4763,7 @@ function guardarPaidUpToDate(pid){
   const fecha=document.getElementById('paid-up-to-date-in')?.value;
   if(!fecha) return;
   p.paidUpToDate=fecha;
-  recomputePatientDebt(p);
-  addLog(p,'datos',`Al corriente con pagos hasta ${displayDate(fecha)} (sesiones anteriores excluidas de adeudo y prospecciones)`);
+  addLog(p,'datos',`Corte de prospección actualizado a ${displayDate(fecha)} (solo afecta vista de prospección)`);
   saveState();
   renderDetalle(p);
 }
@@ -4781,8 +4772,7 @@ function resetPaidUpToDate(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
   delete p.paidUpToDate;
-  recomputePatientDebt(p);
-  addLog(p,'datos','Cutoff de pagos restabelecido  -  todas las sesiones cuentan hacia adeudo y prospecciones');
+  addLog(p,'datos','Corte de prospección restablecido (solo afecta vista de prospección)');
   saveState();
   renderDetalle(p);
 }
@@ -5785,7 +5775,7 @@ function renderDetalle(p){
       </div>
       <div class="dsec full" style="margin-top:1rem">
         <div class="sec-title">Al corriente con pagos hasta</div>
-        <p style="font-size:12px;color:var(--ink-light);margin-bottom:1rem;line-height:1.5">Usar esta fecha para marcar un punto de corte contable. Sesiones anteriores no contarán hacia adeudo ni prospecciones, permitiendo un registro limpio de datos históricos.</p>
+        <p style="font-size:12px;color:var(--ink-light);margin-bottom:1rem;line-height:1.5">Usar esta fecha para marcar un punto de corte contable solo en Prospección. No modifica el adeudo real del paciente ni las sesiones cubiertas en esta vista.</p>
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
           <div>
             <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Fecha cutoff</div>
@@ -5794,7 +5784,7 @@ function renderDetalle(p){
           <button class="btn-primary btn-sm" onclick="guardarPaidUpToDate(${p.id})" style="align-self:flex-end">Guardar fecha</button>
           ${p.paidUpToDate?`<button class="btn-ghost" style="font-size:11px;align-self:flex-end" onclick="resetPaidUpToDate(${p.id})">Restablecer</button>`:''}
         </div>
-        ${p.paidUpToDate?`<div style="padding:8px;background:rgba(165,196,188,0.15);border-left:3px solid #a5c4bc;font-size:12px;color:var(--ink)">Al corriente con pagos hasta: <strong>${displayDate(p.paidUpToDate)}</strong> · Adeudo en ${displayDate(p.paidUpToDate)}: <strong id="puto-adeudo-preview-${p.id}">$${p.adeudo.toLocaleString('es-MX')}</strong></div>`:''}
+        ${p.paidUpToDate?`<div style="padding:8px;background:rgba(165,196,188,0.15);border-left:3px solid #a5c4bc;font-size:12px;color:var(--ink)">Corte activo para Prospección: <strong id="puto-adeudo-preview-${p.id}">${displayDate(p.paidUpToDate)}</strong></div>`:''}
       </div>
     </div>
 
