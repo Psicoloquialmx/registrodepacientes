@@ -1080,6 +1080,63 @@ function calcSesionesSinCubrir(p){
   }
   return sinCubrir;
 }
+function buildDebtDiagnostics(p,desdeIso){
+  const firstFreeId=getFirstFreeSessionId(p);
+  const startIso=desdeIso||p.deudaDesde||p.inicio||today();
+  const tipoLbl={asistio:'Asistio',falta:'Falto',cancelada:'Cancelada',reposicion:'Reposicion',extra:'Extra',reprogramada:'Reprogramada'};
+
+  const sesiones=(p.sesiones||[])
+    .map(s=>{
+      const sesDate=sessionDateIso(s);
+      const reasons=[];
+      if(!sesDate) reasons.push('Fecha invalida');
+      if(s.skipped) reasons.push('Marcada como movida/skipped');
+      if(s.noCharge) reasons.push('Marcada sin cobro');
+      if(!isChargeableSessionRecord(s)) reasons.push('Tipo no cobrable');
+      if(firstFreeId&&s.id===firstFreeId) reasons.push('Primera sesion sin costo');
+      if(sesDate&&sesDate<startIso) reasons.push(`Antes de calcular desde (${displayDate(startIso)})`);
+      const included=reasons.length===0;
+      const costo=included&&sesDate?tarifaEnFecha(p,sesDate):0;
+      return {
+        fecha:sesDate,
+        hora:s.hora||'',
+        tipo:tipoLbl[s.tipo]||String(s.tipo||'Sin tipo'),
+        included,
+        costo,
+        motivo:included?'Incluida en adeudo':reasons.join(' · ')
+      };
+    })
+    .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||''));
+
+  const pagos=(p.pagos||[])
+    .map(py=>{
+      const pyDate=paymentDateIso(py);
+      const reasons=[];
+      if(!pyDate) reasons.push('Fecha invalida');
+      if(pyDate&&pyDate<startIso) reasons.push(`Antes de calcular desde (${displayDate(startIso)})`);
+      const included=reasons.length===0;
+      const monto=Math.max(0,Number(py.monto)||0);
+      return {
+        fecha:pyDate,
+        metodo:py.metodo||'efectivo',
+        included,
+        monto:included?monto:0,
+        motivo:included?'Incluido en balance':reasons.join(' · ')
+      };
+    })
+    .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||''));
+
+  const cargos=sesiones.reduce((sum,s)=>sum+s.costo,0);
+  const pagosTotal=pagos.reduce((sum,py)=>sum+py.monto,0);
+  return {
+    startIso,
+    sesiones,
+    pagos,
+    cargos,
+    pagosTotal,
+    saldo:Math.max(0,cargos-pagosTotal)
+  };
+}
 function shortName(nombre){
   if(!nombre) return '';
   const partes=nombre.trim().split(/\s+/);
@@ -5599,6 +5656,7 @@ function renderDetalle(p){
   </div>`}).join('')||'<div style="font-size:13px;color:#aaa;padding:6px 0">Sin pagos.</div>';
   // Sesiones sin cubrir
   const sinCubrir=calcSesionesSinCubrir(p);
+  const diag=buildDebtDiagnostics(p,p.deudaDesde||p.inicio);
   const _tipoLbl={asistio:'Asistió',falta:'Falta',extra:'Extra',reposicion:'Reposición',pendiente:'Pendiente por registrar'};
   const sinCubrirHtml=sinCubrir.length===0
     ? `<div style="font-size:13px;color:#2d7a6e;padding:6px 0">✓ Todas las sesiones están cubiertas.</div>`
@@ -5755,6 +5813,14 @@ function renderDetalle(p){
           <div style="display:flex;justify-content:flex-end;margin-top:.6rem">
             <button class="btn-sec btn-sm" onclick="actualizarAdeudoManual(${p.id})">Actualizar adeudo</button>
           </div>
+          <details style="margin-top:10px;border:1px solid var(--ink-border);border-radius:10px;padding:8px 10px;background:var(--bg)">
+            <summary style="cursor:pointer;font-size:12px;color:var(--ink);font-weight:600">Diagnóstico contable</summary>
+            <div style="font-size:11px;color:var(--ink-light);margin-top:8px">Calculado desde: <strong>${displayDate(diag.startIso)}</strong> · Cargos: <strong>$${diag.cargos.toLocaleString('es-MX')}</strong> · Pagos: <strong>$${diag.pagosTotal.toLocaleString('es-MX')}</strong> · Saldo: <strong>$${diag.saldo.toLocaleString('es-MX')}</strong></div>
+            <div style="margin-top:8px;max-height:190px;overflow:auto;display:flex;flex-direction:column;gap:6px">
+              ${(diag.sesiones.length?diag.sesiones.map(s=>`<div class="prow" style="grid-template-columns:minmax(0,1fr) auto;gap:8px"><span class="pdate">Sesión ${s.fecha?displayDate(s.fecha):'sin fecha'}${s.hora?' · '+s.hora:''} · ${s.tipo}<br><span style="font-size:11px;color:var(--ink-light)">${s.motivo}</span></span><span class="pamt" style="color:${s.included?'#2d7a6e':'#9aa8b1'}">${s.included?'+$'+s.costo.toLocaleString('es-MX'):'Excluida'}</span></div>`).join(''):'<div style="font-size:12px;color:var(--ink-light)">Sin sesiones registradas.</div>')}
+              ${(diag.pagos.length?diag.pagos.map(py=>`<div class="prow" style="grid-template-columns:minmax(0,1fr) auto;gap:8px"><span class="pdate">Pago ${py.fecha?displayDate(py.fecha):'sin fecha'} · ${py.metodo}<br><span style="font-size:11px;color:var(--ink-light)">${py.motivo}</span></span><span class="pamt" style="color:${py.included?'#2d7a6e':'#9aa8b1'}">${py.included?'-$'+py.monto.toLocaleString('es-MX'):'Excluido'}</span></div>`).join(''):'')}
+            </div>
+          </details>
           <div class="reg-row" style="margin-top:1rem">
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Monto ($)</div>
             <input class="inp-sm" type="number" id="pay-in2" min="0" step="${Math.max(1,tv)}" value="${tv}"></div>
