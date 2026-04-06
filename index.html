@@ -1040,10 +1040,12 @@ function recomputePatientDebt(p){
   if(!p) return 0;
   const firstFreeId=getFirstFreeSessionId(p);
   const startIso=p.deudaDesde||p.inicio||today();
+  const startNum=isoDayNumber(startIso);
   
   const pagosTotal=(p.pagos||[]).reduce((sum,py)=>{
     const pyDate=paymentDateIso(py);
-    if(pyDate&&pyDate<startIso) return sum;
+    const pyNum=isoDayNumber(pyDate);
+    if(startNum!==null&&pyNum!==null&&pyNum<startNum) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   p.pagado=pagosTotal;
@@ -1052,7 +1054,8 @@ function recomputePatientDebt(p){
     if(!isSessionBillableForDebt(p,s,firstFreeId)) return sum;
     const sesDate=sessionDateIso(s);
     if(!sesDate) return sum;
-    if(sesDate<startIso) return sum;
+    const sesNum=isoDayNumber(sesDate);
+    if(startNum!==null&&sesNum!==null&&sesNum<startNum) return sum;
     return sum+tarifaEnFecha(p,sesDate);
   },0);
   p.adeudo=Math.max(0,cargos-pagosTotal);
@@ -1065,17 +1068,20 @@ function calcBalanceDesde(p,fechaIso){
   }
   const firstFreeId=getFirstFreeSessionId(p);
   const effectiveStartDate=fechaIso;
+  const startNum=isoDayNumber(effectiveStartDate);
   const cargos=(p.sesiones||[])
     .filter(s=>{
       if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
       const sesDate=sessionDateIso(s);
-      return !!sesDate&&sesDate>=effectiveStartDate;
+      const sesNum=isoDayNumber(sesDate);
+      return !!sesDate&&startNum!==null&&sesNum!==null&&sesNum>=startNum;
     })
     .reduce((sum,s)=>sum+tarifaEnFecha(p,sessionDateIso(s)),0);
   const pagos=(p.pagos||[])
     .filter(py=>{
       const pyDate=paymentDateIso(py);
-      return !!pyDate&&pyDate>=effectiveStartDate;
+      const pyNum=isoDayNumber(pyDate);
+      return !!pyDate&&startNum!==null&&pyNum!==null&&pyNum>=startNum;
     })
     .reduce((sum,py)=>sum+Math.max(0,Number(py.monto)||0),0);
   return{cargos,pagos,saldo:Math.max(0,cargos-pagos)};
@@ -1083,6 +1089,7 @@ function calcBalanceDesde(p,fechaIso){
 function calcSesionesSinCubrir(p,desdeIso=null){
   const firstFreeId=getFirstFreeSessionId(p);
   const startIso=desdeIso||p.deudaDesde||null;
+  const startNum=isoDayNumber(startIso);
   const billableRegistradas=(p.sesiones||[])
     .map(s=>{
       const sesDate=sessionDateIso(s);
@@ -1092,14 +1099,16 @@ function calcSesionesSinCubrir(p,desdeIso=null){
     .filter(s=>{
       if(!s) return false;
       if(!isSessionBillableForDebt(p,s,firstFreeId)) return false;
-      if(startIso&&s.fecha<startIso) return false;
+      const sesNum=isoDayNumber(s.fecha);
+      if(startNum!==null&&sesNum!==null&&sesNum<startNum) return false;
       return true;
     });
   const billable=billableRegistradas
     .sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')||(a.hora||'').localeCompare(b.hora||'')||String(a.id||'').localeCompare(String(b.id||'')));
   let saldo=(p.pagos||[]).reduce((sum,py)=>{
     const pyDate=paymentDateIso(py);
-    if(startIso&&pyDate&&pyDate<startIso) return sum;
+    const pyNum=isoDayNumber(pyDate);
+    if(startNum!==null&&pyNum!==null&&pyNum<startNum) return sum;
     return sum+Math.max(0,Number(py.monto)||0);
   },0);
   const sinCubrir=[];
@@ -1113,6 +1122,7 @@ function calcSesionesSinCubrir(p,desdeIso=null){
 function buildDebtDiagnostics(p,desdeIso){
   const firstFreeId=getFirstFreeSessionId(p);
   const startIso=desdeIso||p.deudaDesde||p.inicio||today();
+  const startNum=isoDayNumber(startIso);
   const tipoLbl={asistio:'Asistio',falta:'Falto',cancelada:'Cancelada',reposicion:'Reposicion',extra:'Extra',reprogramada:'Reprogramada'};
 
   const sesiones=(p.sesiones||[])
@@ -1124,7 +1134,8 @@ function buildDebtDiagnostics(p,desdeIso){
       if(s.noCharge) reasons.push('Marcada sin cobro');
       if(!isChargeableSessionRecord(s)) reasons.push('Tipo no cobrable');
       if(firstFreeId&&s.id===firstFreeId) reasons.push('Primera sesion sin costo');
-      if(sesDate&&sesDate<startIso) reasons.push(`Antes de calcular desde (${displayDate(startIso)})`);
+      const sesNum=isoDayNumber(sesDate);
+      if(startNum!==null&&sesNum!==null&&sesNum<startNum) reasons.push(`Antes de calcular desde (${displayDate(startIso)})`);
       const included=reasons.length===0;
       const costo=included&&sesDate?tarifaEnFecha(p,sesDate):0;
       return {
@@ -1143,7 +1154,8 @@ function buildDebtDiagnostics(p,desdeIso){
       const pyDate=paymentDateIso(py);
       const reasons=[];
       if(!pyDate) reasons.push('Fecha invalida');
-      if(pyDate&&pyDate<startIso) reasons.push(`Antes de calcular desde (${displayDate(startIso)})`);
+      const pyNum=isoDayNumber(pyDate);
+      if(startNum!==null&&pyNum!==null&&pyNum<startNum) reasons.push(`Antes de calcular desde (${displayDate(startIso)})`);
       const included=reasons.length===0;
       const monto=Math.max(0,Number(py.monto)||0);
       return {
@@ -1285,6 +1297,13 @@ function toIsoDateLoose(value){
   const dmy=base.match(/^(\d{2})[\/-](\d{2})[\/-](\d{4})$/);
   if(dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
   return null;
+}
+function isoDayNumber(isoDate){
+  const iso=toIsoDateLoose(isoDate);
+  if(!iso) return null;
+  const t=Date.parse(`${iso}T12:00:00`);
+  if(Number.isNaN(t)) return null;
+  return Math.floor(t/86400000);
 }
 function sessionDateIso(s){
   return toIsoDateLoose(s?.fecha);
@@ -4818,7 +4837,8 @@ function updateDeudaDesdeDisplay(pid){
 function guardarDeudaDesde(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
-  const fecha=document.getElementById('deuda-desde-in')?.value;
+  const fechaRaw=document.getElementById('deuda-desde-in')?.value;
+  const fecha=toIsoDateLoose(fechaRaw);
   if(!fecha) return;
   p.deudaDesde=fecha;
   recomputePatientDebt(p);
