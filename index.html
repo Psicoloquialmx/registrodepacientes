@@ -1874,16 +1874,18 @@ function patientCalendarLabel(p){
 function patientCalendarPrefixForSession(ses){
   if(!ses) return '';
   if(ses.tipo==='reposicion'&&ses.repoRespuesta==='falta'&&!ses.noCharge) return '(F) ';
-  if(ses.tipo==='reposicion') return '(R) ';
+  if(ses.tipo==='reposicion') return '(R->) ';
   if(ses.tipo==='falta'&&!ses.noCharge) return '(F) ';
   const isMovedSource=ses.tipo==='reprogramada'||ses.skipped||ses.replaced||(ses.tipo==='falta'&&!!ses.repoId);
-  if(isMovedSource) return '(R->) ';
+  if(isMovedSource) return '(R) ';
   return '';
 }
 
 function patientCalendarTitle(p,ses){
+  const statusPrefix=patientCalendarPrefixForSession(ses);
+  if(statusPrefix) return `•${statusPrefix}${patientCalendarLabel(p)}`;
   const plannedPrefix=String(ses?.id||'').startsWith('plan_')?'· ':'';
-  return `${plannedPrefix}${patientCalendarPrefixForSession(ses)}${patientCalendarLabel(p)}`;
+  return `${plannedPrefix}${patientCalendarLabel(p)}`;
 }
 
 function calendarColorIdForSession(p,ses){
@@ -4481,10 +4483,10 @@ function registerQuickPay(){
   if(amount<=0){alert('Escribe una cantidad válida.');return;}
   const metodo=methodSel.value||'efectivo';
   const fecha=today();
-  p.pagos.push({id:'p'+(nextPayId++),fecha,monto:amount,metodo});
+  p.pagos.push({id:'p'+(nextPayId++),fecha,monto:amount,metodo,applyToPreviousDebt:true});
   p.pagado+=amount;
   p.adeudo=Math.max(0,p.adeudo-amount);
-  addLog(p,'datos',`Pago rápido registrado: $${amount.toLocaleString('es-MX')} (${metodo})`);
+  addLog(p,'datos',`Pago rápido registrado: $${amount.toLocaleString('es-MX')} (${metodo}) · aplicado primero a periodos anteriores`);
   exposeSesMap(p);
   saveState();
   const drawer=document.getElementById('quick-pay-drawer');
@@ -5316,17 +5318,21 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
         delete sourceSameDay.movedTime;
       }
       if(sourceSameDay.tipo!=='reposicion'&&sourceSameDay.tipo!=='cancelada') sourceSameDay.tipo='reposicion';
+      triggerCalendarUpsert(p,sourceSameDay,{dateStr,hora:nuevaHora});
       addLog(p,'reposicion',`Sesión ${dateStr} reagendada en el mismo día a las ${nuevaHora}`);
       refreshAfterSessionMutation(p);
       return;
     }
     const nSameDay=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    p.sesiones.push({id:'s'+(nextSesId++),num:nSameDay,fecha:dateStr,tipo:'reposicion',hora:nuevaHora,fromDate:dateStr});
+    const sameDayRepo={id:'s'+(nextSesId++),num:nSameDay,fecha:dateStr,tipo:'reposicion',hora:nuevaHora,fromDate:dateStr};
+    p.sesiones.push(sameDayRepo);
+    triggerCalendarUpsert(p,sameDayRepo,{dateStr,hora:nuevaHora});
     addLog(p,'reposicion',`Sesión ${dateStr} registrada como reposición a las ${nuevaHora}`);
     refreshAfterSessionMutation(p);
     return;
   }
   const tv=tarifaVigente(p);
+  let sourceForCalendar=null;
   const source=p.sesiones.find(s=>s.fecha===dateStr && !s.skipped);
   if(source){
     if(p.pago==='sesion'&&(source.tipo==='asistio'||source.tipo==='falta'||source.tipo==='extra')) p.adeudo=Math.max(0,p.adeudo-tv);
@@ -5336,9 +5342,10 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
     source.movedTo=nuevaIso;
     source.movedTime=nuevaHora;
     delete source.moveCreatedByLastMove;
+    sourceForCalendar=source;
     addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
   } else {
-    p.sesiones.push({
+    sourceForCalendar={
       id:'s'+(nextSesId++),
       num:p.sesiones.filter(s=>s.tipo!=='cancelada').length+1,
       fecha:dateStr,
@@ -5349,10 +5356,11 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
       movedTime:nuevaHora,
       moveCreatedByLastMove:true,
       hora:horaDiaFecha(p,dateStr)
-    });
+    };
+    p.sesiones.push(sourceForCalendar);
     addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
   }
-  let target=p.sesiones.find(s=>s.fecha===nuevaIso && s.tipo!=='reprogramada');
+  let target=p.sesiones.find(s=>s.fecha===nuevaIso && !s.skipped && s.tipo!=='reprogramada');
   if(target){
     if(p.pago==='sesion'&&(target.tipo==='asistio'||target.tipo==='falta'||target.tipo==='extra')) p.adeudo=Math.max(0,p.adeudo-tv);
     target.movePrevTipo=target.tipo;
@@ -5363,8 +5371,11 @@ function doReposicion(pid,dateStr,nuevaIso,nuevaHora){
     delete target.moveCreatedByLastMove;
   } else {
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-    p.sesiones.push({id:'s'+(nextSesId++),num:n,fecha:nuevaIso,tipo:'reposicion',hora:nuevaHora,fromDate:dateStr,moveCreatedByLastMove:true});
+    target={id:'s'+(nextSesId++),num:n,fecha:nuevaIso,tipo:'reposicion',hora:nuevaHora,fromDate:dateStr,moveCreatedByLastMove:true};
+    p.sesiones.push(target);
   }
+  if(sourceForCalendar) triggerCalendarUpsert(p,sourceForCalendar,{dateStr,hora:sourceForCalendar.hora||horaDiaFecha(p,dateStr)});
+  if(target) triggerCalendarUpsert(p,target,{dateStr:nuevaIso,hora:target.hora||nuevaHora});
   refreshAfterSessionMutation(p);
 }
 
@@ -5515,31 +5526,35 @@ function registrarDesdePop(pid,dateStr,tipo){
       addLog(p,'reposicion',`Sesión ${dateStr} movida a ${nuevaIso} ${nuevaHora}`);
     }
 
-    let target=p.sesiones.find(s=>s.fecha?.split(' ')[0]===nuevaIso);
+    let target=p.sesiones.find(s=>s.fecha?.split(' ')[0]===nuevaIso&&!s.skipped&&s.tipo!=='reprogramada');
     if(target){
       const antTar=target.tipo;
       if(p.pago==='sesion' && (antTar==='asistio'||antTar==='falta'||antTar==='extra')) p.adeudo=Math.max(0,p.adeudo-tv);
       target.tipo='reposicion';
+      target.hora=nuevaHora;
+      target.fromDate=dateStr;
       target.reponeId=source?.id;
       target.nota=`Repone ${dateStr}`;
       target.repoId=source?.id||'s'+(nextSesId++);
     } else {
       const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
-      p.sesiones.push({
+      target={
         id:'s'+(nextSesId++),
         num:n,
         fecha:nuevaIso,
         tipo:'reposicion',
+        hora:nuevaHora,
         nota:`Repone ${dateStr}`,
         reponeId:source?.id||null,
         repoId:source?.id||null
-      });
+      };
+      p.sesiones.push(target);
     }
 
     // Calendar sync: keep original moved session (R->) and replacement session (R).
     const sourceForCalendar=source||{id:`plan_${dateStr}`,fecha:dateStr,tipo:'reprogramada',replaced:true,movedTo:nuevaIso,movedTime:nuevaHora,hora:sourceHora};
     triggerCalendarUpsert(p,sourceForCalendar,{dateStr,hora:sourceHora});
-    if(target) triggerCalendarUpsert(p,target,{dateStr:nuevaIso,hora:target.hora||nuevaHora});
+    triggerCalendarUpsert(p,target,{dateStr:nuevaIso,hora:target.hora||nuevaHora});
 
     closePopover();
     refreshAfterSessionMutation(p);
@@ -5632,10 +5647,29 @@ function deleteSesionPop(pid,sid){
   if(!ensurePatientActiveForScheduling(p)) return;
   const ses=p.sesiones.find(s=>s.id===sid);
   if(!ses) return;
+
+  if(ses.tipo==='reposicion'){
+    const prevRespuesta=ses.repoRespuesta||'sin respuesta';
+    delete ses.repoRespuesta;
+    delete ses.noCharge;
+    delete ses.therapistCancel;
+    addLog(p,'reposicion',`Respuesta de reposición borrada: ${ses.fecha} (${prevRespuesta}) → pendiente por registrar`);
+    triggerCalendarUpsert(p,ses,{dateStr:ses.fecha?.split(' ')[0]||today(),hora:ses.hora||horaDiaFecha(p,ses.fecha?.split(' ')[0]||today())});
+    closePopover();
+    refreshAfterSessionMutation(p);
+    return;
+  }
+
   const tv=tarifaVigente(p);
   if(p.pago==='sesion'&&(ses.tipo==='asistio'||ses.tipo==='falta'||ses.tipo==='extra')) p.adeudo=Math.max(0,p.adeudo-tv);
   addLog(p,'datos',`Respuesta borrada: ${ses.fecha} (${ses.tipo}) #${ses.num}`);
+  const safeDate=ses.fecha?.split(' ')[0]||'';
+  triggerCalendarDelete(p,ses);
   p.sesiones=p.sesiones.filter(s=>s.id!==sid);
+  if(safeDate&&isFixedScheduledOnDate(p,safeDate)){
+    const planned=buildPlannedCalendarSession(p,safeDate,horaDiaFecha(p,safeDate));
+    triggerCalendarUpsert(p,planned,{dateStr:safeDate,hora:planned.hora});
+  }
   let c=0;p.sesiones.forEach(s=>{if(s.tipo!=='cancelada'){c++;s.num=c;}});
   closePopover();
   refreshAfterSessionMutation(p);
@@ -6728,7 +6762,11 @@ function renderSemana(){
       })()
     }));
     const repos=patients.flatMap(p=>p.sesiones
-      .filter(s=>s.tipo==='reposicion'&&s.fecha===fechaStr)
+      .filter(s=>{
+        if(s.tipo!=='reposicion'||s.fecha!==fechaStr) return false;
+        const shownInBaseSlot=isFixedScheduledOnDate(p,fechaStr) || (p.status==='inactive' && p.sesiones.some(x=>x.fecha===fechaStr&&!(x.skipped||x.replaced||x.tipo==='reprogramada')));
+        return !shownInBaseSlot;
+      })
       .map(s=>({
         pNombre:p.nombre,
         hora:s.hora||horaDiaFecha(p,fechaStr)||'99:99',
