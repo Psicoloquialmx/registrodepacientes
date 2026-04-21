@@ -2907,12 +2907,21 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
 }
 
 async function syncPlannedFutureSessionsToGoogleCalendarForPatient(p){
-  if(!calendarIntegration?.connected||!p) return;
-  if(!currentUser||!auth) return;
+  if(!calendarIntegration?.connected||!p) {
+    console.warn('[CalSync] Skipping sync: connected=',calendarIntegration?.connected,'patient=',!!p);
+    return;
+  }
+  if(!currentUser||!auth) {
+    console.warn('[CalSync] Skipping sync: currentUser=',!!currentUser,'auth=',!!auth);
+    return;
+  }
   try {
+    console.log('[CalSync] Syncing new patient sessions:',p.nombre,'sesiones=',p.sesiones?.length);
     const items=collectFuturePlannedSessionsForSync(180,0,[p]);
+    console.log('[CalSync] Collected items to sync:',items.length);
     if(items.length){
       await runCalendarSyncBatch(items,{progressEvery:10});
+      console.log('[CalSync] Sync completed for',p.nombre);
     }
   } catch(err){
     console.warn('[CalSync] Error sincronizando paciente nuevo',err);
@@ -7321,10 +7330,13 @@ function saveUnplannedSession(){
   };
   p.sesiones.push(newSession);
   exposeSesMap(p);
-  const sessionForCalendar={...newSession,id:`plan_${fecha}`};
-  triggerCalendarUpsert(p,sessionForCalendar,{dateStr:fecha,hora});
   if(pid==='__new__'){
+    // For new patients, sync all planned sessions via batch function
     syncPlannedFutureSessionsToGoogleCalendarForPatient(p);
+  } else {
+    // For existing patients, upsert this single session to calendar
+    const sessionForCalendar={...newSession,id:`plan_${fecha}`};
+    triggerCalendarUpsert(p,sessionForCalendar,{dateStr:fecha,hora});
   }
   addLog(p,'sesiones',`Sesión no prevista registrada a las ${hora}`);
   saveState();
