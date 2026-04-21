@@ -629,6 +629,15 @@ input[type="file"].form-input{cursor:pointer}
   #view-semana .month-cell{padding:.45rem .35rem;min-height:104px}
   #view-semana .month-day{font-size:10px;margin-bottom:4px}
   #view-semana .month-cell .wslot{font-size:10px;padding:4px 5px;line-height:1.25}
+
+  /* Google Calendar sync modals - compact on mobile */
+  .modal{padding:.85rem;max-height:88vh}
+  .modal-header{margin-bottom:.6rem}
+  .modal-title{font-size:16px}
+  .modal-footer{margin-top:.6rem;padding-top:.6rem}
+  .resync-axo{width:48px;height:48px}
+  .resync-axo-wrap{margin:0}
+  #modal-body>div{gap:8px !important}
 }
 
 @media (min-width:769px){
@@ -6799,23 +6808,25 @@ function renderSemana(){
       if(isFixedScheduledOnDate(p,fechaStr)) return true;
       // Paciente inactivo: mostrar igual si tuvo sesión registrada en esa fecha
       if(p.status==='inactive' && p.sesiones.some(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
+      // Sesión movida desde esta fecha (pacientes sin horario fijo o inactivos reagendados)
+      if(p.sesiones.some(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
       return false;
     }).map(p=>({
       pNombre:p.nombre,
-      hora:horaDiaFecha(p,fechaStr)||'99:99',
+      hora:(p.sesiones.find(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))?.hora)||horaDiaFecha(p,fechaStr)||'99:99',
       html:(()=>{
         const sesRegistrada=p.sesiones.find(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
         const sesMovida=p.sesiones.find(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'));
         const therapistCancelClass=sesRegistrada?.tipo==='cancelada'?' therapist-cancel':'';
         const slotClass=sesMovida?'wslot moved-source':`wslot${therapistCancelClass}`;
         const markerHtml=weekSlotMarkerHtml(sesRegistrada,!!sesMovida);
-        return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div>${markerHtml}</div><div>${timeRangeLabel(horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
+        return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div>${markerHtml}</div><div>${timeRangeLabel(sesMovida?.hora||horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
       })()
     }));
     const repos=patients.flatMap(p=>p.sesiones
       .filter(s=>{
         if(s.tipo!=='reposicion'||s.fecha!==fechaStr) return false;
-        const shownInBaseSlot=isFixedScheduledOnDate(p,fechaStr) || (p.status==='inactive' && p.sesiones.some(x=>x.fecha===fechaStr&&!(x.skipped||x.replaced||x.tipo==='reprogramada')));
+        const shownInBaseSlot=isFixedScheduledOnDate(p,fechaStr) || (p.status==='inactive' && p.sesiones.some(x=>x.fecha===fechaStr&&!(x.skipped||x.replaced||x.tipo==='reprogramada'))) || p.sesiones.some(x=>x.fecha===fechaStr&&(x.skipped||x.replaced||x.tipo==='reprogramada'));
         return !shownInBaseSlot;
       })
       .map(s=>({
@@ -6824,7 +6835,15 @@ function renderSemana(){
         html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>&#8635; ${p.nombre.split(' ')[0]}</span></div>${weekSlotMarkerHtml(s,false)}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'Repo.'}</div></div>`
       }))
     );
-    return [...slots,...repos].sort((a,b)=>{
+    const unplanned=patients.flatMap(p=>p.sesiones
+      .filter(s=>s.tipo==='pendiente'&&s.fecha===fechaStr)
+      .map(s=>({
+        pNombre:p.nombre,
+        hora:s.hora||'99:99',
+        html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>+ ${p.nombre.split(' ')[0]}</span></div>${weekSlotMarkerHtml(s,false)}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'No prevista'}</div></div>`
+      }))
+    );
+    return [...slots,...repos,...unplanned].sort((a,b)=>{
       if(a.hora!==b.hora) return a.hora.localeCompare(b.hora);
       return a.pNombre.localeCompare(b.pNombre,'es',{sensitivity:'base'});
     }).map(r=>r.html).join('');
