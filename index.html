@@ -694,7 +694,6 @@ input[type="file"].form-input{cursor:pointer}
       <div class="nav-label">Clínica</div>
       <button class="nav-item active" onclick="showView('hoy')" id="nav-hoy"><span class="nav-ico">&#128197;</span> Hoy</button>
       <button class="nav-item" onclick="showView('pacientes')" id="nav-pacientes"><span class="nav-ico">&#128101;</span> Pacientes</button>
-      <button class="nav-item" onclick="showView('inactivos')" id="nav-inactivos"><span class="nav-ico">&#128683;</span> Pacientes inactivos</button>
       <button class="nav-item" onclick="showView('semana')" id="nav-semana"><span class="nav-ico">&#128198;</span> Calendario</button>
     </div>
     <div class="nav-section">
@@ -747,16 +746,17 @@ input[type="file"].form-input{cursor:pointer}
     </div>
     <div id="view-pacientes" class="view">
       <div class="topbar">
-        <div class="topbar-left"><div class="page-title">Pacientes</div><div class="page-sub">Expedientes activos</div></div>
+        <div class="topbar-left"><div class="page-title">Pacientes</div><div id="pacientes-subtitle" class="page-sub">Expedientes activos</div></div>
         <button class="btn-primary" onclick="openModalNuevo()">+ Nuevo paciente</button>
       </div>
-      <div class="content"><div id="stats-grid" class="stats-grid"></div><div id="patient-list" class="patient-list"></div></div>
-    </div>
-    <div id="view-inactivos" class="view">
-      <div class="topbar">
-        <div class="topbar-left"><div class="page-title">Pacientes inactivos</div><div class="page-sub">Tratamientos suspendidos o cerrados</div></div>
+      <div class="content">
+        <div class="dtabs" id="pacientes-tabs" style="margin-bottom:1rem">
+          <button class="dtab active" data-tab="activos" onclick="switchPacientesTab('activos')">Activos</button>
+          <button class="dtab" data-tab="inactivos" onclick="switchPacientesTab('inactivos')">Inactivos</button>
+        </div>
+        <div id="pacientes-activos-panel" class="dtab-panel active"><div id="stats-grid" class="stats-grid"></div><div id="patient-list" class="patient-list"></div></div>
+        <div id="pacientes-inactivos-panel" class="dtab-panel" style="display:none"><div id="inactive-toolbar"></div><div id="inactive-list" class="patient-list"></div></div>
       </div>
-      <div class="content"><div id="inactive-toolbar"></div><div id="inactive-list" class="patient-list"></div></div>
     </div>
     <div id="view-detalle" class="view">
       <div class="topbar">
@@ -1558,6 +1558,29 @@ function setInactiveSearch(value){
   renderInactivePatients();
 }
 
+function switchPacientesTab(tab){
+  pacientesTab=tab;
+  const actPanel=document.getElementById('pacientes-activos-panel');
+  const inactPanel=document.getElementById('pacientes-inactivos-panel');
+  const tabButtons=document.querySelectorAll('#pacientes-tabs .dtab');
+  const subtitle=document.getElementById('pacientes-subtitle');
+  
+  tabButtons.forEach(btn=>btn.classList.remove('active'));
+  document.querySelector(`#pacientes-tabs .dtab[data-tab="${tab}"]`).classList.add('active');
+  
+  if(tab==='activos'){
+    actPanel.style.display='';
+    inactPanel.style.display='none';
+    subtitle.textContent='Expedientes activos';
+    renderPatients();
+  } else {
+    actPanel.style.display='none';
+    inactPanel.style.display='';
+    subtitle.textContent='Tratamientos suspendidos o cerrados';
+    renderInactivePatients();
+  }
+}
+
 function toggleManualEstimation(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
@@ -1711,6 +1734,7 @@ let editSaveFeedback=null;
 let inactiveFilter='all';
 let activeSearch='';
 let inactiveSearch='';
+let pacientesTab='activos';
 const DEFAULT_THERAPIST_CANCEL_WEEKS=6.5;
 let authMode='login';
 let firebaseReady=false;
@@ -2880,6 +2904,19 @@ function scheduleWeeklyAutoCalendarSyncIfNeeded(){
       setCalendarSyncBackgroundHint(false);
     }
   },150);
+}
+
+async function syncPlannedFutureSessionsToGoogleCalendarForPatient(p){
+  if(!calendarIntegration?.connected||!p) return;
+  if(!currentUser||!auth) return;
+  try {
+    const items=collectFuturePlannedSessionsForSync(180,0,[p]);
+    if(items.length){
+      await runCalendarSyncBatch(items,{progressEvery:10});
+    }
+  } catch(err){
+    console.warn('[CalSync] Error sincronizando paciente nuevo',err);
+  }
 }
 
 async function syncPlannedFutureSessionsToGoogleCalendar(){
@@ -4846,9 +4883,14 @@ function showView(v,opts){
   });
   
   if(v!=='detalle') lastPatientListView=v;
+  if(v==='inactivos') {
+    pacientesTab='inactivos';
+    v='pacientes';
+    document.getElementById('view-pacientes').classList.add('active');
+    document.getElementById('nav-pacientes').classList.add('active');
+  }
   if(v==='hoy') renderHoy();
   if(v==='pacientes') renderPatients();
-  if(v==='inactivos') renderInactivePatients();
   if(v==='semana') renderSemana();
   if(v==='resumen') renderResumen();
   if(v==='prospectado') renderProspectado();
@@ -7188,6 +7230,10 @@ function openUnplannedSessionModal(){
         <input class="form-input" id="unplanned-new-name" type="text" placeholder="Ej. Nombre Apellido">
       </div>
       <div class="form-group form-full">
+        <label class="form-label">Fecha</label>
+        <input class="form-input" id="unplanned-fecha" type="date" value="${todayStr}" min="${todayStr}">
+      </div>
+      <div class="form-group form-full">
         <label class="form-label">Hora</label>
         <input class="form-input" id="unplanned-hora" type="time" value="10:00">
       </div>
@@ -7245,8 +7291,10 @@ function createPatientFromUnplanned(name,startDate){
 function saveUnplannedSession(){
   const pid=document.getElementById('unplanned-patient').value;
   const newName=(document.getElementById('unplanned-new-name')?.value||'').trim();
+  const fecha=document.getElementById('unplanned-fecha').value;
   const hora=document.getElementById('unplanned-hora').value;
   if(!pid){alert('Selecciona un paciente o elige "Paciente nuevo".');return;}
+  if(!fecha){alert('Selecciona una fecha.');return;}
   if(!hora){alert('Ingresa una hora.');return;}
   const todayStr=today();
   let p=null;
@@ -7255,24 +7303,29 @@ function saveUnplannedSession(){
       alert('Escribe el nombre del paciente nuevo.');
       return;
     }
-    p=createPatientFromUnplanned(newName,todayStr);
+    p=createPatientFromUnplanned(newName,fecha);
   } else {
     p=patients.find(x=>x.id===parseInt(pid));
   }
   if(!p) return;
-  if(isBeforeTreatmentStart(p,todayStr)){
+  if(isBeforeTreatmentStart(p,fecha)){
     alert('No puedes registrar sesiones antes del inicio de tratamiento.');
     return;
   }
   const newSession={
     id:'s'+(nextSesId++),
     num:Math.max(...p.sesiones.map(s=>s.num||0))+1,
-    fecha:todayStr,
+    fecha:fecha,
     hora:hora,
-    tipo:'asistio'
+    tipo:'pendiente'
   };
   p.sesiones.push(newSession);
-  triggerCalendarUpsert(p,newSession,{dateStr:todayStr,hora});
+  exposeSesMap(p);
+  const sessionForCalendar={...newSession,id:`plan_${fecha}`};
+  triggerCalendarUpsert(p,sessionForCalendar,{dateStr:fecha,hora});
+  if(pid==='__new__'){
+    syncPlannedFutureSessionsToGoogleCalendarForPatient(p);
+  }
   addLog(p,'sesiones',`Sesión no prevista registrada a las ${hora}`);
   saveState();
   closeModal();
