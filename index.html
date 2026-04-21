@@ -755,7 +755,7 @@ input[type="file"].form-input{cursor:pointer}
           <button class="dtab" data-tab="inactivos" onclick="switchPacientesTab('inactivos')">Inactivos</button>
         </div>
         <div id="pacientes-activos-panel" class="dtab-panel active"><div id="stats-grid" class="stats-grid"></div><div id="patient-list" class="patient-list"></div></div>
-        <div id="pacientes-inactivos-panel" class="dtab-panel" style="display:none"><div id="inactive-toolbar"></div><div id="inactive-list" class="patient-list"></div></div>
+        <div id="pacientes-inactivos-panel" class="dtab-panel"><div id="inactive-toolbar"></div><div id="inactive-list" class="patient-list"></div></div>
       </div>
     </div>
     <div id="view-detalle" class="view">
@@ -1569,13 +1569,13 @@ function switchPacientesTab(tab){
   document.querySelector(`#pacientes-tabs .dtab[data-tab="${tab}"]`).classList.add('active');
   
   if(tab==='activos'){
-    actPanel.style.display='';
-    inactPanel.style.display='none';
+    actPanel.classList.add('active');
+    inactPanel.classList.remove('active');
     subtitle.textContent='Expedientes activos';
     renderPatients();
   } else {
-    actPanel.style.display='none';
-    inactPanel.style.display='';
+    actPanel.classList.remove('active');
+    inactPanel.classList.add('active');
     subtitle.textContent='Tratamientos suspendidos o cerrados';
     renderInactivePatients();
   }
