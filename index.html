@@ -6804,29 +6804,30 @@ function renderSemana(){
   const activos=activePatients();
   const base=new Date((semanaBaseDate||today())+'T12:00');
   const dayEntries=(fechaStr,dow)=>{
+    const fd=f=>(f||'').split(' ')[0];
     const slots=patients.filter(p=>{
       if(isFixedScheduledOnDate(p,fechaStr)) return true;
       // Paciente inactivo: mostrar igual si tuvo sesión registrada en esa fecha
-      if(p.status==='inactive' && p.sesiones.some(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
+      if(p.status==='inactive' && p.sesiones.some(s=>fd(s.fecha)===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
       // Sesión movida desde esta fecha (pacientes sin horario fijo o inactivos reagendados)
-      if(p.sesiones.some(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
+      if(p.sesiones.some(s=>fd(s.fecha)===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
       return false;
     }).map(p=>({
       pNombre:p.nombre,
-      hora:(p.sesiones.find(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))?.hora)||horaDiaFecha(p,fechaStr)||'99:99',
+      hora:(p.sesiones.find(s=>fd(s.fecha)===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'))?.hora)||(p.sesiones.find(s=>fd(s.fecha)===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'))?.hora)||horaDiaFecha(p,fechaStr)||'99:99',
       html:(()=>{
-        const sesRegistrada=p.sesiones.find(s=>s.fecha===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
-        const sesMovida=p.sesiones.find(s=>s.fecha===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'));
+        const sesRegistrada=p.sesiones.find(s=>fd(s.fecha)===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'));
+        const sesMovida=p.sesiones.find(s=>fd(s.fecha)===fechaStr&&(s.skipped||s.replaced||s.tipo==='reprogramada'));
         const therapistCancelClass=sesRegistrada?.tipo==='cancelada'?' therapist-cancel':'';
         const slotClass=sesMovida?'wslot moved-source':`wslot${therapistCancelClass}`;
         const markerHtml=weekSlotMarkerHtml(sesRegistrada,!!sesMovida);
-        return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div>${markerHtml}</div><div>${timeRangeLabel(sesMovida?.hora||horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
+        return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div>${markerHtml}</div><div>${timeRangeLabel(sesMovida?.hora||sesRegistrada?.hora||horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
       })()
     }));
     const repos=patients.flatMap(p=>p.sesiones
       .filter(s=>{
-        if(s.tipo!=='reposicion'||s.fecha!==fechaStr) return false;
-        const shownInBaseSlot=isFixedScheduledOnDate(p,fechaStr) || (p.status==='inactive' && p.sesiones.some(x=>x.fecha===fechaStr&&!(x.skipped||x.replaced||x.tipo==='reprogramada'))) || p.sesiones.some(x=>x.fecha===fechaStr&&(x.skipped||x.replaced||x.tipo==='reprogramada'));
+        if(s.tipo!=='reposicion'||fd(s.fecha)!==fechaStr) return false;
+        const shownInBaseSlot=isFixedScheduledOnDate(p,fechaStr) || (p.status==='inactive' && p.sesiones.some(x=>fd(x.fecha)===fechaStr&&!(x.skipped||x.replaced||x.tipo==='reprogramada'))) || p.sesiones.some(x=>fd(x.fecha)===fechaStr&&(x.skipped||x.replaced||x.tipo==='reprogramada'));
         return !shownInBaseSlot;
       })
       .map(s=>({
@@ -6836,7 +6837,7 @@ function renderSemana(){
       }))
     );
     const unplanned=patients.flatMap(p=>p.sesiones
-      .filter(s=>s.tipo==='pendiente'&&s.fecha===fechaStr)
+      .filter(s=>s.tipo==='pendiente'&&fd(s.fecha)===fechaStr)
       .map(s=>({
         pNombre:p.nombre,
         hora:s.hora||'99:99',
