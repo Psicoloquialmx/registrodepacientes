@@ -1671,10 +1671,6 @@ function buildTimelineHTML(p){
   return rows||'<div class="timeline-empty">Sin eventos relevantes.</div>';
 }
 
-function loadState(){
-  return getLegacyLocalStore();
-}
-
 // " - ? Datos de ejemplo " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
 let patients = [
   {id:1,nombre:'Ana García',inicio:'2024-03-10',dias:[0,2],
@@ -3472,20 +3468,24 @@ function saveState(){
 async function hydrateUserStore(uid){
   isHydrating=true;
   setSyncStatus('Cargando datos...');
-  const remote=await getUserStateRef(uid).get();
-  if(remote.exists&&Array.isArray(remote.data().patients)){
-    applyStore(remote.data());
-    cacheStoreForUser(uid);
-  } else {
-    const cached=getUserCachedStore(uid);
-    const legacy=getLegacyLocalStore();
-    const seed=cached||legacy||getEmptyStore();
-    applyStore(seed);
-    await persistStateNow();
-    if(legacy) localStorage.removeItem('axolotlPatients');
+  try {
+    const remote=await getUserStateRef(uid).get();
+    if(remote.exists&&Array.isArray(remote.data().patients)){
+      applyStore(remote.data());
+      cacheStoreForUser(uid);
+    } else {
+      const cached=getUserCachedStore(uid);
+      const legacy=getLegacyLocalStore();
+      const seed=cached||legacy||getEmptyStore();
+      applyStore(seed);
+      isHydrating=false;
+      await persistStateNow();
+      if(legacy) localStorage.removeItem('axolotlPatients');
+    }
+  } finally {
+    isHydrating=false;
+    renderHoy();
   }
-  isHydrating=false;
-  renderHoy();
 }
 
 function lockApp(){
@@ -3757,8 +3757,9 @@ async function initFirebase(){
   }
   auth=firebase.auth();
   db=firebase.firestore();
+  db.enablePersistence({synchronizeTabs:true}).catch(err=>{console.warn('Offline persistence failed:',err);});
   firebaseReady=true;
-  await auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+  await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   auth.onAuthStateChanged(async user=>{
     try {
       if(user){
