@@ -6805,7 +6805,16 @@ function renderSemana(){
   const base=new Date((semanaBaseDate||today())+'T12:00');
   const dayEntries=(fechaStr,dow)=>{
     const fd=f=>(f||'').split(' ')[0];
+    // Detect same-day reposicion: fixed-schedule patient whose session hora was moved to a different time on the same day
+    const sameDayRepoIds=new Set(patients.filter(p=>{
+      if(!isFixedScheduledOnDate(p,fechaStr)) return false;
+      const ses=p.sesiones.find(s=>fd(s.fecha)===fechaStr&&s.tipo==='reposicion'&&!s.skipped&&!s.replaced);
+      if(!ses) return false;
+      const sched=horaDiaFecha(p,fechaStr);
+      return sched&&ses.hora!==sched;
+    }).map(p=>p.id));
     const slots=patients.filter(p=>{
+      if(sameDayRepoIds.has(p.id)) return false;
       if(isFixedScheduledOnDate(p,fechaStr)) return true;
       // Paciente inactivo: mostrar igual si tuvo sesión registrada en esa fecha
       if(p.status==='inactive' && p.sesiones.some(s=>fd(s.fecha)===fechaStr&&!(s.skipped||s.replaced||s.tipo==='reprogramada'))) return true;
@@ -6824,6 +6833,20 @@ function renderSemana(){
         return `<div class="${slotClass}" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div>${markerHtml}</div><div>${timeRangeLabel(sesMovida?.hora||sesRegistrada?.hora||horaDiaFecha(p,fechaStr),p.duracion||45)}</div></div>`;
       })()
     }));
+    // Same-day reposicion: show ghost (moved-source) at original scheduled time + repo entry at new time
+    const sameDayRepoEntries=patients.filter(p=>sameDayRepoIds.has(p.id)).flatMap(p=>{
+      const ses=p.sesiones.find(s=>fd(s.fecha)===fechaStr&&s.tipo==='reposicion'&&!s.skipped&&!s.replaced);
+      const schedHora=horaDiaFecha(p,fechaStr)||'99:99';
+      const ghost={
+        pNombre:p.nombre,hora:schedHora,
+        html:`<div class="wslot moved-source" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>${p.nombre.split(' ')[0]}</span></div></div><div>${timeRangeLabel(schedHora,p.duracion||45)}</div></div>`
+      };
+      const repo={
+        pNombre:p.nombre,hora:ses?.hora||'99:99',
+        html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>&#8635; ${p.nombre.split(' ')[0]}</span></div>${weekSlotMarkerHtml(ses,false)}</div><div>${ses?.hora?timeRangeLabel(ses.hora,p.duracion||45):'Repo.'}</div></div>`
+      };
+      return [ghost,repo];
+    });
     const repos=patients.flatMap(p=>p.sesiones
       .filter(s=>{
         if(s.tipo!=='reposicion'||fd(s.fecha)!==fechaStr) return false;
@@ -6844,7 +6867,7 @@ function renderSemana(){
         html:`<div class="wslot repo" onclick="openCalendarSessionPopover(${p.id},'${fechaStr}',this)"><div class="wslot-head"><div class="wslot-name" style="font-weight:500">${weekSlotReferralDotHtml(p)}<span>+ ${p.nombre.split(' ')[0]}</span></div>${weekSlotMarkerHtml(s,false)}</div><div>${s.hora?timeRangeLabel(s.hora,p.duracion||45):'No prevista'}</div></div>`
       }))
     );
-    return [...slots,...repos,...unplanned].sort((a,b)=>{
+    return [...slots,...sameDayRepoEntries,...repos,...unplanned].sort((a,b)=>{
       if(a.hora!==b.hora) return a.hora.localeCompare(b.hora);
       return a.pNombre.localeCompare(b.pNombre,'es',{sensitivity:'base'});
     }).map(r=>r.html).join('');
