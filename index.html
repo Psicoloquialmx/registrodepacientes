@@ -1912,8 +1912,14 @@ function patientCalendarPrefixForSession(ses){
 
 function patientCalendarTitle(p,ses){
   const statusPrefix=patientCalendarPrefixForSession(ses);
-  if(statusPrefix) return `•${statusPrefix}${patientCalendarLabel(p)}`;
-  const plannedPrefix=String(ses?.id||'').startsWith('plan_')?'· ':'';
+  if(statusPrefix){
+    // (R) = original slot that was moved away — already resolved, no pending dot
+    if(statusPrefix==='(R) ') return `(R) ${patientCalendarLabel(p)}`;
+    // All other prefixes ((R->), (F)) are pending → add middle dot
+    return `· ${statusPrefix}${patientCalendarLabel(p)}`;
+  }
+  const isPending=String(ses?.id||'').startsWith('plan_')||ses?.tipo==='pendiente';
+  const plannedPrefix=isPending?'· ':'';
   return `${plannedPrefix}${patientCalendarLabel(p)}`;
 }
 
@@ -2764,6 +2770,24 @@ function collectFuturePlannedSessionsForSync(maxDays,minDays=0,patientList=null)
         const shouldKeepInCalendar=existing.tipo!=='cancelada'&&!(existing.tipo==='falta'&&!!existing.noCharge)&&!existingIsRepoCanceled;
         if(shouldKeepInCalendar){
           items.push({p,ses:existing,dateStr,hora:existing.hora||horaDiaFecha(p,dateStr)});
+          // Issue 4: Same-day reschedule detection — session is a reposicion with a different
+          // hora than the fixed scheduled time, meaning confirmarTodayReposicion modified it
+          // in-place without creating a skipped source record.
+          // Guard: cross-day reposicions have fromDate set (source ≠ this day); same-day ones don't.
+          // Emit a synthetic (R) event at the original scheduled time so both slots appear.
+          if(existing.tipo==='reposicion'&&!existing.fromDate&&isFixedScheduledOnDate(p,dateStr)){
+            const scheduledHora=horaDiaFecha(p,dateStr);
+            const sessionHora=existing.hora;
+            if(scheduledHora&&sessionHora&&scheduledHora!==sessionHora){
+              const syntheticOriginal={
+                id:`plan_src_${dateStr}`,
+                fecha:dateStr,
+                tipo:'reprogramada',
+                hora:scheduledHora
+              };
+              items.push({p,ses:syntheticOriginal,dateStr,hora:scheduledHora});
+            }
+          }
         }
         // Never synthesize a virtual event when an explicit session already exists.
         continue;
@@ -6784,16 +6808,22 @@ function weekSlotReferralDotHtml(p){
 }
 
 function weekSlotMarkerHtml(sesRegistrada,sesMovida=false){
-  if(sesMovida) return '<span class="wslot-mark repo" title="Sesión reagendada">&#8635;</span>';
+  // Moved-source (original date of a rescheduled session) → already resolved, no marker.
+  if(sesMovida) return '';
   if(!sesRegistrada) return '';
 
-  // Reposición pendiente: show circular-arrow marker until there is an explicit response.
+  // Pending reposicion destination: show middle-dot until an explicit response is registered.
   if(sesRegistrada.tipo==='reposicion'&&!sesRegistrada.repoRespuesta){
-    return '<span class="wslot-mark repo" title="Reposición pendiente">&#8635;</span>';
+    return '<span class="wslot-mark" title="Pendiente por registrar">&middot;</span>';
   }
 
   if(sesRegistrada.tipo==='reposicion'&&sesRegistrada.repoRespuesta==='cancelada'){
     return '<span class="wslot-mark cancel" title="Reposición cancelada">&ndash;</span>';
+  }
+
+  // Unplanned session (tipo:'pendiente') → pending registration, show middle-dot.
+  if(sesRegistrada.tipo==='pendiente'){
+    return '<span class="wslot-mark" title="Pendiente por registrar">&middot;</span>';
   }
 
   const markerClass=getWeekSlotMarkerClass(sesRegistrada);
