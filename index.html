@@ -660,6 +660,13 @@ input[type="file"].form-input{cursor:pointer}
 #tut-next{background:#2563eb;color:white;border:none;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-weight:600;}
 .tut-highlighted{outline:3px solid rgba(255,255,255,.9)!important;outline-offset:5px!important;z-index:10002!important;position:relative!important;}
 
+/* ── Búsqueda de pacientes ── */
+.pac-search-wrap{flex:1;max-width:280px;position:relative;min-width:120px;}
+.pac-search-wrap input{width:100%;padding-left:30px;box-sizing:border-box;}
+.pac-search-wrap .pac-search-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#a0aec0;font-size:13px;pointer-events:none;line-height:1;}
+.pac-search-wrap input:focus{border-color:var(--primary,#2563eb);outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+@media(max-width:768px){.pac-search-wrap{max-width:none;width:100%;order:10;flex-basis:100%;}}
+
 </style>
 </head>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
@@ -774,6 +781,10 @@ input[type="file"].form-input{cursor:pointer}
     <div id="view-pacientes" class="view">
       <div class="topbar">
         <div class="topbar-left"><div class="page-title">Pacientes</div><div id="pacientes-subtitle" class="page-sub">Expedientes activos</div></div>
+        <div class="pac-search-wrap">
+          <span class="pac-search-ico">&#128269;</span>
+          <input type="search" id="patient-search-input" class="form-input" placeholder="Buscar... (tecla /)" oninput="onPatientSearchInput(this.value)" autocomplete="off">
+        </div>
         <button class="btn-primary" onclick="openModalNuevo()">+ Nuevo paciente</button>
       </div>
       <div class="content">
@@ -1598,24 +1609,50 @@ function setInactiveSearch(value){
   renderInactivePatients();
 }
 
+function onPatientSearchInput(value){
+  const v=(value||'').toLowerCase().trim();
+  if(pacientesTab==='inactivos'){
+    inactiveSearch=v;
+    renderInactivePatients();
+  } else {
+    activeSearch=v;
+    renderPatients();
+  }
+}
+
+// Atajo de teclado: "/" enfoca búsqueda de pacientes
+document.addEventListener('keydown',function(e){
+  if(e.key==='/'&&currentAppView==='pacientes'&&
+     document.activeElement?.tagName!=='INPUT'&&
+     document.activeElement?.tagName!=='TEXTAREA'&&
+     document.activeElement?.tagName!=='SELECT'){
+    e.preventDefault();
+    const inp=document.getElementById('patient-search-input');
+    if(inp){inp.focus();inp.select();}
+  }
+});
+
 function switchPacientesTab(tab){
   pacientesTab=tab;
   const actPanel=document.getElementById('pacientes-activos-panel');
   const inactPanel=document.getElementById('pacientes-inactivos-panel');
   const tabButtons=document.querySelectorAll('#pacientes-tabs .dtab');
   const subtitle=document.getElementById('pacientes-subtitle');
-  
+  const inp=document.getElementById('patient-search-input');
+
   tabButtons.forEach(btn=>btn.classList.remove('active'));
   document.querySelector(`#pacientes-tabs .dtab[data-tab="${tab}"]`).classList.add('active');
-  
+
   if(tab==='activos'){
     actPanel.classList.add('active');
     inactPanel.classList.remove('active');
+    if(inp) inp.value=activeSearch;
     subtitle.textContent='Expedientes activos';
     renderPatients();
   } else {
     actPanel.classList.remove('active');
     inactPanel.classList.add('active');
+    if(inp) inp.value=inactiveSearch;
     subtitle.textContent='Tratamientos suspendidos o cerrados';
     renderInactivePatients();
   }
@@ -4162,12 +4199,17 @@ function renderPatients(){
   const activos=sortPatientsByName(activePatients().filter(p=>matchesPatientSearch(p,activeSearch)));
   renderStats();
   const el=document.getElementById('patient-list');
-  if(!activos.length){el.innerHTML=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."></div><div class="empty"><img src="Assets/Axolotl/Angustia-4.svg"><p>Sin pacientes activos.</p></div>`;return}
+  const sub=document.getElementById('pacientes-subtitle');
+  if(!activos.length){
+    if(sub) sub.textContent=activeSearch?'Sin resultados':'Expedientes activos';
+    el.innerHTML=`<div class="empty"><img src="Assets/Axolotl/Angustia-4.svg"><p>${activeSearch?'No encontré ningún paciente con ese nombre.':'Sin pacientes activos.'}</p></div>`;
+    return;
+  }
+  if(sub) sub.textContent=activeSearch?`${activos.length} resultado${activos.length!==1?'s':''}`:'Expedientes activos';
   const hoy=new Date();
   const pendTotal=totalPendientesHoy();
   const alertaHtml=pendTotal>0?`<div class="alert-pendientes" style="margin-bottom:1rem"><img class="alert-icon" src="Assets/Branding/Logo-Reducido-Alt.svg" alt="Alerta"><div>Tienes <strong>${pendTotal} sesión${pendTotal!==1?'es':''} sin registrar</strong> de días pasados en ${MESES[hoy.getMonth()]}.</div></div>`:'';
-  const searchHtml=`<div class="toolbar-row"><input class="form-input" style="max-width:320px" value="${activeSearch}" oninput="setActiveSearch(this.value)" placeholder="Buscar paciente activo..."><div style="font-size:12px;color:var(--ink-light)">${activos.length} resultado${activos.length!==1?'s':''}</div></div>`;
-  el.innerHTML=searchHtml+alertaHtml+activos.map(p=>{
+  el.innerHTML=alertaHtml+activos.map(p=>{
     recomputePatientDebt(p);
     const n=p.sesiones.filter(s=>isSessionCountedAsGiven(s)).length;
     const tv=tarifaVigente(p);
@@ -4197,7 +4239,7 @@ function renderInactivePatients(){
   const inactivos=sortPatientsByName(filteredByReason.filter(p=>matchesPatientSearch(p,inactiveSearch)));
   toolbar.innerHTML=`<div class="toolbar-row"><div class="period-switch">
       ${['all','suspendio','alta','cierre','pausa','otro'].map(filter=>`<button class="period-btn${inactiveFilter===filter?' active':''}" onclick="setInactiveFilter('${filter}')">${statusReasonLabel(filter)}</button>`).join('')}
-    </div><input class="form-input" style="max-width:320px" value="${inactiveSearch}" oninput="setInactiveSearch(this.value)" placeholder="Buscar paciente inactivo..."><div style="font-size:12px;color:var(--ink-light)">${inactivos.length} paciente${inactivos.length!==1?'s':''}</div></div>`;
+    </div><div style="font-size:12px;color:var(--ink-light);margin-left:auto">${inactivos.length} paciente${inactivos.length!==1?'s':''}</div></div>`;
   if(!inactivos.length){el.innerHTML=`<div class="empty"><img src="Assets/Axolotl/Pensando-2.svg"><p>No hay pacientes inactivos con ese motivo.</p></div>`;return;}
   el.innerHTML=inactivos.map(p=>`<div class="patient-card" onclick="showDetalle(${p.id})">
     <div class="person-avatar"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
@@ -4941,7 +4983,11 @@ function showView(v,opts){
     document.getElementById('nav-pacientes').classList.add('active');
   }
   if(v==='hoy') renderHoy();
-  if(v==='pacientes') renderPatients();
+  if(v==='pacientes'){
+    const inp=document.getElementById('patient-search-input');
+    if(inp) inp.value=pacientesTab==='inactivos'?inactiveSearch:activeSearch;
+    renderPatients();
+  }
   if(v==='semana') renderSemana();
   if(v==='resumen') renderResumen();
   if(v==='prospectado') renderProspectado();
