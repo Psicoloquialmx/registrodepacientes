@@ -7268,89 +7268,105 @@ function renderProspectado(){
 // " - PAGOS VIEW -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - "
 let pagosFilter={patient:'',dateFrom:'',dateTo:'',metodo:''};
 
+function pagosMonthRange(){
+  const now=new Date();
+  const y=now.getFullYear();
+  const m=String(now.getMonth()+1).padStart(2,'0');
+  const last=String(new Date(y,now.getMonth()+1,0).getDate()).padStart(2,'0');
+  return {dateFrom:`${y}-${m}-01`,dateTo:`${y}-${m}-${last}`};
+}
+
 function renderPagos(){
   const el=document.getElementById('pagos-content');
   if(!el) return;
-  // Collect all payments across all patients, including createdAt for sorting
+  // Default to current month on first open
+  const f=pagosFilter;
+  if(!f.dateFrom&&!f.dateTo){const r=pagosMonthRange();f.dateFrom=r.dateFrom;f.dateTo=r.dateTo;}
+  // Collect all payments across all patients
   let rows=[];
   patients.forEach(p=>{
-    (p.pagos||[]).forEach((py,idx)=>{
-      rows.push({pid:p.id,nombre:p.nombre,fecha:py.fecha||'',monto:py.monto||0,metodo:py.metodo||'',id:py.id,createdAt:py.createdAt||'',_idx:idx});
+    (p.pagos||[]).forEach(py=>{
+      rows.push({pid:p.id,nombre:p.nombre,fecha:py.fecha||'',monto:py.monto||0,metodo:py.metodo||'',id:py.id,createdAt:py.createdAt||''});
     });
   });
   // Apply filters
-  const f=pagosFilter;
   if(f.patient) rows=rows.filter(r=>String(r.pid)===String(f.patient));
   if(f.dateFrom) rows=rows.filter(r=>r.fecha>=f.dateFrom);
   if(f.dateTo) rows=rows.filter(r=>r.fecha<=f.dateTo);
   if(f.metodo) rows=rows.filter(r=>r.metodo===f.metodo);
-  // Sort by createdAt descending (fall back to fecha for old records without timestamp)
-  rows.sort((a,b)=>{
-    const ta=a.createdAt||a.fecha;
-    const tb=b.createdAt||b.fecha;
-    return tb.localeCompare(ta);
-  });
+  // Sort by createdAt descending, fallback to fecha
+  rows.sort((a,b)=>(b.createdAt||b.fecha).localeCompare(a.createdAt||a.fecha));
   const total=rows.reduce((s,r)=>s+r.monto,0);
   const allPatients=sortPatientsByName([...patients]);
   const metodoOptions=['efectivo','transferencia','tarjeta','paypal','otro'];
-  // Helper: format time HH:MM from ISO string
   const fmtTime=iso=>{if(!iso) return '';try{const d=new Date(iso);return d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});}catch(e){return '';}};
   el.innerHTML=`
-    <div class="dsec" style="background:white;margin-bottom:1rem">
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:12px 0 4px">
-        <div>
-          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Paciente</div>
-          <select class="inp-sm" onchange="pagosFilter.patient=this.value;renderPagos()" style="width:170px">
-            <option value="">Todos</option>
+    <div style="background:white;border-radius:10px;padding:14px 16px 10px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <div style="font-size:12px;font-weight:600;color:var(--ink-light);margin-bottom:10px;letter-spacing:.04em">FILTROS</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
+        <div style="grid-column:1/-1">
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:3px">Paciente</div>
+          <select class="inp-sm" onchange="pagosFilter.patient=this.value;renderPagos()" style="width:100%">
+            <option value="">Todos los pacientes</option>
             ${allPatients.map(p=>`<option value="${p.id}"${String(f.patient)===String(p.id)?' selected':''}>${p.nombre}</option>`).join('')}
           </select>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Desde</div>
-          <input class="inp-sm" type="date" value="${f.dateFrom}" onchange="pagosFilter.dateFrom=this.value;renderPagos()" style="width:140px">
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:3px">Fecha desde</div>
+          <input class="inp-sm" type="date" value="${f.dateFrom}" onchange="pagosFilter.dateFrom=this.value;renderPagos()" style="width:100%">
         </div>
         <div>
-          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Hasta</div>
-          <input class="inp-sm" type="date" value="${f.dateTo}" onchange="pagosFilter.dateTo=this.value;renderPagos()" style="width:140px">
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:3px">Fecha hasta</div>
+          <input class="inp-sm" type="date" value="${f.dateTo}" onchange="pagosFilter.dateTo=this.value;renderPagos()" style="width:100%">
         </div>
         <div>
-          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
-          <select class="inp-sm" onchange="pagosFilter.metodo=this.value;renderPagos()" style="width:130px">
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:3px">Método de pago</div>
+          <select class="inp-sm" onchange="pagosFilter.metodo=this.value;renderPagos()" style="width:100%">
             <option value="">Todos</option>
             ${metodoOptions.map(m=>`<option value="${m}"${f.metodo===m?' selected':''}>${m.charAt(0).toUpperCase()+m.slice(1)}</option>`).join('')}
           </select>
         </div>
-        <button class="btn-ghost btn-sm" onclick="pagosFilter={patient:'',dateFrom:'',dateTo:'',metodo:''};renderPagos()">Limpiar filtros</button>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn-ghost btn-sm" style="width:100%" onclick="(()=>{const r=pagosMonthRange();pagosFilter={patient:'',dateFrom:r.dateFrom,dateTo:r.dateTo,metodo:''};renderPagos();})()">Mes actual</button>
+        </div>
       </div>
     </div>
-    <div class="dsec" style="background:white">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="background:white;border-radius:10px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.07)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:6px">
         <span style="font-weight:600;font-size:14px">${rows.length} pago${rows.length!==1?'s':''}</span>
         <span style="font-weight:700;font-size:16px;color:var(--primary)">Total: $${total.toLocaleString('es-MX')}</span>
       </div>
-      ${rows.length===0?'<div style="color:var(--ink-light);text-align:center;padding:2rem">Sin pagos con los filtros seleccionados</div>':''}
+      ${rows.length===0?'<div style="color:var(--ink-light);text-align:center;padding:2rem 1rem">Sin pagos en el rango seleccionado</div>':''}
       ${rows.length>0?`
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;min-width:360px">
+        <colgroup>
+          <col style="width:34%">
+          <col style="width:18%">
+          <col style="width:28%">
+          <col style="width:20%">
+        </colgroup>
         <thead>
           <tr style="border-bottom:2px solid var(--border);text-align:left">
-            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Fecha</th>
-            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Hora</th>
-            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Paciente</th>
-            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light);text-align:right">Monto</th>
-            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Método</th>
+            <th style="padding:7px 10px;font-weight:600;color:var(--ink-light)">Paciente</th>
+            <th style="padding:7px 10px;font-weight:600;color:var(--ink-light);text-align:right">Monto</th>
+            <th style="padding:7px 10px;font-weight:600;color:var(--ink-light)">Fecha</th>
+            <th style="padding:7px 10px;font-weight:600;color:var(--ink-light)">Método</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map((r,i)=>`
-          <tr style="border-bottom:1px solid var(--border);${i%2===0?'background:#fafafa':''}">
-            <td style="padding:7px 10px">${displayDate(r.fecha)||r.fecha}</td>
-            <td style="padding:7px 10px;color:var(--ink-light)">${fmtTime(r.createdAt)||'—'}</td>
-            <td style="padding:7px 10px"><a href="#" onclick="event.preventDefault();showDetalle(${r.pid})" style="color:var(--primary);text-decoration:none">${r.nombre}</a></td>
-            <td style="padding:7px 10px;text-align:right;font-weight:600">$${r.monto.toLocaleString('es-MX')}</td>
-            <td style="padding:7px 10px;color:var(--ink-light)">${r.metodo.charAt(0).toUpperCase()+r.metodo.slice(1)}</td>
-          </tr>`).join('')}
+          ${rows.map((r,i)=>{
+            const t=fmtTime(r.createdAt);
+            return `
+          <tr style="${i%2===0?'background:white':'background:#fdf2f8'}">
+            <td style="padding:8px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><a href="#" onclick="event.preventDefault();showDetalle(${r.pid})" style="color:var(--primary);text-decoration:none;font-weight:500">${r.nombre}</a></td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;color:#1a5e2a">$${r.monto.toLocaleString('es-MX')}</td>
+            <td style="padding:8px 10px;white-space:nowrap"><span>${displayDate(r.fecha)||r.fecha}</span>${t?`<br><span style="font-size:11px;color:var(--ink-light)">${t}</span>`:''}</td>
+            <td style="padding:8px 10px;color:var(--ink-light);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.metodo.charAt(0).toUpperCase()+r.metodo.slice(1)}</td>
+          </tr>`;}).join('')}
         </tbody>
-      </table>`:''}
+      </table>
+      </div>`:''}
     </div>`;
 }
 
