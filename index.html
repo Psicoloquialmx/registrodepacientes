@@ -4456,7 +4456,7 @@ function renderHoy(){
             <span class="today-locked-pill">Registro confirmado</span>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn-sec btn-sm" type="button" onclick="openTodayPayPopup(${p.id})">+ Registrar pago</button>
+            <button class="btn-sec btn-sm" type="button" style="background:#2563eb;color:white;border-color:#2563eb" onclick="openTodayPayPopup(${p.id})">Registrar pago</button>
             <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
           </div>
         </div>
@@ -7327,7 +7327,7 @@ function renderPagos(){
           </select>
         </div>
         <div style="display:flex;align-items:flex-end">
-          <button class="btn-ghost btn-sm" style="width:100%" onclick="(()=>{const r=pagosMonthRange();pagosFilter={patient:'',dateFrom:r.dateFrom,dateTo:r.dateTo,metodo:''};renderPagos();})()">Mes actual</button>
+          <button class="btn-ghost btn-sm" style="width:100%;background:#ea580c;color:white;border-color:#ea580c" onclick="(()=>{const r=pagosMonthRange();pagosFilter={patient:'',dateFrom:r.dateFrom,dateTo:r.dateTo,metodo:''};renderPagos();})()">Mes actual</button>
         </div>
       </div>
     </div>
