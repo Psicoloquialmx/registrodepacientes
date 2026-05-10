@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#b95d37">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
 <title>Registro de Sesiones</title>
 <link rel="icon" type="image/svg+xml" href="Assets/Branding/Logo-Reducido-Alt.svg?v=20260320j">
 <link rel="shortcut icon" href="Assets/Branding/Logo-Reducido-Alt.svg?v=20260320j" type="image/svg+xml">
@@ -24,6 +28,41 @@
   --sage-soft:rgba(165,196,188,.24);
   --blush-soft:rgba(247,204,232,.34);
 }
+[data-theme="dark"]{
+  --ink:#e2e8f0;--terra:#e07a52;--sage:#8cbdb3;
+  --blush:#d8b4d4;--cream:#3d2f3d;
+  --ink-light:#94a3b8;--sage-dark:#a5c4bc;--bg:#0f172a;
+  --ink-border:rgba(148,163,184,.2);
+  --sage-soft:rgba(165,196,188,.12);
+  --blush-soft:rgba(216,180,212,.15);
+}
+[data-theme="dark"] body{background:var(--bg);color:var(--ink)}
+[data-theme="dark"] .auth-screen{background:#0f172a}
+[data-theme="dark"] .auth-card{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .sidebar{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .nav-item{color:#cbd5e1}
+[data-theme="dark"] .nav-item.active{background:rgba(56,70,81,.35);color:#fff}
+[data-theme="dark"] .main{background:#0f172a}
+[data-theme="dark"] .topbar{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .page-title{color:#f1f5f9}
+[data-theme="dark"] .page-sub{color:#94a3b8}
+[data-theme="dark"] .today-card{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .patient-card{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .dsec{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .form-input{background:#0f172a;border-color:#334155;color:#e2e8f0}
+[data-theme="dark"] .form-input:focus{border-color:var(--terra)}
+[data-theme="dark"] .btn-primary{background:var(--terra)}
+[data-theme="dark"] .btn-sec{background:#334155;color:#e2e8f0;border-color:#475569}
+[data-theme="dark"] .btn-ghost{background:transparent;color:#94a3b8}
+[data-theme="dark"] .modal-overlay{background:rgba(0,0,0,.65)}
+[data-theme="dark"] .modal{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .dtab{color:#94a3b8}
+[data-theme="dark"] .dtab.active{color:#fff;border-color:var(--terra)}
+[data-theme="dark"] .badge.b-ok{background:rgba(165,196,188,.2);color:#a5c4bc}
+[data-theme="dark"] .badge.b-debt{background:rgba(247,204,232,.2);color:#f7cce8}
+[data-theme="dark"] .empty{color:#94a3b8}
+[data-theme="dark"] .bar-chart .bbar{background:var(--terra)}
+[data-theme="dark"] .b-debt-high{background:#dc2626;color:white}
 html,body{max-width:100%;overflow-x:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
 .app{display:flex;min-height:100vh}
@@ -194,6 +233,8 @@ body.auth-locked .auth-screen{display:flex}
 .b-day{background:var(--cream);color:var(--ink-light)}
 .b-debt{background:var(--blush-soft);color:var(--terra)}
 .b-warn{background:rgba(185,93,55,.14);color:var(--terra)}
+.b-debt-high{background:#dc2626;color:white;font-weight:600}
+.patient-card.debt-high{border-left:4px solid #dc2626}
 
 /* " - ? MODAL " - ? */
 .modal-overlay{position:fixed;inset:0;background:rgba(30,42,50,.55);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px)}
@@ -738,6 +779,7 @@ input[type="file"].form-input{cursor:pointer}
       <div class="nav-label">Cuenta</div>
       <button class="nav-item" onclick="showView('perfil')" id="nav-perfil"><span class="nav-ico">&#128100;</span> Perfil</button>
       <button class="nav-item" onclick="showView('ayuda')" id="nav-ayuda"><span class="nav-ico">&#10067;</span> Ayuda</button>
+      <button class="nav-item" onclick="toggleDarkMode()" id="nav-theme" title="Cambiar tema"><span class="nav-ico" id="theme-icon">🌙</span> <span id="theme-label">Modo oscuro</span></button>
     </div>
     <div class="sidebar-axo-wrap"><img id="sb-axo" src="" alt=""></div>
   </nav>
@@ -1681,6 +1723,14 @@ function setEstimationChoice(pid,choice){
   renderDetalle(p);
 }
 
+function isDebtHigh(p){
+  const tp=normalizeTherapistProfile(therapistProfile);
+  const thresholdSessions=p.debtAlertSessions??tp.debtAlertSessions??3;
+  const thresholdAmount=p.debtAlertAmount??tp.debtAlertAmount??2400;
+  const sessionsDebt=Math.ceil((p.adeudo||0)/(tarifaVigente(p)||tp.defaultSessionRate||800));
+  return (p.adeudo||0)>=thresholdAmount || sessionsDebt>=thresholdSessions;
+}
+
 function toggleEstimationExplanation(pid){
   const p=patients.find(x=>x.id===parseInt(pid));
   if(!p) return;
@@ -1808,6 +1858,7 @@ let inactiveFilter='all';
 let activeSearch='';
 let inactiveSearch='';
 let pacientesTab='activos';
+let darkMode=false;
 const DEFAULT_THERAPIST_CANCEL_WEEKS=6.5;
 let authMode='login';
 let firebaseReady=false;
@@ -3113,6 +3164,8 @@ function getDefaultTherapistProfile(){
     defaultSessionDuration:45,
     defaultSessionRate:800,
     defaultPaymentMode:'sesion',
+    debtAlertSessions:3,
+    debtAlertAmount:2400,
     firstSessionNoChargeDefault:false,
     lastWeeklyAutoSyncWeek:'',
     logoUrl:'',
@@ -3374,6 +3427,8 @@ function normalizeTherapistProfile(raw){
     defaultSessionDuration:Number.isFinite(Number(data.defaultSessionDuration))?Number(data.defaultSessionDuration):base.defaultSessionDuration,
     defaultSessionRate:Number.isFinite(Number(data.defaultSessionRate))?Number(data.defaultSessionRate):base.defaultSessionRate,
     defaultPaymentMode:['sesion','mensual','quincenal','inicio'].includes(data.defaultPaymentMode)?data.defaultPaymentMode:base.defaultPaymentMode,
+    debtAlertSessions:Number.isFinite(Number(data.debtAlertSessions))?Number(data.debtAlertSessions):base.debtAlertSessions,
+    debtAlertAmount:Number.isFinite(Number(data.debtAlertAmount))?Number(data.debtAlertAmount):base.debtAlertAmount,
     firstSessionNoChargeDefault:!!data.firstSessionNoChargeDefault,
     lastWeeklyAutoSyncWeek:(data.lastWeeklyAutoSyncWeek||base.lastWeeklyAutoSyncWeek||'').toString(),
     logoUrl:(data.logoUrl||'').toString().trim(),
@@ -3702,6 +3757,12 @@ if(Array.isArray(window.__authActionQueue)&&window.__authActionQueue.length){
 }
 
 async function signOutUser(){
+  const ok = await showConfirmDialog(
+    '¿Cerrar sesión?',
+    'Los datos están guardados en la nube. Puedes volver a iniciar sesión cuando quieras.',
+    {ok:'Cerrar sesión', cancel:'Cancelar', danger:true}
+  );
+  if(!ok) return;
   if(auth) await auth.signOut();
 }
 
@@ -4216,9 +4277,10 @@ function renderPatients(){
     const pend=sesionesPendientes(p).length;
     const ultimaSesion=[...p.sesiones].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
     const fechaDetalle=ultimaSesion?ultimaSesion.fecha.split(' ')[0]:'Sin fecha';
-    const badge=p.adeudo>0?`<span class="badge b-debt">Debe $${p.adeudo.toLocaleString('es-MX')}</span>`:`<span class="badge b-ok">Al corriente con los pagos</span>`;
+    const debtHigh=isDebtHigh(p);
+    const badge=debtHigh?`<span class="badge b-debt-high">⚠ Debe $${p.adeudo.toLocaleString('es-MX')}</span>`:(p.adeudo>0?`<span class="badge b-debt">Debe $${p.adeudo.toLocaleString('es-MX')}</span>`:`<span class="badge b-ok">Al corriente con los pagos</span>`);
     const pendBadge=pend>0?`<span class="badge b-warn">${pend} asistencia${pend!==1?'s':''} sin registrar</span>`:'';
-    return `<div class="patient-card" onclick="showDetalle(${p.id})">
+    return `<div class="patient-card${debtHigh?' debt-high':''}" onclick="showDetalle(${p.id})">
       <div class="person-avatar"><img src="${PATIENT_PROFILE_IMG}" alt="Perfil de paciente"></div>
       <div class="p-info">
         <div class="p-head">
@@ -4517,6 +4579,7 @@ function renderHoy(){
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn-sec btn-sm" type="button" style="background:#2563eb;color:white;border-color:#2563eb" onclick="openTodayPayPopup(${p.id})">Registrar pago</button>
+            <button class="btn-sec btn-sm" type="button" title="Nota clínica" onclick="openSessionNotaPopup(${p.id})">📝</button>
             <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
           </div>
         </div>
@@ -4610,17 +4673,47 @@ function submitTodayPago(){
   const pid=parseInt(document.getElementById('today-pay-pid').value);
   const p=patients.find(x=>x.id===pid);
   if(!p) return;
-  const monto=Math.max(0,parseInt(document.getElementById('today-pay-amount').value)||0);
-  if(monto<=0){alert('Escribe un monto válido.');return;}
+  const amount=parseFloat(document.getElementById('today-pay-amount').value)||0;
   const fecha=document.getElementById('today-pay-date').value||today();
   const metodo=document.getElementById('today-pay-method').value||'transferencia';
-  p.pagos.push({id:'p'+(nextPayId++),fecha,monto,metodo,applyToPreviousDebt:true,createdAt:new Date().toISOString()});
-  addLog(p,'datos',`Pago registrado desde vista de hoy: $${monto.toLocaleString('es-MX')} (${metodo})`);
+  if(amount<=0){alert('Ingresa un monto mayor a 0');return;}
+  p.pagos.push({id:Date.now(),monto:amount,fecha,metodo,applyToPreviousDebt:true,createdAt:new Date().toISOString()});
   recomputePatientDebt(p);
   saveState();
   closeTodayPayPopup();
-  updateSidebarBadge();
-  if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
+  renderHoy();
+}
+
+function openSessionNotaPopup(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const r=getTodayRowForPatient(p);
+  const ses=(r&&r.ses)?r.ses:null;
+  const overlay=document.getElementById('nota-session-overlay');
+  if(!overlay) return;
+  document.getElementById('nota-session-pid').value=String(pid);
+  document.getElementById('nota-session-patient-label').textContent=p.nombre+(ses?` · ${ses.fecha}`:'');
+  document.getElementById('nota-session-text').value=ses?.nota||'';
+  overlay.style.display='flex';
+  setTimeout(()=>document.getElementById('nota-session-text').focus(),60);
+}
+
+function closeSessionNotaPopup(){
+  const overlay=document.getElementById('nota-session-overlay');
+  if(overlay) overlay.style.display='none';
+}
+
+function submitSessionNota(){
+  const pid=parseInt(document.getElementById('nota-session-pid').value);
+  const p=patients.find(x=>x.id===pid);
+  if(!p) return;
+  const nota=document.getElementById('nota-session-text').value||'';
+  const r=getTodayRowForPatient(p);
+  if(r&&r.ses){
+    r.ses.nota=nota;
+    saveState();
+  }
+  closeSessionNotaPopup();
 }
 
 function syncQuickPayPatients(){
@@ -7169,6 +7262,17 @@ function renderResumen(){
   const mx=Math.max(...chartCols.map(c=>c.value),1);
   const barGap=resumenPeriod==='mes'?'2px':resumenPeriod==='semana'?'8px':'4px';
   const chartModeClass=resumenPeriod==='mes'?' month-mode':'';
+  // Calcular ingresos cobrados vs proyectado para el periodo activo
+  const ingresosCobrados=activos.reduce((sum,p)=>sum+(p.pagos||[]).reduce((s,py)=>{
+    if(!py.fecha) return s;
+    const d=new Date(py.fecha+'T12:00');
+    return (d>=activeBounds.start&&d<=activeBounds.end)?s+py.monto:s;
+  },0),0);
+  const sesionesProyectadas=activos.reduce((sum,p)=>{
+    const tarifa=tarifaVigente(p);
+    const count=sesionesDadasEnRango(p,activeBounds.start,activeBounds.end,{strictResumen:true});
+    return sum+count*tarifa;
+  },0);
   const bars=chartCols.map(c=>{
     const h=Math.max(3,Math.round(c.value/mx*80));
     return `<div class="bcol"><div class="bval">${c.value>0?c.value:''}</div><div class="bbar${c.cur?' cur':''}" style="height:${h}px"></div><div class="blabel">${c.label}</div></div>`;
@@ -7194,6 +7298,15 @@ function renderResumen(){
         <button class="btn-ghost btn-sm" onclick="moveResumenRange(1)">Siguiente &rarr;</button>
       </div>
       <div class="drow"><span class="dkey">Sesiones dadas en el periodo</span><span class="dval">${activeCount}</span></div>
+      <div class="drow" style="margin-top:8px;padding-top:12px;border-top:1px dashed var(--ink-border)">
+        <span class="dkey">Ingresos cobrados</span><span class="dval" style="color:var(--sage-dark);font-weight:700">$${ingresosCobrados.toLocaleString('es-MX')}</span>
+      </div>
+      <div class="drow">
+        <span class="dkey">Ingresos proyectados</span><span class="dval" style="color:var(--terra);font-weight:700">$${sesionesProyectadas.toLocaleString('es-MX')}</span>
+      </div>
+      <div class="drow">
+        <span class="dkey">% Cobrado</span><span class="dval" style="color:${ingresosCobrados>=sesionesProyectadas?'var(--sage-dark)':'var(--terra)'};font-weight:700">${sesionesProyectadas>0?Math.round((ingresosCobrados/sesionesProyectadas)*100):0}%</span>
+      </div>
     </div>
     <div class="dsec" style="background:white"><div class="sec-title">${chartTitle}</div><div class="bar-chart-scroll"><div class="bar-chart${chartModeClass}" style="gap:${barGap}">${bars}</div></div></div>
     <div class="dsec" style="background:white;margin-top:1rem">
@@ -7392,8 +7505,9 @@ function renderPagos(){
             ${metodoOptions.map(m=>`<option value="${m}"${f.metodo===m?' selected':''}>${m.charAt(0).toUpperCase()+m.slice(1)}</option>`).join('')}
           </select>
         </div>
-        <div style="display:flex;align-items:flex-end">
-          <button class="btn-ghost btn-sm" style="width:100%;background:#ea580c;color:white;border-color:#ea580c" onclick="(()=>{const r=pagosMonthRange();pagosFilter={patient:'',dateFrom:r.dateFrom,dateTo:r.dateTo,metodo:''};renderPagos();})()">Mes actual</button>
+        <div style="display:flex;align-items:flex-end;gap:6px">
+          <button class="btn-ghost btn-sm" style="flex:1;background:#ea580c;color:white;border-color:#ea580c" onclick="(()=>{const r=pagosMonthRange();pagosFilter={patient:'',dateFrom:r.dateFrom,dateTo:r.dateTo,metodo:''};renderPagos();})()">Mes actual</button>
+          <button class="btn-sec btn-sm" style="flex:1" onclick="exportPagosToCSV()">📥 Exportar CSV</button>
         </div>
       </div>
     </div>
@@ -7436,7 +7550,33 @@ function renderPagos(){
     </div>`;
 }
 
-// " - ? MODAL NUEVO PACIENTE " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
+function exportPagosToCSV(){
+  const f=pagosFilter;
+  let rows=[];
+  patients.forEach(p=>{
+    (p.pagos||[]).forEach(py=>{
+      rows.push({pid:p.id, nombre:p.nombre, fecha:py.fecha||'', monto:py.monto||0, metodo:py.metodo||'', id:py.id, createdAt:py.createdAt||''});
+    });
+  });
+  if(f.patient) rows=rows.filter(r=>String(r.pid)===String(f.patient));
+  if(f.dateFrom) rows=rows.filter(r=>r.fecha>=f.dateFrom);
+  if(f.dateTo) rows=rows.filter(r=>r.fecha<=f.dateTo);
+  if(f.metodo) rows=rows.filter(r=>r.metodo===f.metodo);
+  rows.sort((a,b)=>(b.createdAt||b.fecha).localeCompare(a.createdAt||a.fecha));
+  const lines=[['Fecha','Paciente','Monto','Método','ID'].join(',')];
+  rows.forEach(r=>{
+    const safeNombre='"'+String(r.nombre).replace(/"/g,'""')+'"';
+    lines.push([r.fecha, safeNombre, r.monto, r.metodo, r.id].join(','));
+  });
+  const csv='\uFEFF'+lines.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='pagos_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 let newPatDias=[];
 function openModalNuevo(){
   newPatDias=[];
@@ -7726,10 +7866,41 @@ window.addEventListener('popstate',e=>{
 applyStore(getEmptyStore());
 setSidebarUser(null);
 setSyncStatus('Esperando inicio de sesión');
+initTheme();
 initFirebase().catch(err=>{
   console.error(err);
   showAuthMessage('No pude inicializar Firebase. Revisa la configuración del proyecto.', 'error');
 });
+
+// Register service worker for PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('service-worker.js').catch(console.error);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  THEME / DARK MODE
+// ─────────────────────────────────────────────────────────────
+function initTheme(){
+  const saved=localStorage.getItem('axo-theme');
+  if(saved==='dark'||saved==='light'){
+    darkMode=saved==='dark';
+  } else {
+    darkMode=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  applyTheme();
+}
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme',darkMode?'dark':'light');
+  const icon=document.getElementById('theme-icon');
+  const label=document.getElementById('theme-label');
+  if(icon) icon.textContent=darkMode?'☀️':'🌙';
+  if(label) label.textContent=darkMode?'Modo claro':'Modo oscuro';
+}
+function toggleDarkMode(){
+  darkMode=!darkMode;
+  localStorage.setItem('axo-theme',darkMode?'dark':'light');
+  applyTheme();
+}
 
 // ─────────────────────────────────────────────────────────────
 //  TUTORIAL INTERACTIVO — AXO  (Spotlight + bubble narrada)
@@ -8131,6 +8302,26 @@ function renderAyuda(){
       <button id="tut-skip" onclick="closeTutorial()">Saltar tutorial</button>
       <button id="tut-prev" onclick="showTutStep(tutStep-1)">← Anterior</button>
       <button id="tut-next" onclick="showTutStep(tutStep+1)">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nota Session Popup -->
+<div id="nota-session-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center" onclick="if(event.target===this)closeSessionNotaPopup()">
+  <div style="background:white;border-radius:12px;padding:24px;width:420px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-weight:700;font-size:15px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      Nota clínica
+      <button onclick="closeSessionNotaPopup()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-light);line-height:1">&times;</button>
+    </div>
+    <div id="nota-session-patient-label" style="font-size:13px;color:var(--ink-light);margin-bottom:14px"></div>
+    <div style="margin-bottom:12px">
+      <label class="form-label" style="font-size:12px">Nota privada (solo visible en expediente)</label>
+      <textarea class="form-input" id="nota-session-text" rows="5" style="width:100%;resize:vertical"></textarea>
+    </div>
+    <input type="hidden" id="nota-session-pid">
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button class="btn-sec btn-sm" onclick="closeSessionNotaPopup()">Cancelar</button>
+      <button class="btn-primary btn-sm" onclick="submitSessionNota()">Guardar nota</button>
     </div>
   </div>
 </div>
