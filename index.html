@@ -644,6 +644,22 @@ input[type="file"].form-input{cursor:pointer}
   .topbar .menu-toggle{display:none !important}
 }
 
+/* ── Tutorial Axo ── */
+#tut-overlay{display:none;position:fixed;inset:0;z-index:10000;}
+.tut-ol-piece{position:fixed;background:rgba(0,0,0,.65);z-index:10001;pointer-events:all;transition:all .15s ease;}
+#tut-bubble{display:none;position:fixed;z-index:10003;background:white;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.3);max-width:360px;width:calc(100vw - 32px);overflow:hidden;flex-direction:column;}
+#tut-bubble-head{background:linear-gradient(135deg,#fde8f3 0%,#e8f3f1 100%);padding:14px 18px;display:flex;align-items:center;gap:12px;}
+#tut-axo-img{width:60px;flex-shrink:0;transition:opacity .2s;}
+#tut-step-num{font-size:10px;color:#9b72b0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+#tut-bubble-title{font-weight:700;font-size:15px;color:#2d3748;}
+#tut-bubble-body{padding:14px 18px;}
+#tut-bubble-text{font-size:13.5px;color:#4a5568;line-height:1.55;margin-bottom:14px;}
+#tut-bubble-actions{display:flex;gap:8px;align-items:center;}
+#tut-skip{background:none;border:none;color:#a0aec0;font-size:12px;cursor:pointer;margin-right:auto;padding:4px 0;text-decoration:underline;}
+#tut-prev{background:none;border:1px solid #e2e8f0;border-radius:7px;padding:6px 13px;font-size:13px;cursor:pointer;color:#4a5568;}
+#tut-next{background:#2563eb;color:white;border:none;border-radius:7px;padding:6px 16px;font-size:13px;cursor:pointer;font-weight:600;}
+.tut-highlighted{outline:3px solid rgba(255,255,255,.9)!important;outline-offset:5px!important;z-index:10002!important;position:relative!important;}
+
 </style>
 </head>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
@@ -714,6 +730,7 @@ input[type="file"].form-input{cursor:pointer}
     <div class="nav-section">
       <div class="nav-label">Cuenta</div>
       <button class="nav-item" onclick="showView('perfil')" id="nav-perfil"><span class="nav-ico">&#128100;</span> Perfil</button>
+      <button class="nav-item" onclick="showView('ayuda')" id="nav-ayuda"><span class="nav-ico">&#10067;</span> Ayuda</button>
     </div>
     <div class="sidebar-axo-wrap"><img id="sb-axo" src="" alt=""></div>
   </nav>
@@ -797,6 +814,10 @@ input[type="file"].form-input{cursor:pointer}
     <div id="view-perfil" class="view">
       <div class="topbar"><div class="topbar-left"><div class="page-title">Perfil del terapeuta</div><div class="page-sub">Identidad profesional y configuración base</div></div></div>
       <div class="content" id="profile-content"></div>
+    </div>
+    <div id="view-ayuda" class="view">
+      <div class="topbar"><div class="topbar-left"><div class="page-title">Ayuda</div><div class="page-sub">Guía interactiva y recursos</div></div></div>
+      <div class="content" id="ayuda-content"></div>
     </div>
   </div>
 </div>
@@ -3519,6 +3540,9 @@ async function hydrateUserStore(uid){
   } finally {
     isHydrating=false;
     renderHoy();
+    if(!localStorage.getItem('axo_tutorial_seen')){
+      setTimeout(()=>{ if(typeof startTutorial==='function') startTutorial(); },700);
+    }
   }
 }
 
@@ -4923,6 +4947,7 @@ function showView(v,opts){
   if(v==='prospectado') renderProspectado();
   if(v==='pagos') renderPagos();
   if(v==='perfil') renderTherapistProfileView();
+  if(v==='ayuda') renderAyuda();
 }
 
 // " - ? DETALLE " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -7660,6 +7685,249 @@ initFirebase().catch(err=>{
   showAuthMessage('No pude inicializar Firebase. Revisa la configuración del proyecto.', 'error');
 });
 
+// ─────────────────────────────────────────────────────────────
+//  TUTORIAL INTERACTIVO — AXO  (Spotlight + bubble narrada)
+// ─────────────────────────────────────────────────────────────
+const TUTORIAL_STEPS = [
+  // ── Bienvenida ──────────────────────────────────────────
+  {
+    target: null,
+    title: '¡Hola! Soy Axo 🦎',
+    text: 'Tu guía personal en esta app. Te voy a mostrar todo lo que necesitas para llevar tu consulta al día. ¡Empecemos con un pequeño recorrido!',
+    axo: 'Feliz-1'
+  },
+  // ── Flujo 1: Agregar paciente ────────────────────────────
+  {
+    target: '#nav-pacientes',
+    view: 'pacientes',
+    title: 'Vista de Pacientes',
+    text: 'Aquí encontrarás a todos tus pacientes activos e inactivos. Es tu punto de partida para cualquier gestión.',
+    axo: 'Normal-1'
+  },
+  {
+    target: '#view-pacientes .btn-primary',
+    title: '+ Nuevo paciente',
+    text: 'Con este botón agregas un paciente nuevo. Se abre un formulario donde capturas nombre, horario fijo semanal y tarifa de sesión.',
+    axo: 'Pensando-1'
+  },
+  {
+    target: '#patient-list',
+    title: 'Lista de pacientes',
+    text: 'Cada tarjeta muestra el nombre y estado del paciente. Haz clic en "Expediente" para ver su historial completo, calendario y pagos.',
+    axo: 'Normal-3'
+  },
+  // ── Flujo 2: Vista de Hoy ────────────────────────────────
+  {
+    target: '#nav-hoy',
+    view: 'hoy',
+    title: 'Vista de Hoy ⭐',
+    text: '¡El corazón de la app! Aquí ves todas las sesiones programadas para hoy. Puedes navegar entre ayer, hoy y mañana con los botones de arriba.',
+    axo: 'Feliz-2'
+  },
+  {
+    target: '#hoy-content',
+    title: 'Sesiones del día',
+    text: 'Cada tarjeta es una sesión. Selecciona si el paciente asistió, faltó o fue cancelada, y presiona "Guardar" para confirmar el registro.',
+    axo: 'Normal-2'
+  },
+  {
+    target: '#quick-pay-drawer',
+    title: 'Registrar pagos',
+    text: 'Después de guardar la asistencia, aparece el botón "Registrar pago" en la tarjeta. También puedes usar este panel de pago rápido para cualquier paciente activo.',
+    axo: 'Pensando-2'
+  },
+  // ── Flujo 3: Calendario del paciente ────────────────────
+  {
+    target: '#nav-pacientes',
+    view: 'pacientes',
+    title: 'Expediente del paciente',
+    text: 'Desde la lista, haz clic en "Expediente" de cualquier paciente para abrir su vista personal. Ahí verás su calendario mes a mes, historial y resumen de deuda.',
+    axo: 'Normal-1'
+  },
+  // ── Flujo 4: Pagos y Prospectado ────────────────────────
+  {
+    target: '#nav-pagos',
+    view: 'pagos',
+    title: 'Vista de Pagos',
+    text: 'Aquí están todos los pagos registrados, ordenados por recencia. Puedes filtrar por paciente, mes actual o un rango de fechas personalizado.',
+    axo: 'Normal-3'
+  },
+  {
+    target: '#nav-prospectado',
+    view: 'prospectado',
+    title: 'Vista de Prospectado',
+    text: 'Esta vista proyecta tus ingresos esperados vs lo cobrado vs la deuda acumulada por paciente. Ideal para hacer cierres de periodo.',
+    axo: 'Pensando-3'
+  },
+  // ── Flujo 5: Vacaciones e inactividad ───────────────────
+  {
+    target: '#nav-pacientes',
+    view: 'pacientes',
+    title: 'Vacaciones e inactividad',
+    text: 'Desde el expediente de un paciente puedes registrar sus vacaciones o marcarlo como inactivo a partir de una fecha. Las sesiones en esas fechas se excluyen automáticamente del calendario.',
+    axo: 'Pensando-4'
+  },
+  // ── Vista de Ayuda ───────────────────────────────────────
+  {
+    target: '#nav-ayuda',
+    view: 'ayuda',
+    title: 'Vuelve cuando quieras',
+    text: 'Este botón de Ayuda siempre estará aquí para relanzar el tutorial o recordar cómo funciona algo. ¡Ya lo sabes todo!',
+    axo: 'Feliz-3'
+  },
+  // ── Fin ──────────────────────────────────────────────────
+  {
+    target: null,
+    title: '¡Listo! 🎉',
+    text: 'Estás preparado para llevar tu consulta como un profesional. Recuerda que puedes volver a este tutorial desde la sección Ayuda cuando quieras. ¡Mucho éxito!',
+    axo: 'Feliz-2'
+  }
+];
+
+let tutStep = 0;
+let tutActive = false;
+
+function startTutorial(){
+  tutStep = 0;
+  tutActive = true;
+  document.getElementById('tut-bubble').style.display = 'flex';
+  showTutStep(0);
+}
+
+function closeTutorial(){
+  tutActive = false;
+  document.getElementById('tut-overlay').style.display = 'none';
+  document.getElementById('tut-bubble').style.display = 'none';
+  ['tut-ol-top','tut-ol-bot','tut-ol-left','tut-ol-right'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.querySelectorAll('.tut-highlighted').forEach(el=>el.classList.remove('tut-highlighted'));
+  localStorage.setItem('axo_tutorial_seen','1');
+}
+
+function handleTutOverlayClick(e){
+  // Only close if clicking the full-screen (no-target) overlay background
+  if(e.target===document.getElementById('tut-overlay') && !TUTORIAL_STEPS[tutStep].target){
+    // don't close accidentally
+  }
+}
+
+function showTutStep(idx){
+  if(!tutActive) return;
+  if(idx >= TUTORIAL_STEPS.length){ closeTutorial(); return; }
+  if(idx < 0) idx = 0;
+  const step = TUTORIAL_STEPS[idx];
+  tutStep = idx;
+
+  // Navigate if needed
+  if(step.view) showView(step.view);
+
+  // Update content
+  document.getElementById('tut-step-num').textContent = 'Paso ' + (idx+1) + ' de ' + TUTORIAL_STEPS.length;
+  document.getElementById('tut-bubble-title').textContent = step.title;
+  document.getElementById('tut-bubble-text').textContent = step.text;
+  const img = document.getElementById('tut-axo-img');
+  img.style.opacity = '0';
+  setTimeout(()=>{ img.src='Assets/Axolotl/'+step.axo+'.svg'; img.style.opacity='1'; }, 100);
+
+  const prevBtn = document.getElementById('tut-prev');
+  const nextBtn = document.getElementById('tut-next');
+  prevBtn.style.display = idx===0 ? 'none' : '';
+  nextBtn.textContent = idx===TUTORIAL_STEPS.length-1 ? 'Finalizar ✓' : 'Siguiente →';
+
+  // Show overlay
+  document.getElementById('tut-overlay').style.display = 'block';
+  document.getElementById('tut-bubble').style.display = 'flex';
+
+  // Clear previous highlight
+  document.querySelectorAll('.tut-highlighted').forEach(el=>el.classList.remove('tut-highlighted'));
+
+  setTimeout(()=>{ positionTutStep(step); }, 100);
+}
+
+function positionTutStep(step){
+  const bubble = document.getElementById('tut-bubble');
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const overlay = document.getElementById('tut-overlay');
+
+  if(!step.target){
+    // Full-screen dim, centered bubble
+    ['tut-ol-top','tut-ol-bot','tut-ol-left','tut-ol-right'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.style.display='none';
+    });
+    overlay.style.background = 'rgba(0,0,0,.68)';
+    overlay.style.pointerEvents = 'all';
+    bubble.style.cssText = 'display:flex;flex-direction:column;position:fixed;z-index:10003;background:white;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.3);max-width:360px;width:calc(100vw - 32px);overflow:hidden;top:50%;left:50%;transform:translate(-50%,-50%)';
+    return;
+  }
+
+  const target = document.querySelector(step.target);
+  if(!target){ positionTutStep({...step, target:null}); return; }
+  target.classList.add('tut-highlighted');
+
+  const rect = target.getBoundingClientRect();
+  const PAD = 10;
+  const rx  = Math.max(0, rect.left - PAD);
+  const ry  = Math.max(0, rect.top  - PAD);
+  const rx2 = Math.min(W, rect.right  + PAD);
+  const ry2 = Math.min(H, rect.bottom + PAD);
+
+  overlay.style.background = 'transparent';
+  overlay.style.pointerEvents = 'none';
+
+  const setPos=(id,styles)=>{ const el=document.getElementById(id); if(el){ el.style.display='block'; Object.assign(el.style, styles); } };
+  setPos('tut-ol-top',   {left:'0',right:'0',top:'0',     height:ry+'px',  width:''});
+  setPos('tut-ol-bot',   {left:'0',right:'0',top:ry2+'px',bottom:'0',      height:'', width:''});
+  setPos('tut-ol-left',  {left:'0',top:ry+'px',height:(ry2-ry)+'px',width:rx+'px', right:''});
+  setPos('tut-ol-right', {left:rx2+'px',top:ry+'px',height:(ry2-ry)+'px',right:'0', width:''});
+
+  // Position bubble — prefer below target, then above
+  const bW = Math.min(360, W - 32);
+  const bH = 200; // estimate
+  let bLeft = Math.max(8, Math.min(rect.left, W - bW - 8));
+  let bTop;
+  if(ry2 + bH + 12 < H){
+    bTop = ry2 + 12;
+  } else {
+    bTop = Math.max(8, ry - bH - 12);
+  }
+
+  bubble.style.cssText = 'display:flex;flex-direction:column;position:fixed;z-index:10003;background:white;border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.3);max-width:360px;width:calc(100vw - 32px);overflow:hidden;transform:none;top:'+bTop+'px;left:'+bLeft+'px';
+}
+
+function renderAyuda(){
+  const el = document.getElementById('ayuda-content');
+  if(!el) return;
+  el.innerHTML = `
+    <div style="max-width:560px;margin:0 auto;padding:24px 8px">
+      <div style="display:flex;align-items:center;gap:20px;background:linear-gradient(135deg,#fde8f3 0%,#e8f3f1 100%);border-radius:16px;padding:24px;margin-bottom:24px">
+        <img src="Assets/Axolotl/Feliz-1.svg" style="width:90px;flex-shrink:0" alt="Axo">
+        <div>
+          <div style="font-weight:700;font-size:18px;color:#2d3748;margin-bottom:6px">¡Hola! Soy Axo 🦎</div>
+          <div style="color:#4a5568;font-size:14px;line-height:1.55">Tu guía interactiva para usar la app. El tutorial te muestra cada sección paso a paso mientras navegas por la app real. ¡Tarda solo unos minutos!</div>
+        </div>
+      </div>
+      <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px">
+        <div style="font-weight:600;font-size:15px;color:#2d3748;margin-bottom:14px">¿Qué cubre el tutorial?</div>
+        <ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#4a5568"><span style="font-size:18px;line-height:1.2">👥</span><span>Agregar paciente nuevo y configurar horario semanal</span></li>
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#4a5568"><span style="font-size:18px;line-height:1.2">📅</span><span>Vista de Hoy: registrar asistencia y pagos</span></li>
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#4a5568"><span style="font-size:18px;line-height:1.2">📆</span><span>Expediente y calendario personal del paciente</span></li>
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#4a5568"><span style="font-size:18px;line-height:1.2">💳</span><span>Vista de Pagos y Prospectado financiero</span></li>
+          <li style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#4a5568"><span style="font-size:18px;line-height:1.2">🏖️</span><span>Vacaciones e inactividad de pacientes</span></li>
+        </ul>
+      </div>
+      <div style="text-align:center">
+        <button class="btn-primary" onclick="startTutorial()" style="font-size:15px;padding:12px 32px;border-radius:10px">
+          Iniciar tutorial con Axo
+        </button>
+        <div style="margin-top:10px;font-size:12px;color:#a0aec0">Puedes saltarlo en cualquier momento · ~3 minutos</div>
+      </div>
+    </div>
+  `;
+}
+
 </script>
 <!-- Today Pay Popup -->
 <div id="today-pay-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center" onclick="if(event.target===this)closeTodayPayPopup()">
@@ -7696,6 +7964,32 @@ initFirebase().catch(err=>{
     </div>
   </div>
 </div>
+
+<!-- ── Tutorial Overlay ── -->
+<div id="tut-overlay" onclick="handleTutOverlayClick(event)">
+  <div id="tut-ol-top" class="tut-ol-piece" style="display:none"></div>
+  <div id="tut-ol-bot" class="tut-ol-piece" style="display:none"></div>
+  <div id="tut-ol-left" class="tut-ol-piece" style="display:none"></div>
+  <div id="tut-ol-right" class="tut-ol-piece" style="display:none"></div>
+</div>
+<div id="tut-bubble">
+  <div id="tut-bubble-head">
+    <img id="tut-axo-img" src="Assets/Axolotl/Feliz-1.svg" alt="Axo">
+    <div>
+      <div id="tut-step-num"></div>
+      <div id="tut-bubble-title"></div>
+    </div>
+  </div>
+  <div id="tut-bubble-body">
+    <div id="tut-bubble-text"></div>
+    <div id="tut-bubble-actions">
+      <button id="tut-skip" onclick="closeTutorial()">Saltar tutorial</button>
+      <button id="tut-prev" onclick="showTutStep(tutStep-1)">← Anterior</button>
+      <button id="tut-next" onclick="showTutStep(tutStep+1)">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
 
