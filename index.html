@@ -4455,7 +4455,10 @@ function renderHoy(){
             <button class="btn-primary btn-sm" type="button" style="cursor:default;pointer-events:none">Guardado</button>
             <span class="today-locked-pill">Registro confirmado</span>
           </div>
-          <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-sec btn-sm" type="button" onclick="openTodayPayPopup(${p.id})">+ Registrar pago</button>
+            <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
+          </div>
         </div>
       </div>`;
     }
@@ -4500,7 +4503,6 @@ function renderHoy(){
         <div class="today-extra-actions">
           <button class="btn-sec btn-sm" onclick="saveTerapeutaCancel(${p.id})">Cancelación del terapeuta</button>
           <button class="btn-sec btn-sm" onclick="openTodayReposicionModal(${p.id})">Reposición</button>
-          <button class="btn-sec btn-sm" onclick="openQuickPayForPatient(${p.id})">+ Registrar pago</button>
         </div>
       </div>
     </div>`;
@@ -4520,6 +4522,45 @@ function openQuickPayForPatient(pid){
     const amountInput=document.getElementById('quick-pay-amount');
     if(amountInput){amountInput.step=String(Math.max(1,tv));amountInput.value=String(tv);}
   }
+}
+
+function openTodayPayPopup(pid){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const overlay=document.getElementById('today-pay-overlay');
+  if(!overlay) return;
+  document.getElementById('today-pay-pid').value=String(pid);
+  document.getElementById('today-pay-patient-label').textContent=p.nombre;
+  const tv=tarifaVigente(p);
+  const amtInput=document.getElementById('today-pay-amount');
+  amtInput.step=String(Math.max(1,tv));
+  amtInput.value=String(tv);
+  document.getElementById('today-pay-date').value=today();
+  document.getElementById('today-pay-method').value='transferencia';
+  overlay.style.display='flex';
+  setTimeout(()=>amtInput.select(),60);
+}
+
+function closeTodayPayPopup(){
+  const overlay=document.getElementById('today-pay-overlay');
+  if(overlay) overlay.style.display='none';
+}
+
+function submitTodayPago(){
+  const pid=parseInt(document.getElementById('today-pay-pid').value);
+  const p=patients.find(x=>x.id===pid);
+  if(!p) return;
+  const monto=Math.max(0,parseInt(document.getElementById('today-pay-amount').value)||0);
+  if(monto<=0){alert('Escribe un monto válido.');return;}
+  const fecha=document.getElementById('today-pay-date').value||today();
+  const metodo=document.getElementById('today-pay-method').value||'transferencia';
+  p.pagos.push({id:'p'+(nextPayId++),fecha,monto,metodo,applyToPreviousDebt:true,createdAt:new Date().toISOString()});
+  addLog(p,'datos',`Pago registrado desde vista de hoy: $${monto.toLocaleString('es-MX')} (${metodo})`);
+  recomputePatientDebt(p);
+  saveState();
+  closeTodayPayPopup();
+  updateSidebarBadge();
+  if(curId===p.id&&document.getElementById('view-detalle')?.classList.contains('active')) renderDetalle(p);
 }
 
 function syncQuickPayPatients(){
@@ -4567,7 +4608,7 @@ function registerQuickPay(){
   if(amount<=0){alert('Escribe una cantidad válida.');return;}
   const metodo=methodSel.value||'efectivo';
   const fecha=today();
-  p.pagos.push({id:'p'+(nextPayId++),fecha,monto:amount,metodo,applyToPreviousDebt:true});
+  p.pagos.push({id:'p'+(nextPayId++),fecha,monto:amount,metodo,applyToPreviousDebt:true,createdAt:new Date().toISOString()});
   p.pagado+=amount;
   p.adeudo=Math.max(0,p.adeudo-amount);
   addLog(p,'datos',`Pago rápido registrado: $${amount.toLocaleString('es-MX')} (${metodo}) · aplicado primero a periodos anteriores`);
@@ -6741,7 +6782,7 @@ function regPago(id,inputId,dateInputId,methodInputId){
   const fecha=document.getElementById(dateInputId)?.value||today();
   const metodo=document.getElementById(methodInputId)?.value||'transferencia';
   const applyToPreviousDebt=true;
-  p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo,applyToPreviousDebt});
+  p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo,applyToPreviousDebt,createdAt:new Date().toISOString()});
   recomputePatientDebt(p);
   saveState();
   renderDetalle(p);
@@ -7230,11 +7271,11 @@ let pagosFilter={patient:'',dateFrom:'',dateTo:'',metodo:''};
 function renderPagos(){
   const el=document.getElementById('pagos-content');
   if(!el) return;
-  // Collect all payments across all patients
+  // Collect all payments across all patients, including createdAt for sorting
   let rows=[];
   patients.forEach(p=>{
-    (p.pagos||[]).forEach(py=>{
-      rows.push({pid:p.id,nombre:p.nombre,fecha:py.fecha||'',monto:py.monto||0,metodo:py.metodo||'',id:py.id});
+    (p.pagos||[]).forEach((py,idx)=>{
+      rows.push({pid:p.id,nombre:p.nombre,fecha:py.fecha||'',monto:py.monto||0,metodo:py.metodo||'',id:py.id,createdAt:py.createdAt||'',_idx:idx});
     });
   });
   // Apply filters
@@ -7243,12 +7284,17 @@ function renderPagos(){
   if(f.dateFrom) rows=rows.filter(r=>r.fecha>=f.dateFrom);
   if(f.dateTo) rows=rows.filter(r=>r.fecha<=f.dateTo);
   if(f.metodo) rows=rows.filter(r=>r.metodo===f.metodo);
-  // Sort by date descending
-  rows.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  // Sort by createdAt descending (fall back to fecha for old records without timestamp)
+  rows.sort((a,b)=>{
+    const ta=a.createdAt||a.fecha;
+    const tb=b.createdAt||b.fecha;
+    return tb.localeCompare(ta);
+  });
   const total=rows.reduce((s,r)=>s+r.monto,0);
   const allPatients=sortPatientsByName([...patients]);
-  const metodosUniq=[...new Set(patients.flatMap(p=>(p.pagos||[]).map(py=>py.metodo||'').filter(Boolean)))].sort();
   const metodoOptions=['efectivo','transferencia','tarjeta','paypal','otro'];
+  // Helper: format time HH:MM from ISO string
+  const fmtTime=iso=>{if(!iso) return '';try{const d=new Date(iso);return d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});}catch(e){return '';}};
   el.innerHTML=`
     <div class="dsec" style="background:white;margin-bottom:1rem">
       <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:12px 0 4px">
@@ -7288,6 +7334,7 @@ function renderPagos(){
         <thead>
           <tr style="border-bottom:2px solid var(--border);text-align:left">
             <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Fecha</th>
+            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Hora</th>
             <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Paciente</th>
             <th style="padding:6px 10px;font-weight:600;color:var(--ink-light);text-align:right">Monto</th>
             <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Método</th>
@@ -7297,6 +7344,7 @@ function renderPagos(){
           ${rows.map((r,i)=>`
           <tr style="border-bottom:1px solid var(--border);${i%2===0?'background:#fafafa':''}">
             <td style="padding:7px 10px">${displayDate(r.fecha)||r.fecha}</td>
+            <td style="padding:7px 10px;color:var(--ink-light)">${fmtTime(r.createdAt)||'—'}</td>
             <td style="padding:7px 10px"><a href="#" onclick="event.preventDefault();showDetalle(${r.pid})" style="color:var(--primary);text-decoration:none">${r.nombre}</a></td>
             <td style="padding:7px 10px;text-align:right;font-weight:600">$${r.monto.toLocaleString('es-MX')}</td>
             <td style="padding:7px 10px;color:var(--ink-light)">${r.metodo.charAt(0).toUpperCase()+r.metodo.slice(1)}</td>
@@ -7602,6 +7650,41 @@ initFirebase().catch(err=>{
 });
 
 </script>
+<!-- Today Pay Popup -->
+<div id="today-pay-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;align-items:center;justify-content:center" onclick="if(event.target===this)closeTodayPayPopup()">
+  <div style="background:white;border-radius:12px;padding:24px;width:320px;max-width:92vw;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-weight:700;font-size:15px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center">
+      Registrar pago
+      <button onclick="closeTodayPayPopup()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-light);line-height:1">&times;</button>
+    </div>
+    <div id="today-pay-patient-label" style="font-size:13px;color:var(--ink-light);margin-bottom:14px"></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label class="form-label" style="font-size:12px">Monto</label>
+        <input class="form-input" type="number" id="today-pay-amount" min="0" step="50" style="width:100%">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:12px">Fecha</label>
+        <input class="form-input" type="date" id="today-pay-date" style="width:100%">
+      </div>
+      <div>
+        <label class="form-label" style="font-size:12px">Método de pago</label>
+        <select class="form-input" id="today-pay-method" style="width:100%">
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia" selected>Transferencia</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="paypal">PayPal</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="today-pay-pid">
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button class="btn-sec btn-sm" onclick="closeTodayPayPopup()">Cancelar</button>
+      <button class="btn-primary btn-sm" onclick="submitTodayPago()">Guardar pago</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
 
