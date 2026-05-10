@@ -3927,17 +3927,11 @@ function calcPatientFinancialCut(p,startIso,endIso,includeCarryDebt=true){
     return !!sesDate&&sesDate>=startIso&&sesDate<=endIso;
   }).length;
   const periodPayments=validPayments.filter(py=>py.fecha>=startIso&&py.fecha<=endIso);
-  const paymentsForPreviousDebt=includeCarryDebt
-    ?periodPayments.filter(py=>py.prevDebt).reduce((sum,py)=>sum+py.monto,0)
-    :0;
-  const carryDebtAfterTagged=includeCarryDebt?Math.max(0,carryDebt-paymentsForPreviousDebt):carryDebt;
-  const overflowFromPreviousDebt=includeCarryDebt?Math.max(0,paymentsForPreviousDebt-carryDebt):0;
-  const regularPaymentsPeriod=periodPayments
-    .filter(py=>!(includeCarryDebt&&py.prevDebt))
-    .reduce((sum,py)=>sum+py.monto,0);
-  const paymentsPeriod=regularPaymentsPeriod+overflowFromPreviousDebt;
+  // All payments count uniformly — no split by prevDebt (all apply to carry debt first, then current charges)
+  const paymentsPeriod=periodPayments.reduce((sum,py)=>sum+py.monto,0);
+  const paymentsForPreviousDebt=Math.min(paymentsPeriod,includeCarryDebt?carryDebt:0);
 
-  const startingDebt=includeCarryDebt?carryDebtAfterTagged:0;
+  const startingDebt=includeCarryDebt?carryDebt:0;
   const pendingEnd=Math.max(0,startingDebt+chargesPeriod-paymentsPeriod);
   const paidVsDemand=Math.min(paymentsPeriod,Math.max(0,startingDebt+chargesPeriod));
   const coverageBase=Math.max(1,startingDebt+chargesPeriod);
@@ -7205,6 +7199,7 @@ function renderProspectado(){
           <span style="color:var(--ink-light)">Prosp: <strong style="color:var(--ink)">$${prosp.toLocaleString('es-MX')}</strong></span>
           <span style="color:#2d7a6e">Pagado: <strong>$${cut.paymentsPeriod.toLocaleString('es-MX')}</strong></span>
           <span style="color:#9e3020">Adeudo: <strong>$${cut.pendingEnd.toLocaleString('es-MX')}</strong></span>
+          <button class="btn-sec btn-sm" style="font-size:11px;padding:3px 10px" onclick="showDetalle(${p.id})">Expediente →</button>
         </div>
       </div>
       <div class="pr-mode">
