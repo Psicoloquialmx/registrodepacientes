@@ -709,6 +709,7 @@ input[type="file"].form-input{cursor:pointer}
       <div class="nav-label">Finanzas</div>
       <button class="nav-item" onclick="showView('resumen')" id="nav-resumen"><span class="nav-ico">&#128200;</span> Resumen</button>
       <button class="nav-item" onclick="showView('prospectado')" id="nav-prospectado"><span class="nav-ico">&#128176;</span> Prospectado</button>
+      <button class="nav-item" onclick="showView('pagos')" id="nav-pagos"><span class="nav-ico">&#128179;</span> Pagos</button>
     </div>
     <div class="nav-section">
       <div class="nav-label">Cuenta</div>
@@ -788,6 +789,10 @@ input[type="file"].form-input{cursor:pointer}
     <div id="view-prospectado" class="view">
       <div class="topbar"><div class="topbar-left"><div class="page-title">Ingreso prospectado</div><div class="page-sub">Sesiones reales del mes por horario</div></div></div>
       <div class="content" id="prosp-content"></div>
+    </div>
+    <div id="view-pagos" class="view">
+      <div class="topbar"><div class="topbar-left"><div class="page-title">Pagos</div><div class="page-sub">Historial de pagos registrados</div></div></div>
+      <div class="content" id="pagos-content"></div>
     </div>
     <div id="view-perfil" class="view">
       <div class="topbar"><div class="topbar-left"><div class="page-title">Perfil del terapeuta</div><div class="page-sub">Identidad profesional y configuración base</div></div></div>
@@ -1303,9 +1308,14 @@ function getPatientStatusAtDate(p,dateStr){
   });
   return current;
 }
+function isInPauseOrVacation(p,dateStr){
+  return (p.pausas||[]).some(pp=>pp.desde&&pp.hasta&&dateStr>=pp.desde&&dateStr<=pp.hasta);
+}
 function isFixedScheduledOnDate(p,dateStr){
   if(isBeforeTreatmentStart(p,dateStr)) return false;
   if(getPatientStatusAtDate(p,dateStr)==='inactive') return false;
+  if(isInPauseOrVacation(p,dateStr)) return false;
+  if((p.excludedDates||[]).includes(dateStr)) return false;
   const sch=getScheduleAtDate(p,dateStr);
   if(!sch||sch.noFixedSchedule) return false;
   const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
@@ -4469,7 +4479,6 @@ function renderHoy(){
       <div class="today-form">
         <input type="hidden" id="today-attended-${p.id}" value="${attendedYes?'si':'no'}">
         <input type="hidden" id="today-charge-${p.id}" value="${chargeOnMiss?'si':'no'}">
-        <input type="hidden" id="today-paid-${p.id}" value="${paidYes?'si':'no'}">
 
         <div class="yn-row">
           <label class="form-label">¿Asistió?</label>
@@ -4487,35 +4496,30 @@ function renderHoy(){
           </div>
         </div>
 
-        <div class="yn-row" id="today-paid-wrap-${p.id}" style="display:${attendedYes||chargeOnMiss?'block':'none'}">
-          <label class="form-label">¿Pagó?</label>
-          <div class="yn-toggle" id="today-paid-group-${p.id}">
-            <button type="button" class="yn-btn${paidYes?' active':''}" onclick="setTodayToggle(${p.id},'paid','si')">Sí</button>
-            <button type="button" class="yn-btn${!paidYes?' active':''}" onclick="setTodayToggle(${p.id},'paid','no')">No</button>
-          </div>
-          <div class="today-pay-row" id="today-amount-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
-            <label for="today-amt-${p.id}" style="font-size:12px;color:var(--ink-light)">Monto</label>
-            <input class="inp-sm" style="width:92px" id="today-amt-${p.id}" type="number" min="0" step="${Math.max(1,tv)}" value="${r.autoPay?r.autoPay.monto:tv}">
-          </div>
-          <div class="today-pay-row" id="today-method-wrap-${p.id}" style="display:${paidYes?'flex':'none'}">
-            <label for="today-method-${p.id}" style="font-size:12px;color:var(--ink-light)">Forma de pago</label>
-            <select class="inp-sm" style="width:140px" id="today-method-${p.id}">
-              <option value="efectivo"${paidMethod==='efectivo'?' selected':''}>Efectivo</option>
-              <option value="transferencia"${paidMethod==='transferencia'?' selected':''}>Transferencia</option>
-              <option value="tarjeta"${paidMethod==='tarjeta'?' selected':''}>Tarjeta</option>
-              <option value="otro"${paidMethod==='otro'?' selected':''}>Otro</option>
-            </select>
-          </div>
-        </div>
-
         <button class="btn-primary btn-sm" onclick="saveTodaySession(${p.id})">Guardar</button>
         <div class="today-extra-actions">
           <button class="btn-sec btn-sm" onclick="saveTerapeutaCancel(${p.id})">Cancelación del terapeuta</button>
           <button class="btn-sec btn-sm" onclick="openTodayReposicionModal(${p.id})">Reposición</button>
+          <button class="btn-sec btn-sm" onclick="openQuickPayForPatient(${p.id})">+ Registrar pago</button>
         </div>
       </div>
     </div>`;
   }).join('')}</div>`;
+}
+
+function openQuickPayForPatient(pid){
+  const drawer=document.getElementById('quick-pay-drawer');
+  if(!drawer) return;
+  drawer.open=true;
+  syncQuickPayPatients();
+  const sel=document.getElementById('quick-pay-patient');
+  if(sel) sel.value=String(pid);
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(p){
+    const tv=tarifaVigente(p);
+    const amountInput=document.getElementById('quick-pay-amount');
+    if(amountInput){amountInput.step=String(Math.max(1,tv));amountInput.value=String(tv);}
+  }
 }
 
 function syncQuickPayPatients(){
@@ -4594,32 +4598,8 @@ function setTodayToggle(pid,field,value){
 
 function refreshTodayCardLogic(pid){
   const attended=(document.getElementById(`today-attended-${pid}`)?.value||'si')==='si';
-  const charge=(document.getElementById(`today-charge-${pid}`)?.value||'si')==='si';
-  let paid=(document.getElementById(`today-paid-${pid}`)?.value||'no')==='si';
-
   const chargeWrap=document.getElementById(`today-charge-wrap-${pid}`);
-  const paidWrap=document.getElementById(`today-paid-wrap-${pid}`);
-  const amountWrap=document.getElementById(`today-amount-wrap-${pid}`);
-  const methodWrap=document.getElementById(`today-method-wrap-${pid}`);
-
   if(chargeWrap) chargeWrap.style.display=attended?'none':'block';
-
-  const shouldAskPaid=attended||charge;
-  if(!shouldAskPaid){
-    const paidInput=document.getElementById(`today-paid-${pid}`);
-    if(paidInput) paidInput.value='no';
-    paid=false;
-    const paidGroup=document.getElementById(`today-paid-group-${pid}`);
-    if(paidGroup){
-      const yesBtn=paidGroup.querySelector('.yn-btn:nth-child(1)');
-      const noBtn=paidGroup.querySelector('.yn-btn:nth-child(2)');
-      if(yesBtn) yesBtn.classList.remove('active');
-      if(noBtn) noBtn.classList.add('active');
-    }
-  }
-  if(paidWrap) paidWrap.style.display=shouldAskPaid?'block':'none';
-  if(amountWrap) amountWrap.style.display=(shouldAskPaid&&paid)?'flex':'none';
-  if(methodWrap) methodWrap.style.display=(shouldAskPaid&&paid)?'flex':'none';
 }
 
 function saveTodaySession(pid){
@@ -4633,20 +4613,8 @@ function saveTodaySession(pid){
   }
   const attended=(document.getElementById(`today-attended-${pid}`)?.value||'si')==='si';
   const charge=(document.getElementById(`today-charge-${pid}`)?.value||'si')==='si';
-  const paid=(document.getElementById(`today-paid-${pid}`)?.value||'no')==='si';
-  const paidMethod=document.getElementById(`today-method-${pid}`)?.value||'efectivo';
   const noCharge=!attended&&!charge;
   const tipo=attended?'asistio':'falta';
-  const amount=Math.max(0,parseInt(document.getElementById(`today-amt-${pid}`)?.value)||tarifaVigente(p));
-  const tv=tarifaVigente(p);
-  const isBillable=(sessionType,sessionNoCharge=false)=>{
-    if(sessionType==='falta'&&sessionNoCharge) return false;
-    return sessionType==='asistio'||sessionType==='falta'||sessionType==='extra';
-  };
-  if(paid&&!isBillable(tipo,noCharge)){
-    alert('Solo puedes registrar pago cuando la sesión es cobrable.');
-    return;
-  }
   const defaultHora=horaDiaFecha(p,dateStr);
   let ses=p.sesiones.find(s=>s.fecha&&s.fecha.split(' ')[0]===dateStr&&!s.skipped&&s.tipo!=='reprogramada');
   const undoMeta=ses
@@ -4657,6 +4625,8 @@ function saveTodaySession(pid){
   if(ses){
     const ant=ses.tipo;
     const antNoCharge=!!ses.noCharge;
+    const tv=tarifaVigente(p);
+    const isBillable=(t,nc=false)=>!nc&&(t==='asistio'||t==='falta'||t==='extra');
     if(p.pago==='sesion'){
       if(isBillable(ant,antNoCharge)) p.adeudo=Math.max(0,p.adeudo-tv);
       if(isBillable(tipo,noCharge)) p.adeudo+=tv;
@@ -4667,33 +4637,12 @@ function saveTodaySession(pid){
     ses.undoMeta=undoMeta;
     addLog(p,'datos',`Registro hoy ${dateStr}: ${ant} → ${tipo}${noCharge?' (sin cobro)':''}`);
   } else {
+    const tv=tarifaVigente(p);
     const n=p.sesiones.filter(s=>s.tipo!=='cancelada').length+1;
     ses={id:'s'+(nextSesId++),num:n,fecha:dateStr,tipo,noCharge,hora:defaultHora,createdFromToday:true,undoMeta};
     p.sesiones.push(ses);
-    if(p.pago==='sesion'&&isBillable(tipo,noCharge)) p.adeudo+=tv;
+    if(p.pago==='sesion'&&(tipo==='asistio'||(!noCharge&&tipo==='falta'))) p.adeudo+=tv;
     addLog(p,'datos',`Registro hoy ${dateStr}: ${tipo}${noCharge?' (sin cobro)':''}`);
-  }
-
-  const autoPay=p.pagos.find(py=>py.autoToday&&py.sessionDate===dateStr);
-  if(paid){
-    if(amount<=0){alert('Escribe un monto de pago válido.');return;}
-    if(autoPay){
-      const diff=amount-autoPay.monto;
-      autoPay.monto=amount;
-      autoPay.metodo=paidMethod;
-      p.pagado+=diff;
-      p.adeudo=Math.max(0,p.adeudo-diff);
-    } else {
-      p.pagos.push({id:'p'+(nextPayId++),fecha:dateStr,monto:amount,metodo:paidMethod,autoToday:true,sessionDate:dateStr});
-      p.pagado+=amount;
-      p.adeudo=Math.max(0,p.adeudo-amount);
-    }
-    addLog(p,'datos',`Pago registrado hoy: $${amount.toLocaleString('es-MX')} (${paidMethod})`);
-  } else if(autoPay){
-    p.pagado-=autoPay.monto;
-    p.adeudo+=autoPay.monto;
-    p.pagos=p.pagos.filter(py=>py.id!==autoPay.id);
-    addLog(p,'datos',`Pago de hoy removido: $${autoPay.monto.toLocaleString('es-MX')}`);
   }
 
   ses.todaySaved=true;
@@ -4937,6 +4886,7 @@ function showView(v,opts){
   if(v==='semana') renderSemana();
   if(v==='resumen') renderResumen();
   if(v==='prospectado') renderProspectado();
+  if(v==='pagos') renderPagos();
   if(v==='perfil') renderTherapistProfileView();
 }
 
@@ -5072,9 +5022,11 @@ function guardarDeudaDesde(pid){
   const fecha=toIsoDateLoose(fechaRaw);
   if(!fecha) return;
   p.deudaDesde=fecha;
+  normalizePatient(p);
   recomputePatientDebt(p);
   addLog(p,'datos',`Fecha inicio cálculo de deuda: ${fecha}`);
   saveState();
+  updateSidebarBadge();
   renderDetalle(p);
 }
 function resetDeudaDesde(pid){
@@ -5152,6 +5104,7 @@ function agregarPausa(pid){
   saveState();
   curTab='editar';
   renderDetalle(p);
+  deleteCalendarEventsInPauseRange(p,desde,hasta);
 }
 
 function deletePausa(pid,pauseId){
@@ -5163,6 +5116,31 @@ function deletePausa(pid,pauseId){
   saveState();
   curTab='editar';
   renderDetalle(p);
+}
+
+async function deleteCalendarEventsInPauseRange(p,desde,hasta){
+  if(!calendarIntegration?.connected||!currentUser||!auth) return;
+  const startD=new Date(desde+'T12:00');
+  const endD=new Date(hasta+'T12:00');
+  for(let d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)){
+    const dateStr=isoDateFromDateObj(d);
+    try{ await deleteCalendarEventForSessionId(p,`plan_${dateStr}`); }catch(e){ /* ignore */ }
+    try{ await deleteCalendarEventForSessionId(p,`plan_src_${dateStr}`); }catch(e){ /* ignore */ }
+  }
+}
+
+async function deleteCalendarEventsAfterInactive(p,fromDate){
+  if(!calendarIntegration?.connected||!currentUser||!auth) return;
+  const maxDays=180;
+  for(let i=0;i<=maxDays;i++){
+    const dateStr=addDaysToIsoDate(fromDate,i);
+    // Only delete for dates that were on the patient's fixed schedule
+    const sch=getScheduleAtDate(p,dateStr);
+    if(!sch||sch.noFixedSchedule) continue;
+    const dow=(new Date(dateStr+'T12:00').getDay()+6)%7;
+    if(!(sch.dias||[]).includes(dow)) continue;
+    try{ await deleteCalendarEventForSessionId(p,`plan_${dateStr}`); }catch(e){ /* ignore */ }
+  }
 }
 
 function exportPatientSummary(pid){
@@ -5300,8 +5278,10 @@ function openPopover(pid,dateStr,ses,anchorEl){
       </div>
     </div>
     <div class="ses-popover-footer">
-      <div style="display:flex;gap:6px;align-items:center">
-        ${ses?`<button class="btn-danger" onclick="deleteSesionPop('${pid}','${ses.id}')">Borrar respuesta</button>`:'<span></span>'}
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        ${ses?`<button class="btn-danger" onclick="deleteSesionPop('${pid}','${ses.id}')">Borrar respuesta</button>`:''}
+        ${ses&&ses.tipo==='reposicion'?`<button class="btn-danger" style="background:#8b2020" onclick="borrarReposicion('${pid}','${ses.id}')">Borrar sesión</button>`:''}
+        ${!ses?`<button class="btn-danger" onclick="borrarSesionProgramada('${pid}','${dateStr}')">Borrar sesión</button>`:''}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn-sec btn-sm" onclick="openPatientFromPopover('${pid}')">Ir al expediente</button>
@@ -5760,7 +5740,54 @@ function deleteSesionPop(pid,sid){
   refreshAfterSessionMutation(p);
 }
 
-// " - ? ELIMINAR PAGO  -  sin confirm " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
+function borrarSesionProgramada(pid,dateStr){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  if(!confirm('¿Borrar la sesión programada del '+displayDate(dateStr)+'? Esta acción no puede deshacerse.')) return;
+  if(!Array.isArray(p.excludedDates)) p.excludedDates=[];
+  if(!p.excludedDates.includes(dateStr)) p.excludedDates.push(dateStr);
+  triggerCalendarDelete(p,{id:`plan_${dateStr}`,fecha:dateStr});
+  addLog(p,'datos',`Sesión programada borrada: ${dateStr}`);
+  exposeSesMap(p);
+  saveState();
+  closePopover();
+  renderDetalle(p);
+}
+
+function borrarReposicion(pid,sesId){
+  const p=patients.find(x=>x.id===parseInt(pid));
+  if(!p) return;
+  const ses=p.sesiones.find(s=>s.id===sesId);
+  if(!ses) return;
+  if(!confirm('¿Borrar esta sesión reagendada? Esta acción no puede deshacerse.')) return;
+  // Restore cross-day source session if exists
+  if(ses.fromDate){
+    const targetDateStr=ses.fecha?.split(' ')[0]||'';
+    const source=p.sesiones.find(s=>
+      (s.fecha?.split(' ')[0]||s.fecha)===ses.fromDate&&
+      (s.tipo==='reprogramada'||s.skipped)&&
+      s.movedTo===targetDateStr
+    );
+    if(source){
+      source.tipo=source.originalTipo||'planeada';
+      delete source.skipped;
+      delete source.movedTo;
+      delete source.movedTime;
+      delete source.originalTipo;
+      const srcDateStr=ses.fromDate;
+      triggerCalendarUpsert(p,source,{dateStr:srcDateStr,hora:source.hora||horaDiaFecha(p,srcDateStr)});
+    }
+  }
+  triggerCalendarDelete(p,ses);
+  p.sesiones=p.sesiones.filter(s=>s.id!==sesId);
+  let c=0;p.sesiones.forEach(s=>{if(s.tipo!=='cancelada'){c++;s.num=c;}});
+  addLog(p,'datos',`Sesión reagendada borrada: ${ses.fecha}`);
+  exposeSesMap(p);
+  saveState();
+  closePopover();
+  renderDetalle(p);
+}
+
 function deletePago(pid,payId){
   const p=patients.find(x=>x.id===parseInt(pid));
   const pay=p.pagos.find(x=>x.id===payId);
@@ -6118,8 +6145,8 @@ function renderDetalle(p){
             <input class="inp-sm" type="date" id="pay-date" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
             <select class="inp-sm" id="pay-method"><option value="efectivo">Efectivo</option><option value="transferencia" selected>Transferencia</option><option value="paypal">PayPal</option></select></div>
-            <div style="display:flex;align-items:flex-end;padding-bottom:6px;min-width:210px"><label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light)"><input type="checkbox" id="pay-prev"> Aplicar a adeudo de periodos anteriores</label></div>
-            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in','pay-date','pay-method','pay-prev')">Registrar</button>
+            <div style="display:flex;align-items:flex-end;padding-bottom:6px">
+            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in','pay-date','pay-method')">Registrar</button></div>
           </div>
         </div>
         <div class="dsec full" id="cal-container">${buildCalendar(p)}</div>
@@ -6140,8 +6167,8 @@ function renderDetalle(p){
             <input class="inp-sm" type="date" id="pay-date2" value="${today()}"></div>
             <div><div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
             <select class="inp-sm" id="pay-method2"><option value="efectivo">Efectivo</option><option value="transferencia" selected>Transferencia</option><option value="paypal">PayPal</option></select></div>
-            <div style="display:flex;align-items:flex-end;padding-bottom:6px;min-width:210px"><label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-light)"><input type="checkbox" id="pay-prev2"> Aplicar a adeudo de periodos anteriores</label></div>
-            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2','pay-prev2')">Registrar pago</button>
+            <div style="display:flex;align-items:flex-end;padding-bottom:6px">
+            <button class="btn-primary btn-sm" onclick="regPago(${p.id},'pay-in2','pay-date2','pay-method2')">Registrar pago</button></div>
           </div>
         </div>
         <div class="dsec">
@@ -6618,12 +6645,14 @@ function guardarSeccionEstado(id){
   const nuevoStatusNote=document.getElementById('e-status-note').value.trim();
   if(nuevoStatus!==p.status||nuevoStatusDate!==p.statusDate||nuevoStatusReason!==p.statusReason||nuevoStatusNote!==(p.statusNote||'')){
     cambios.push(`Estado: ${p.status==='inactive'?'inactivo':'activo'} → ${nuevoStatus==='inactive'?'inactivo':'activo'} ${statusReasonLabel(nuevoStatusReason)} (${nuevoStatusDate})${nuevoStatusNote?` - ${nuevoStatusNote}`:''}`);
+    const wasActive=p.status!=='inactive';
     p.status=nuevoStatus;
     p.statusDate=nuevoStatusDate;
     p.statusReason=nuevoStatusReason;
     p.statusNote=nuevoStatusNote;
     p.statusHistory.push({fecha:nuevoStatusDate,status:nuevoStatus,reason:nuevoStatusReason,note:nuevoStatusNote});
     normalizarStatusHistory(p);
+    if(wasActive&&nuevoStatus==='inactive') deleteCalendarEventsAfterInactive(p,nuevoStatusDate);
   }
   if(cambios.length) addLog(p,'datos',cambios.join(' | '));
   saveState();
@@ -6706,14 +6735,13 @@ function guardarNuevaTarifa(id){
   curTab='tarifas';renderDetalle(p);
 }
 
-function regPago(id,inputId,dateInputId,methodInputId,previousDebtInputId=null){
+function regPago(id,inputId,dateInputId,methodInputId){
   const p=patients.find(x=>x.id===id);
   const m=parseInt(document.getElementById(inputId).value)||tarifaVigente(p);
   const fecha=document.getElementById(dateInputId)?.value||today();
   const metodo=document.getElementById(methodInputId)?.value||'transferencia';
-  const applyToPreviousDebt=previousDebtInputId?!!document.getElementById(previousDebtInputId)?.checked:false;
+  const applyToPreviousDebt=true;
   p.pagos.push({id:'p'+(nextPayId++),fecha:fecha,monto:m,metodo:metodo,applyToPreviousDebt});
-  if(applyToPreviousDebt) addLog(p,'datos',`Pago registrado para adeudo de periodos anteriores: $${m.toLocaleString('es-MX')} (${metodo})`);
   recomputePatientDebt(p);
   saveState();
   renderDetalle(p);
@@ -7192,6 +7220,89 @@ function renderProspectado(){
     <div class="dsec" style="background:white"><div class="sec-title">Desglose - ${periodLabel}</div>${rowsHtml}</div>
     <div class="dsec" style="background:white;margin-top:1rem"><div class="sec-title">Metodología</div>
       <p style="font-size:13px;color:var(--ink-light);line-height:1.6">El corte calcula lo cobrado y lo adeudado dentro del periodo elegido. En cada paciente puedes decidir si el periodo arranca en cero o si arrastra adeudo previo.</p>
+    </div>`;
+}
+
+
+// " - PAGOS VIEW -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - "
+let pagosFilter={patient:'',dateFrom:'',dateTo:'',metodo:''};
+
+function renderPagos(){
+  const el=document.getElementById('pagos-content');
+  if(!el) return;
+  // Collect all payments across all patients
+  let rows=[];
+  patients.forEach(p=>{
+    (p.pagos||[]).forEach(py=>{
+      rows.push({pid:p.id,nombre:p.nombre,fecha:py.fecha||'',monto:py.monto||0,metodo:py.metodo||'',id:py.id});
+    });
+  });
+  // Apply filters
+  const f=pagosFilter;
+  if(f.patient) rows=rows.filter(r=>String(r.pid)===String(f.patient));
+  if(f.dateFrom) rows=rows.filter(r=>r.fecha>=f.dateFrom);
+  if(f.dateTo) rows=rows.filter(r=>r.fecha<=f.dateTo);
+  if(f.metodo) rows=rows.filter(r=>r.metodo===f.metodo);
+  // Sort by date descending
+  rows.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const total=rows.reduce((s,r)=>s+r.monto,0);
+  const allPatients=sortPatientsByName([...patients]);
+  const metodosUniq=[...new Set(patients.flatMap(p=>(p.pagos||[]).map(py=>py.metodo||'').filter(Boolean)))].sort();
+  const metodoOptions=['efectivo','transferencia','tarjeta','paypal','otro'];
+  el.innerHTML=`
+    <div class="dsec" style="background:white;margin-bottom:1rem">
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:12px 0 4px">
+        <div>
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Paciente</div>
+          <select class="inp-sm" onchange="pagosFilter.patient=this.value;renderPagos()" style="width:170px">
+            <option value="">Todos</option>
+            ${allPatients.map(p=>`<option value="${p.id}"${String(f.patient)===String(p.id)?' selected':''}>${p.nombre}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Desde</div>
+          <input class="inp-sm" type="date" value="${f.dateFrom}" onchange="pagosFilter.dateFrom=this.value;renderPagos()" style="width:140px">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Hasta</div>
+          <input class="inp-sm" type="date" value="${f.dateTo}" onchange="pagosFilter.dateTo=this.value;renderPagos()" style="width:140px">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--ink-light);margin-bottom:4px">Método</div>
+          <select class="inp-sm" onchange="pagosFilter.metodo=this.value;renderPagos()" style="width:130px">
+            <option value="">Todos</option>
+            ${metodoOptions.map(m=>`<option value="${m}"${f.metodo===m?' selected':''}>${m.charAt(0).toUpperCase()+m.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn-ghost btn-sm" onclick="pagosFilter={patient:'',dateFrom:'',dateTo:'',metodo:''};renderPagos()">Limpiar filtros</button>
+      </div>
+    </div>
+    <div class="dsec" style="background:white">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-weight:600;font-size:14px">${rows.length} pago${rows.length!==1?'s':''}</span>
+        <span style="font-weight:700;font-size:16px;color:var(--primary)">Total: $${total.toLocaleString('es-MX')}</span>
+      </div>
+      ${rows.length===0?'<div style="color:var(--ink-light);text-align:center;padding:2rem">Sin pagos con los filtros seleccionados</div>':''}
+      ${rows.length>0?`
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);text-align:left">
+            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Fecha</th>
+            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Paciente</th>
+            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light);text-align:right">Monto</th>
+            <th style="padding:6px 10px;font-weight:600;color:var(--ink-light)">Método</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r,i)=>`
+          <tr style="border-bottom:1px solid var(--border);${i%2===0?'background:#fafafa':''}">
+            <td style="padding:7px 10px">${displayDate(r.fecha)||r.fecha}</td>
+            <td style="padding:7px 10px"><a href="#" onclick="event.preventDefault();showDetalle(${r.pid})" style="color:var(--primary);text-decoration:none">${r.nombre}</a></td>
+            <td style="padding:7px 10px;text-align:right;font-weight:600">$${r.monto.toLocaleString('es-MX')}</td>
+            <td style="padding:7px 10px;color:var(--ink-light)">${r.metodo.charAt(0).toUpperCase()+r.metodo.slice(1)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`:''}
     </div>`;
 }
 
