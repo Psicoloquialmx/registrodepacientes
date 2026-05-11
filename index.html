@@ -4546,7 +4546,6 @@ function renderHoy(){
         <div class="today-locked"${isCalCancelled?' style="margin-bottom:8px"':''}>
           <div class="today-locked-left">
             <button class="${isCalCancelled?'btn-sec':'btn-primary'} btn-sm" type="button" style="cursor:default;pointer-events:none">${isCalCancelled?'Guardado desde Calendario':'Guardado'}</button>
-            <span class="today-locked-pill">${isCalCancelled?'Solo informativo':'Desde Calendario'}</span>
           </div>
           <button class="today-reset-btn" type="button" title="Volver al estado previo" onclick="unlockTodayCard(${p.id})">&times;</button>
         </div>
@@ -4575,11 +4574,10 @@ function renderHoy(){
         <div class="today-locked">
           <div class="today-locked-left">
             <button class="btn-primary btn-sm" type="button" style="cursor:default;pointer-events:none">Guardado</button>
-            <span class="today-locked-pill">Registro confirmado</span>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn-sec btn-sm" type="button" style="background:#2563eb;color:white;border-color:#2563eb" onclick="openTodayPayPopup(${p.id})">Registrar pago</button>
-            <button class="btn-sec btn-sm" type="button" title="Nota clínica" onclick="openSessionNotaPopup(${p.id})">📝</button>
+            <button class="btn-sec btn-sm" type="button" style="background:var(--sage);color:var(--ink);border-color:var(--sage)" onclick="openTodayPayPopup(${p.id})">Registrar pago</button>
+            <button class="btn-ghost btn-sm" type="button" title="Nota clínica" onclick="openSessionNotaPopup(${p.id})">📝</button>
             <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
           </div>
         </div>
