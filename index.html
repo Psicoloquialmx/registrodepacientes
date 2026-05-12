@@ -178,10 +178,10 @@ body.auth-locked .auth-screen{display:flex}
 .today-card.muted-state .today-name{color:#4c5a64}
 .today-card.muted-state .today-meta,.today-card.muted-state .today-status-label{color:#6d7a84}
 .today-card.muted-state .today-locked-pill{background:rgba(111,122,131,.11);border-color:rgba(111,122,131,.28);color:#4c5a64}
-.today-card.falta-state{background:#e8f3f1;border-color:#a5c4bc}
-.today-card.falta-state .today-name{color:#2a4f48}
-.today-card.falta-state .today-meta{color:#3d6b62}
-.today-card.falta-state .today-locked-pill{background:rgba(56,104,96,.13);border-color:rgba(56,104,96,.32);color:#2a4f48}
+.today-card.falta-state{background:var(--blush-soft);border-color:var(--blush)}
+.today-card.falta-state .today-name{color:var(--terra)}
+.today-card.falta-state .today-meta{color:var(--ink-light)}
+.today-card.falta-state .today-locked-pill{background:var(--blush-soft);border-color:var(--blush);color:var(--terra)}
 .today-card.repo-target,.today-card.repo-origin{background:#fcf4f8;border-color:#edd7e3}
 .today-card.repo-origin{border-style:dashed}
 .today-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.65rem}
@@ -4584,11 +4584,11 @@ function renderHoy(){
         </div>
         <div class="today-locked">
           <div class="today-locked-left">
-            <button class="btn-primary btn-sm" type="button" style="cursor:default;pointer-events:none">Guardado</button>
+            <button class="btn-primary" type="button" style="cursor:default;pointer-events:none;font-size:14px;padding:8px 16px">Guardado</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <button class="btn-sec btn-sm" type="button" style="background:var(--sage);color:var(--ink);border-color:var(--sage)" onclick="openTodayPayPopup(${p.id})">Registrar pago</button>
-            <button class="btn-ghost btn-sm" type="button" title="Nota clínica" onclick="openSessionNotaPopup(${p.id})">📝</button>
+            <button class="btn-ghost btn-sm" type="button" title="Nota clínica" onclick="goToNotasFromHoy(${p.id})" style="font-size:16px;padding:4px 8px">✎📝</button>
             <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
           </div>
         </div>
@@ -4693,36 +4693,11 @@ function submitTodayPago(){
   renderHoy();
 }
 
-function openSessionNotaPopup(pid){
-  const p=patients.find(x=>x.id===parseInt(pid));
-  if(!p) return;
-  const r=getTodayRowForPatient(p);
-  const ses=(r&&r.ses)?r.ses:null;
-  const overlay=document.getElementById('nota-session-overlay');
-  if(!overlay) return;
-  document.getElementById('nota-session-pid').value=String(pid);
-  document.getElementById('nota-session-patient-label').textContent=p.nombre+(ses?` · ${ses.fecha}`:'');
-  document.getElementById('nota-session-text').value=ses?.nota||'';
-  overlay.style.display='flex';
-  setTimeout(()=>document.getElementById('nota-session-text').focus(),60);
-}
-
-function closeSessionNotaPopup(){
-  const overlay=document.getElementById('nota-session-overlay');
-  if(overlay) overlay.style.display='none';
-}
-
-function submitSessionNota(){
-  const pid=parseInt(document.getElementById('nota-session-pid').value);
-  const p=patients.find(x=>x.id===pid);
-  if(!p) return;
-  const nota=document.getElementById('nota-session-text').value||'';
-  const r=getTodayRowForPatient(p);
-  if(r&&r.ses){
-    r.ses.nota=nota;
-    saveState();
-  }
-  closeSessionNotaPopup();
+function goToNotasFromHoy(pid){
+  // Navegar al expediente y activar tab notas
+  curTab='bitacora';
+  curBitTab='notas';
+  showDetalle(pid);
 }
 
 function syncQuickPayPatients(){
