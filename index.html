@@ -7869,7 +7869,7 @@ function initTheme(){
   if(saved==='dark'||saved==='light'){
     darkMode=saved==='dark';
   } else {
-    darkMode=window.matchMedia('(prefers-color-scheme: dark)').matches;
+    darkMode=false; // Default: modo claro
   }
   applyTheme();
 }
