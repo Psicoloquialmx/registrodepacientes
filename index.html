@@ -2913,12 +2913,14 @@ function collectFuturePlannedSessionsForSync(maxDays,minDays=0,patientList=null)
       }
 
       // Issue 4 fix: Include skipped/reprogrammed source sessions that haven't passed yet
-      // These generate (R) entries in Google Calendar until both original and target dates pass
+      // These generate (R) entries in Google Calendar until BOTH original AND target dates pass
       const skippedSource=daySessions.find(s=>(s.skipped||s.tipo==='reprogramada')&&s.movedTo);
       if(skippedSource){
-        // Only include if the original date hasn't passed yet
+        // Keep (R) visible until BOTH original date AND moved-to date have passed
         const originalDate=skippedSource.fecha?.split(' ')[0];
-        if(originalDate>=start){
+        const movedToDate=skippedSource.movedTo;
+        const bothDatesPassed=originalDate<start&&movedToDate<start;
+        if(!bothDatesPassed){
           items.push({p,ses:skippedSource,dateStr,hora:skippedSource.hora||horaDiaFecha(p,dateStr)});
         }
         continue;
