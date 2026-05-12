@@ -198,7 +198,7 @@ body.auth-locked .auth-screen{display:flex}
 .today-extra-actions .btn-sec{font-size:11px;padding:4px 10px;border-radius:6px}
 .today-toolbar{display:flex;flex-direction:column;gap:10px;margin:0 0 12px}
 .today-legend{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#3d6b62;padding:6px 10px;border-radius:999px;border:1px solid rgba(56,104,96,.24);background:rgba(165,196,188,.22);width:fit-content;max-width:100%}
-.today-legend-dot{width:8px;height:8px;border-radius:50%;background:#a5c4bc;border:1px solid rgba(56,104,96,.4);display:inline-block;flex-shrink:0}
+.today-legend-dot{width:8px;height:8px;border-radius:50%;background:var(--blush);border:1px solid var(--terra);display:inline-block;flex-shrink:0}
 .today-unplanned-cta{display:flex;align-items:center;justify-content:center;width:100%;background:var(--terra);border:1px solid var(--terra);color:white;padding:13px 16px;border-radius:14px;font-size:24px;line-height:1;cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 4px 12px rgba(185,93,55,.2)}
 .today-unplanned-cta:hover{background:#9e4f2e;border-color:#9e4f2e}
 .today-locked{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:4px}
@@ -4506,11 +4506,11 @@ function renderHoy(){
   });
 
   if(!rows.length){
-    el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+ Sesión no prevista</button></div><div class="dsec"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada.</p></div>`;
+    el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta rosa: el paciente faltó o se reagendó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+ Sesión no prevista</button></div><div class="dsec"><div><div class="sec-title">Sin sesiones en agenda para esta fecha</div><p style="font-size:12px;color:var(--ink-light);margin-top:5px">${viewLabel}</p></div><div class="empty" style="padding:1.25rem 1rem .5rem"><img src="Assets/Axolotl/Pensando-1.svg" alt="Sin sesiones"></div><p style="font-size:13px;color:var(--ink-light);line-height:1.6;margin-top:.25rem">No hay sesiones de horario fijo registradas en la fecha seleccionada.</p></div>`;
     return;
   }
 
-  el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta azul: el paciente faltó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+ Sesión no prevista</button></div>
+  el.innerHTML=`<div class="today-toolbar"><div class="today-legend"><span class="today-legend-dot"></span><span>Tarjeta rosa: el paciente faltó o se reagendó</span></div><button class="today-unplanned-cta" type="button" onclick="openUnplannedSessionModal()" title="Agregar sesión no prevista">+ Sesión no prevista</button></div>
   <div class="today-list">${rows.map(r=>{
     const p=r.p;
     if(r.movedFrom){
@@ -4584,11 +4584,11 @@ function renderHoy(){
         </div>
         <div class="today-locked">
           <div class="today-locked-left">
-            <button class="btn-primary" type="button" style="cursor:default;pointer-events:none;font-size:14px;padding:8px 16px">Guardado</button>
+            <button class="btn-primary" type="button" style="cursor:default;pointer-events:none;font-size:15px;padding:10px 22px;font-weight:600">Guardado</button>
           </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn-sec btn-sm" type="button" style="background:var(--sage);color:var(--ink);border-color:var(--sage)" onclick="openTodayPayPopup(${p.id})">Registrar pago</button>
-            <button class="btn-ghost btn-sm" type="button" title="Nota clínica" onclick="goToNotasFromHoy(${p.id})" style="font-size:16px;padding:4px 8px">✎📝</button>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <button class="btn-sec" type="button" style="background:var(--sage);color:var(--ink);border-color:var(--sage);font-size:11px;padding:5px 10px;border-radius:6px;width:auto;flex-shrink:0" onclick="openTodayPayPopup(${p.id})">Registrar pago</button>
+            <button class="btn-ghost" type="button" title="Notas clínicas" onclick="goToNotasFromHoy(${p.id})" style="font-size:15px;padding:4px 7px;width:auto;flex-shrink:0">✏️</button>
             <button class="today-reset-btn" type="button" title="Rehacer selección" onclick="unlockTodayCard(${p.id})">&times;</button>
           </div>
         </div>
@@ -4694,9 +4694,8 @@ function submitTodayPago(){
 }
 
 function goToNotasFromHoy(pid){
-  // Navegar al expediente y activar tab notas
-  curTab='bitacora';
-  curBitTab='notas';
+  // Navegar al expediente y abrir la pestaña de Notas (top-level)
+  curTab='notas';
   showDetalle(pid);
 }
 
@@ -6229,6 +6228,7 @@ function renderDetalle(p){
       <button class="dtab" data-tab="pagos" onclick="switchTab('pagos')">Pagos</button>
       <button class="dtab" data-tab="tarifas" onclick="switchTab('tarifas')">Tarifas</button>
       <button class="dtab" data-tab="bitacora" onclick="switchTab('bitacora')">Bitácora</button>
+      <button class="dtab" data-tab="notas" onclick="switchTab('notas')">Notas</button>
       <button class="dtab" data-tab="editar" onclick="switchTab('editar')">✎ Editar</button>
     </div>
 
@@ -6392,39 +6392,37 @@ function renderDetalle(p){
       </div>
     </div>
 
-    <!-- Bitácora + Notas clínicas -->
+    <!-- Bitácora (solo cambios del expediente) -->
     <div class="dtab-panel" id="panel-bitacora">
       <div class="dsec">
-        <div class="bittabs">
-          <button class="bittab active" data-bt="log" onclick="switchBitTab('log')">Cambios del expediente</button>
-          <button class="bittab" data-bt="notas" onclick="switchBitTab('notas')">Notas clínicas</button>
-        </div>
-        <!-- Log de cambios -->
-        <div class="bitpanel active" id="bitpanel-log">
-          <div style="max-height:320px;overflow-y:auto">${logHtml}</div>
-        </div>
-        <!-- Notas clínicas -->
-        <div class="bitpanel" id="bitpanel-notas">
-          <div class="nota-form">
-            <div class="form-grid" style="margin-bottom:8px">
-              <div class="form-group form-full">
-                <label class="form-label">Título de la nota</label>
-                <input class="form-input" id="nota-titulo" placeholder="Ej: Sesión 5  -  transferencia">
-              </div>
-            </div>
-            <textarea id="nota-body" placeholder="Escribe aquí la nota clínica..."></textarea>
-            <div class="nota-form-row">
-              <select class="form-input" id="nota-tag" style="width:auto;flex:1">
-                <option value="clinica">Clínica</option>
-                <option value="avance">Avance</option>
-                <option value="alerta">Alerta</option>
-                <option value="general">General</option>
-              </select>
-              <button class="btn-primary btn-sm" onclick="guardarNota(${p.id})">Agregar nota</button>
+        <div class="sec-title">Cambios del expediente</div>
+        <div style="max-height:420px;overflow-y:auto">${logHtml}</div>
+      </div>
+    </div>
+
+    <!-- Notas clínicas (panel top-level) -->
+    <div class="dtab-panel" id="panel-notas">
+      <div class="dsec">
+        <div class="sec-title">Notas clínicas</div>
+        <div class="nota-form">
+          <div class="form-grid" style="margin-bottom:8px">
+            <div class="form-group form-full">
+              <label class="form-label">Título de la nota</label>
+              <input class="form-input" id="nota-titulo" placeholder="Ej: Sesión 5 — transferencia">
             </div>
           </div>
-          <div id="notas-list">${notasHtml}</div>
+          <textarea id="nota-body" placeholder="Escribe aquí la nota clínica..."></textarea>
+          <div class="nota-form-row">
+            <select class="form-input" id="nota-tag" style="width:auto;flex:1">
+              <option value="clinica">Clínica</option>
+              <option value="avance">Avance</option>
+              <option value="alerta">Alerta</option>
+              <option value="general">General</option>
+            </select>
+            <button class="btn-primary btn-sm" onclick="guardarNota(${p.id})">Agregar nota</button>
+          </div>
         </div>
+        <div id="notas-list">${notasHtml}</div>
       </div>
     </div>
 
@@ -6432,7 +6430,6 @@ function renderDetalle(p){
     <div class="dtab-panel" id="panel-editar">${editHtml}</div>
   `;
   switchTab(curTab);
-  if(curTab==='bitacora') switchBitTab(curBitTab);
 }
 
 // " - ? GUARDAR NOTA " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - ?
@@ -6443,15 +6440,14 @@ function guardarNota(id){
   const tag=document.getElementById('nota-tag').value;
   if(!cuerpo){alert('Escribe el contenido de la nota');return}
   addNota(p,titulo||'Nota',cuerpo,tag);
-  curBitTab='notas';
+  curTab='notas';
   renderDetalle(p);
-  switchBitTab('notas');
 }
 function deleteNota(pid,nid){
   const p=patients.find(x=>x.id===parseInt(pid));
   p.notas=p.notas.filter(n=>n.id!==nid);
+  curTab='notas';
   renderDetalle(p);
-  if(curTab==='bitacora') switchBitTab('notas');
 }
 
 function getEditSaveButtonLabel(pid,key,defaultLabel,savedLabel){
